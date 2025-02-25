@@ -1,0 +1,17 @@
+{
+  "COOKIE_FILE": "fogis_cookies.json",
+  "CREDENTIALS_FILE": "credentials.json",
+  "CALENDAR_ID": "e8835809c7a887d4b3138f8b1f3ebc196bd3916dcf0b689b7f8b4a399ffc12df@group.calendar.google.com",
+  "SYNC_TAG": "FOGIS_CALENDAR_SYNC",
+  "FOGIS_LOGIN_URL": "https://fogis.svenskfotboll.se/mdk/Login.aspx?ReturnUrl=%2fmdk%2f",
+  "FOGIS_MATCH_LIST_URL": "https://fogis.svenskfotboll.se/mdk/MatchWebMetoder.aspx/GetMatcherAttRapportera",
+  "MAX_RETRIES": 3,
+  "BACKOFF_FACTOR": 2,
+  "MATCH_FILE": "matches.json",
+  "USE_LOCAL_MATCH_DATA": false,
+  "LOCAL_MATCH_DATA_FILE": "local_matches.json",
+  "SCOPES":[
+        "https://www.googleapis.com/auth/calendar",
+        "https://www.googleapis.com/auth/contacts"
+    ]
+}
