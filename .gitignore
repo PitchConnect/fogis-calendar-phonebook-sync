@@ -41,6 +41,7 @@ venv.bak
 credentials.json
 token.json
 fogis_cookies.json
+matches.json
 # config.json  <-- Consider adding this later if you want to track a config example but not your local config
 
 # OS generated files
