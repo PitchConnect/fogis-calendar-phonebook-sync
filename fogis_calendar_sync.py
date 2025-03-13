@@ -2,7 +2,10 @@ import os
 import json
 import datetime
 from datetime import timedelta, timezone
+
+from fogis_api_client.enums import MatchStatus
 from fogis_api_client.fogis_api_client import FogisApiClient
+from fogis_api_client.match_list_filter import MatchListFilter
 from tabulate import tabulate
 from googleapiclient.discovery import build
 from google.oauth2 import service_account, credentials
@@ -331,8 +334,8 @@ def main():
         logging.error("Login failed.")
         return  # Early exit
 
-    logging.info(f"Fetching match list")
-    match_list = fogis_api_client.fetch_matches_list_json()
+    logging.info("Fetching matches, filtering out cancelled games.")
+    match_list = MatchListFilter().exclude_statuses([MatchStatus.CANCELLED]).fetch_filtered_matches(fogis_api_client)
 
     if not match_list:
         logging.warning("Failed to fetch match list.")
