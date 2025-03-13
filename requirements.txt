@@ -2,7 +2,7 @@ beautifulsoup4==4.13.3
 cachetools==5.5.2
 certifi==2025.1.31
 charset-normalizer==3.4.1
-fogis-api-client-timmyBird==0.0.3
+fogis-api-client-timmyBird==0.0.5
 google==3.0.0
 google-api-core==2.24.1
 google-api-python-client==2.161.0
