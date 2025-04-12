@@ -224,7 +224,18 @@ If you encounter issues, please review the logs carefully.  Detailed error messa
 
 ## Contributing
 
-Contributions are welcome! Please submit a pull request with your changes.
+Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on how to contribute to this project.
+
+### Development Setup
+
+For development, we recommend installing the development dependencies and pre-commit hooks:
+
+```bash
+pip install -r dev-requirements.txt
+pre-commit install
+```
+
+This will set up pre-commit hooks to ensure code quality standards are met. For more information on our code quality standards, see [docs/code_quality.md](docs/code_quality.md).
 
 ## License
 
@@ -235,6 +246,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE.txt) 
 For questions, issues, or contributions, please feel free to reach out:
 
 * Email: [bartek.svaberg@gmail.com](mailto:bartek.svaberg@gmail.com)
-* [GitHub](https://github.com/timmybird) 
+* [GitHub](https://github.com/timmybird)
 
 ## Thank you for using Fogis Calendar Sync!
