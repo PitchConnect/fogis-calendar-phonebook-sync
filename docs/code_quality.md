@@ -43,6 +43,10 @@ The following pre-commit hooks are currently enabled:
 #### Python Security Hooks
 - **bandit**: Finds common security issues in Python code
 
+#### Python Testing Hooks
+- **pytest**: Runs tests automatically before each commit
+- **pytest-check**: Verifies that test files are valid
+
 ### Running Pre-commit
 
 Pre-commit will run automatically on every commit. If you want to run it manually on all files:
@@ -157,14 +161,91 @@ Our Bandit configuration is in the `.bandit` file with these key settings:
 
 Bandit helps us identify potential security vulnerabilities before they make it into production code.
 
+## Testing Standards
+
+### Pytest
+
+We use [Pytest](https://docs.pytest.org/) as our testing framework. Pytest is a powerful and flexible testing tool that makes it easy to write simple and scalable tests.
+
+Key features:
+
+- Simple and readable test syntax
+- Powerful fixture system for reusable test components
+- Extensive plugin ecosystem
+- Detailed test reports
+- Parallel test execution
+
+#### Configuration
+
+Our Pytest configuration is in the `pytest.ini` file with these key settings:
+
+- Test discovery patterns: Tests are discovered in the `tests` directory with filenames starting with `test_`
+- Output options: Verbose output with color and coverage reporting
+- Markers: Tests can be marked as `unit`, `integration`, or `slow`
+- Environment variables: Sets `PYTHONPATH` to include the current directory
+
+#### Directory Structure
+
+Our test directory structure follows these conventions:
+
+```
+tests/
+├── __init__.py          # Makes the directory a package
+├── conftest.py          # Shared fixtures and configuration
+├── test_*.py            # Test modules
+└── unit/                # Unit tests (optional subdirectory)
+    └── test_*.py        # Unit test modules
+```
+
+#### Writing Tests
+
+Tests should follow these guidelines:
+
+- Each test function should test one specific behavior or feature
+- Use descriptive test names that explain what is being tested
+- Use fixtures for setup and teardown
+- Use assertions to verify expected behavior
+- Use markers to categorize tests
+
+Example test:
+
+```python
+@pytest.mark.unit
+def test_config_loading():
+    """Test that configuration is loaded correctly."""
+    # Test code here
+    assert True
+```
+
+#### Running Tests
+
+Tests can be run using the following commands:
+
+```bash
+# Run all tests
+pytest
+
+# Run tests with coverage report
+pytest --cov=. --cov-report=term-missing
+
+# Run specific test file
+pytest tests/test_specific.py
+
+# Run tests matching a pattern
+pytest -k "config"
+
+# Run tests with a specific marker
+pytest -m unit
+```
+
 ## Future Enhancements
 
-This is the fifth phase of our code quality standards implementation. Future phases will include:
+This is the sixth phase of our code quality standards implementation. Future phases will include:
 
 1. ✅ Basic Pre-commit Setup (completed)
 2. ✅ Code Formatting with Black and isort (completed)
 3. ✅ Linting - Phase 1 with Flake8 (completed)
 4. ✅ Linting - Phase 2 with Pylint (completed)
-5. ✅ Security Checks with Bandit (current phase)
-6. Test Integration (pytest)
+5. ✅ Security Checks with Bandit (completed)
+6. ✅ Test Integration with Pytest (current phase)
 7. CI Integration

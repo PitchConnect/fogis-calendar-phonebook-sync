@@ -51,3 +51,25 @@ repos:
     -   id: bandit
         args: ["--configfile", ".bandit", "--recursive"]
         exclude: ^tests/
+
+-   repo: local
+    hooks:
+    -   id: pytest
+        name: pytest
+        entry: pytest
+        language: system
+        pass_filenames: false
+        always_run: true
+        args: [
+            "--cov=.",
+            "--cov-report=term-missing",
+        ]
+    -   id: pytest-check
+        name: pytest-check
+        entry: pytest
+        language: system
+        types: [python]
+        files: ^tests/.*\.py$
+        args: [
+            "-xvs",
+        ]
