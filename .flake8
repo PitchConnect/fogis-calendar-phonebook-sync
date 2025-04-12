@@ -1,0 +1,12 @@
+[flake8]
+max-line-length = 100
+exclude = .git,__pycache__,build,dist
+# Ignore some errors/warnings:
+# E203: Whitespace before ':' (conflicts with Black)
+# W503: Line break before binary operator (conflicts with Black)
+# D100-D104: Missing docstrings in various places (too strict for initial implementation)
+# F401: Module imported but unused (will be addressed in later phases)
+# E501: Line too long (handled by Black)
+ignore = E203,W503,D100,D101,D102,D103,D104,F401,E501
+# Enable flake8-docstrings
+docstring-convention = google

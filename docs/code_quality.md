@@ -33,6 +33,12 @@ The following pre-commit hooks are currently enabled:
 - **black**: Formats Python code according to Black's style guide (line length: 100)
 - **isort**: Sorts Python imports alphabetically and by type with Black compatibility
 
+#### Python Linting Hooks
+- **flake8**: Checks Python code for style and potential errors
+  - With plugins:
+    - **flake8-docstrings**: Checks docstring conventions
+    - **flake8-bugbear**: Catches common bugs and design problems
+
 ### Running Pre-commit
 
 Pre-commit will run automatically on every commit. If you want to run it manually on all files:
@@ -67,13 +73,40 @@ Key configuration:
 - Black compatibility mode (`--profile black`)
 - Sorts imports into sections: standard library, third-party, and local
 
+## Linting Standards
+
+### Flake8
+
+We use [Flake8](https://flake8.pycqa.org/) to enforce Python style guide rules and catch potential errors. Flake8 combines several tools:
+
+- PyFlakes: Checks for logical errors in Python code
+- pycodestyle: Checks for PEP 8 style guide compliance
+- McCabe complexity checker: Checks for overly complex code
+
+Additionally, we use these Flake8 plugins:
+
+- **flake8-docstrings**: Checks docstring conventions using pydocstyle
+- **flake8-bugbear**: Catches common bugs and design problems
+
+#### Configuration
+
+Our Flake8 configuration is in the `.flake8` file with these key settings:
+
+- Line length: 100 characters (matching Black)
+- Ignored rules:
+  - E203, W503: Rules that conflict with Black
+  - D100-D104: Missing docstrings (relaxed for initial implementation)
+  - F401: Unused imports (will be addressed in later phases)
+  - E501: Line too long (handled by Black)
+- Docstring convention: Google style
+
 ## Future Enhancements
 
-This is the second phase of our code quality standards implementation. Future phases will include:
+This is the third phase of our code quality standards implementation. Future phases will include:
 
 1. ✅ Basic Pre-commit Setup (completed)
-2. ✅ Code Formatting with Black and isort (current phase)
-3. Linting - Phase 1 (flake8, basic rules)
+2. ✅ Code Formatting with Black and isort (completed)
+3. ✅ Linting - Phase 1 with Flake8 (current phase)
 4. Linting - Phase 2 (pylint, more comprehensive rules)
 5. Security Checks (bandit)
 6. Test Integration (pytest)
