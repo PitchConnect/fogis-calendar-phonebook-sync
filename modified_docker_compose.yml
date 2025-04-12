@@ -1,0 +1,112 @@
+# Remove the obsolete version attribute
+services:
+  process-matches-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: process-matches-service
+    networks:
+      - fogis-network
+    volumes:
+      - process-matches-data:/data
+      - .:/app
+    restart: unless-stopped
+    # Change from condition-based dependencies to simple dependencies
+    depends_on:
+      - whatsapp-avatar-service
+      - google-drive-service
+      - fogis-api-client-service
+      - fogis-sync
+    develop:
+      watch:
+        - action: rebuild
+          path: .
+          target: /app
+
+  whatsapp-avatar-service:
+    extends:
+      file: ../TeamLogoCombiner/docker-compose.yml
+      service: whatsapp-avatar-service
+    networks:
+      - fogis-network
+    volumes:
+      - ../TeamLogoCombiner/assets:/app/assets:ro
+    ports:
+      - "5002:5002"
+    # Keep healthcheck commented out as /health endpoint is not implemented
+    # healthcheck:
+    #   test: ["CMD", "curl", "-f", "http://localhost:5002/health"]
+    #   interval: 30s
+    #   timeout: 10s
+    #   retries: 5
+    #   start_period: 30s
+
+  google-drive-service:
+    extends:
+      file: ../google-drive-service/docker-compose.yml
+      service: google-drive-service
+    networks:
+      - fogis-network
+    volumes:
+      - google-drive-service-data:/app
+    ports:
+      - "5001:5000"  # Changed host port to 5001
+    # Keep healthcheck commented out as /health endpoint is not implemented
+    # healthcheck:
+    #   test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+    #   interval: 30s
+    #   timeout: 10s
+    #   retries: 5
+    #   start_period: 30s
+
+  fogis-api-client-service:
+    extends:
+      file: ../fogis_api_client_python/docker-compose.yml
+      service: fogis-api-client
+    networks:
+      - fogis-network
+    volumes:
+      - ../fogis_api_client_python/data:/app/data
+      - ../fogis_api_client_python/logs:/app/logs
+    ports:
+      - "8080:8080"
+    # Enable healthcheck as /hello endpoint is working
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/hello"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  fogis-sync:
+    extends:
+      file: ../FogisCalendarPhoneBookSync/docker-compose.yml
+      service: fogis-sync
+    image: fogiscalendarphonebooksync-fogis-sync:v1.0.1  # Added version tag
+    build:
+      context: ../FogisCalendarPhoneBookSync
+      no_cache: true  # Force rebuild
+    networks:
+      - fogis-network
+    volumes:
+      - ../FogisCalendarPhoneBookSync/token.json:/app/token.json
+      - ../FogisCalendarPhoneBookSync/data:/app/data
+    ports:
+      - "5003:5003"
+    # Enable healthcheck as /health endpoint is working
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5003/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+networks:
+  fogis-network:
+    external: true
+
+volumes:
+  process-matches-data:
+    external: true
+  google-drive-service-data:
+    external: true

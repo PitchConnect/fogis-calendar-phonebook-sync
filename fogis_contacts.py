@@ -9,6 +9,12 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 import os
 import time  # Import time for sleep
 
+# Import dotenv for loading environment variables from .env file
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
+
 
 SCOPES = [
     "https://www.googleapis.com/auth/calendar",
@@ -38,16 +44,32 @@ def authorize_google_people():
         if creds and creds.expired and creds.refresh_token:
             try:
                 creds.refresh(google.auth.transport.requests.Request())
-                logging.info("Google People credentials Refreshed")
+                # Save the refreshed credentials
+                with open('token.json', 'w', encoding='utf-8') as token:
+                    token.write(creds.to_json())
+                logging.info("Google People credentials Refreshed and saved")
             except Exception as e:
                 logging.error(f"Error refreshing credentials: {e}")
-                return None
+                # If refresh fails, try to get new credentials
+                try:
+                    flow = InstalledAppFlow.from_client_secrets_file(CREDENTIALS_FILE, SCOPES)
+                    creds = flow.run_local_server(port=0)
+                    with open('token.json', 'w', encoding='utf-8') as token:
+                        token.write(creds.to_json())
+                    logging.info("New Google People Creds Auth Completed after refresh failure")
+                except Exception as inner_e:
+                    logging.error(f"Failed to get new credentials after refresh failure: {inner_e}")
+                    return None
         else:
-            flow = InstalledAppFlow.from_client_secrets_file(CREDENTIALS_FILE, SCOPES)
-            creds = flow.run_local_server(port=0)
-            with open('token.json', 'w') as token:
-                token.write(creds.to_json())
-            logging.info("New Google People Creds Auth Completed")
+            try:
+                flow = InstalledAppFlow.from_client_secrets_file(CREDENTIALS_FILE, SCOPES)
+                creds = flow.run_local_server(port=0)
+                with open('token.json', 'w', encoding='utf-8') as token:
+                    token.write(creds.to_json())
+                logging.info("New Google People Creds Auth Completed")
+            except Exception as e:
+                logging.error(f"Error during authorization flow: {e}")
+                return None
     return creds
 
 

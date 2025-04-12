@@ -1,0 +1,49 @@
+version: '3.8'
+
+services:
+  fogis-sync:
+    build:
+      context: .
+      # Add build timeout to prevent hanging builds
+      args:
+        - BUILDKIT_INLINE_CACHE=1
+    container_name: fogis-sync
+    ports:
+      - "5003:5003"
+    env_file:
+      - .env
+    environment:
+      - FLASK_HOST=0.0.0.0
+      - FLASK_PORT=5003
+
+      - TZ=Europe/Stockholm
+    volumes:
+      - ./token.json:/app/token.json
+      - ./data:/app/data
+      # Add volume to share the fogis_api_client_python module
+      - ../fogis_api_client_python:/app/fogis_api_client_python
+    # Add health check
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5003/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    # Add restart policy
+    restart: unless-stopped
+    # Add resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 512M
+    # Add stop grace period
+    stop_grace_period: 30s
+    networks:
+      - fogis-network
+
+networks:
+  fogis-network:
+    external: true
+    # Fallback if network doesn't exist
+    driver: bridge

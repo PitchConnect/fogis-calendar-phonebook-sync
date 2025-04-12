@@ -3,6 +3,9 @@ import json
 import datetime
 from datetime import timedelta, timezone
 
+# Import dotenv for loading environment variables from .env file
+from dotenv import load_dotenv
+
 from fogis_api_client.enums import MatchStatus
 from fogis_api_client.fogis_api_client import FogisApiClient
 from fogis_api_client.match_list_filter import MatchListFilter
@@ -18,6 +21,9 @@ import hashlib  # Import for generating hashes
 import logging
 from google.auth.exceptions import RefreshError # Correct import for RefreshError
 from fogis_contacts import process_referees, test_google_contacts_connection  # Removed other functions
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Configure logging
 logging.basicConfig(
@@ -43,25 +49,40 @@ except json.JSONDecodeError as err:
 def authorize_google_calendar():
     """Authorizes access to the Google Calendar API."""
     creds = None
+    logging.info("Starting Google Calendar authorization process")
+
     if os.path.exists('token.json'):
         try:
-            logging.debug(f"Scopes: {config_dict['SCOPES']}")
+            logging.info(f"Token file exists, attempting to load. Scopes: {config_dict['SCOPES']}")
             creds = google.oauth2.credentials.Credentials.from_authorized_user_file('token.json',
                                                                                     scopes=config_dict['SCOPES'])
             logging.info("Successfully loaded Google Calendar credentials from token.json.")
         except Exception as e:
             logging.error(f"Error loading credentials from token.json: {e}")
+            logging.info("Will attempt to create new credentials")
             creds = None  # Ensure creds is None if loading fails
 
     # If there are no (valid) credentials available, let the user log in.
+    if not creds:
+        logging.info("No credentials found, will create new ones")
+    elif not creds.valid:
+        logging.info("Credentials found but not valid")
+
     if not creds or not creds.valid:
         if creds and creds.expired and creds.refresh_token:
+            logging.info("Credentials expired but have refresh token, attempting to refresh")
             try:
                 creds.refresh(google.auth.transport.requests.Request())
-                logging.info("Google Calendar credentials Refreshed")
+                logging.info("Google Calendar credentials successfully refreshed")
+                # Save the refreshed credentials
+                with open('token.json', 'w', encoding='utf-8') as token:
+                    token.write(creds.to_json())
+                logging.info("Refreshed credentials saved to token.json")
             except google.auth.exceptions.RefreshError as e:  # Catch refresh-specific errors
                 logging.error(f"Error refreshing Google Calendar credentials: {e}. Deleting token.json.")
-                os.remove("token.json")
+                if os.path.exists("token.json"):
+                    os.remove("token.json")
+                    logging.info("Deleted invalid token.json file")
                 creds = None  # Force re-authentication
             except Exception as e:
                 logging.error(f"Error refreshing Google Calendar credentials: {e}")
@@ -69,13 +90,24 @@ def authorize_google_calendar():
 
         # Handle the case where creds is None
         if creds is None:
+            logging.info("Attempting to create new credentials via OAuth flow")
             try:
-                flow = InstalledAppFlow.from_client_secrets_file(  # Use Imported Class
+                logging.info(f"Using credentials file: {config_dict['CREDENTIALS_FILE']}")
+                flow = InstalledAppFlow.from_client_secrets_file(
                     config_dict['CREDENTIALS_FILE'], config_dict['SCOPES'])
                 creds = flow.run_local_server(port=0)
+                logging.info("OAuth flow completed successfully")
+
                 # Save the credentials for the next run
-                with open('token.json', 'w', encoding='utf-8') as token:
-                    token.write(creds.to_json())
+                try:
+                    with open('token.json', 'w', encoding='utf-8') as token:
+                        token_json = creds.to_json()
+                        token.write(token_json)
+                        logging.info(f"New credentials saved to token.json (length: {len(token_json)})")
+                except Exception as save_error:
+                    logging.error(f"Error saving token.json: {save_error}")
+                    # Continue anyway since we have valid credentials in memory
+
                 logging.info("New Google Calendar credentials obtained.")
             except FileNotFoundError:
                 logging.error(f"Credentials file not found: {config_dict['CREDENTIALS_FILE']}")
@@ -84,7 +116,8 @@ def authorize_google_calendar():
                 logging.error(f"Error during Google Calendar authorization flow: {e}")
                 return None
 
-        return creds
+    logging.info("Authorization process completed, returning credentials")
+    return creds
 
 def generate_match_hash(match):
     """Generates a hash for the relevant parts of the match data, including all referee information."""
