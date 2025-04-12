@@ -40,6 +40,9 @@ The following pre-commit hooks are currently enabled:
     - **flake8-bugbear**: Catches common bugs and design problems
 - **pylint**: Provides comprehensive static analysis of Python code
 
+#### Python Security Hooks
+- **bandit**: Finds common security issues in Python code
+
 ### Running Pre-commit
 
 Pre-commit will run automatically on every commit. If you want to run it manually on all files:
@@ -128,14 +131,40 @@ Our Pylint configuration is in the `.pylintrc` file with these key settings:
 
 Pylint is configured to be less strict in this initial phase, focusing on catching significant issues while allowing for gradual improvement of the codebase.
 
+## Security Standards
+
+### Bandit
+
+We use [Bandit](https://bandit.readthedocs.io/) to find common security issues in Python code. Bandit is a tool designed to find common security issues in Python code, such as:
+
+- Use of assert statements in production code
+- Use of exec or eval
+- Hard-coded passwords or keys
+- Use of insecure functions or modules
+- SQL injection vulnerabilities
+- Command injection vulnerabilities
+- And many more
+
+#### Configuration
+
+Our Bandit configuration is in the `.bandit` file with these key settings:
+
+- Skipped tests: Some low-risk checks are skipped to reduce noise
+- Confidence level: MEDIUM (reduces false positives)
+- Target Python version: 3.9
+- Recursive scanning of the codebase
+- Exclusion of test directories
+
+Bandit helps us identify potential security vulnerabilities before they make it into production code.
+
 ## Future Enhancements
 
-This is the fourth phase of our code quality standards implementation. Future phases will include:
+This is the fifth phase of our code quality standards implementation. Future phases will include:
 
 1. ✅ Basic Pre-commit Setup (completed)
 2. ✅ Code Formatting with Black and isort (completed)
 3. ✅ Linting - Phase 1 with Flake8 (completed)
-4. ✅ Linting - Phase 2 with Pylint (current phase)
-5. Security Checks (bandit)
+4. ✅ Linting - Phase 2 with Pylint (completed)
+5. ✅ Security Checks with Bandit (current phase)
 6. Test Integration (pytest)
 7. CI Integration
