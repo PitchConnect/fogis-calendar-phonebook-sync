@@ -22,11 +22,16 @@ We use [pre-commit](https://pre-commit.com/) to enforce code quality standards b
 
 The following pre-commit hooks are currently enabled:
 
+#### File Formatting Hooks
 - **trailing-whitespace**: Removes trailing whitespace at the end of lines
 - **end-of-file-fixer**: Ensures files end with a newline
 - **check-yaml**: Validates YAML files
 - **check-json**: Validates JSON files
 - **check-added-large-files**: Prevents large files from being committed
+
+#### Python Code Formatting Hooks
+- **black**: Formats Python code according to Black's style guide (line length: 100)
+- **isort**: Sorts Python imports alphabetically and by type with Black compatibility
 
 ### Running Pre-commit
 
@@ -42,13 +47,34 @@ To run a specific hook:
 pre-commit run <hook-id> --all-files
 ```
 
+## Code Formatting Standards
+
+### Black
+
+We use [Black](https://black.readthedocs.io/) as our Python code formatter. Black is an opinionated formatter that reformats entire files to conform to a consistent style.
+
+Key configuration:
+- Line length: 100 characters
+- Python 3 syntax
+
+Black helps eliminate debates about code style by providing a consistent, automatic formatting solution.
+
+### isort
+
+We use [isort](https://pycqa.github.io/isort/) to sort and organize Python imports. isort automatically groups imports into sections and sorts them alphabetically.
+
+Key configuration:
+- Black compatibility mode (`--profile black`)
+- Sorts imports into sections: standard library, third-party, and local
+
 ## Future Enhancements
 
-This is the first phase of our code quality standards implementation. Future phases will include:
+This is the second phase of our code quality standards implementation. Future phases will include:
 
-1. Code Formatting (black, isort)
-2. Linting - Phase 1 (flake8, basic rules)
-3. Linting - Phase 2 (pylint, more comprehensive rules)
-4. Security Checks (bandit)
-5. Test Integration (pytest)
-6. CI Integration
+1. ✅ Basic Pre-commit Setup (completed)
+2. ✅ Code Formatting with Black and isort (current phase)
+3. Linting - Phase 1 (flake8, basic rules)
+4. Linting - Phase 2 (pylint, more comprehensive rules)
+5. Security Checks (bandit)
+6. Test Integration (pytest)
+7. CI Integration
