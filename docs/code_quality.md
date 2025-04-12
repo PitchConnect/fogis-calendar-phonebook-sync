@@ -38,6 +38,7 @@ The following pre-commit hooks are currently enabled:
   - With plugins:
     - **flake8-docstrings**: Checks docstring conventions
     - **flake8-bugbear**: Catches common bugs and design problems
+- **pylint**: Provides comprehensive static analysis of Python code
 
 ### Running Pre-commit
 
@@ -100,14 +101,41 @@ Our Flake8 configuration is in the `.flake8` file with these key settings:
   - E501: Line too long (handled by Black)
 - Docstring convention: Google style
 
+### Pylint
+
+We use [Pylint](https://pylint.pycqa.org/) for more comprehensive static analysis of Python code. Pylint goes beyond style checking to find programming errors, help enforce coding standards, and detect potential issues.
+
+Key features:
+
+- Checks for coding standards compliance
+- Finds programming errors and bugs
+- Offers refactoring suggestions
+- Provides detailed reports on code quality
+
+#### Configuration
+
+Our Pylint configuration is in the `.pylintrc` file with these key settings:
+
+- Python version: 3.9
+- Line length: 100 characters (matching Black)
+- Disabled checks:
+  - Missing docstrings (relaxed for initial implementation)
+  - Line too long (handled by Black)
+  - Too many arguments/locals/branches/statements (relaxed for initial implementation)
+  - Broad except clauses (allowed for now)
+  - Import errors (to avoid CI failures)
+  - Duplicate code (too strict for initial implementation)
+
+Pylint is configured to be less strict in this initial phase, focusing on catching significant issues while allowing for gradual improvement of the codebase.
+
 ## Future Enhancements
 
-This is the third phase of our code quality standards implementation. Future phases will include:
+This is the fourth phase of our code quality standards implementation. Future phases will include:
 
 1. ✅ Basic Pre-commit Setup (completed)
 2. ✅ Code Formatting with Black and isort (completed)
-3. ✅ Linting - Phase 1 with Flake8 (current phase)
-4. Linting - Phase 2 (pylint, more comprehensive rules)
+3. ✅ Linting - Phase 1 with Flake8 (completed)
+4. ✅ Linting - Phase 2 with Pylint (current phase)
 5. Security Checks (bandit)
 6. Test Integration (pytest)
 7. CI Integration

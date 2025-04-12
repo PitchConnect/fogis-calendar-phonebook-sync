@@ -6,3 +6,4 @@ isort==5.13.2
 flake8==7.0.0
 flake8-docstrings==1.7.0
 flake8-bugbear==24.2.6
+pylint==3.1.0
