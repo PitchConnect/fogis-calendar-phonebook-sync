@@ -8,6 +8,9 @@ The following is a set of guidelines for contributing to this project. These are
 
 - [Code of Conduct](#code-of-conduct)
 - [Gitflow Workflow](#gitflow-workflow)
+  - [Branch Structure](#branch-structure)
+  - [Workflow](#workflow)
+  - [Merge Guidelines](#merge-guidelines)
 - [How Can I Contribute?](#how-can-i-contribute)
   - [Reporting Bugs](#reporting-bugs)
   - [Suggesting Enhancements](#suggesting-enhancements)
@@ -41,13 +44,29 @@ This project follows the Gitflow workflow, which is a branching model designed a
 1. **Feature Development**:
    - Create a feature branch from `develop`: `git checkout -b feature/my-feature develop`
    - Work on your feature
-   - When done, merge back to `develop`: 
-     ```
-     git checkout develop
-     git merge --no-ff feature/my-feature
-     git push origin develop
-     git branch -d feature/my-feature
-     ```
+   - When done, merge back to `develop` using a Pull Request
+   - After approval, merge the PR (see [Merge Guidelines](#merge-guidelines) below)
+
+### Merge Guidelines
+
+When merging Pull Requests, follow these guidelines to maintain a clean and meaningful history:
+
+1. **When to use Squash Merge**:
+   - For feature branches with multiple small, incremental commits
+   - When commit messages in the branch are not particularly meaningful
+   - For simple changes where the commit history isn't important
+   - For most documentation changes
+
+2. **When to use Regular Merge (--no-ff)**:
+   - For larger features with a well-structured commit history
+   - When the individual commits tell a story about how the feature was developed
+   - When each commit represents a logical, atomic change
+   - For complex refactorings where the step-by-step changes are important
+
+3. **After Merging**:
+   - Always delete the feature branch both locally and remotely
+   - Verify that the issue is properly closed if the PR resolves an issue
+   - Check if any documentation needs to be updated
 
 2. **Release Process**:
    - When `develop` is ready for release, create a release branch:
