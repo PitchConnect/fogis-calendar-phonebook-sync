@@ -564,8 +564,8 @@ def create_google_contact(service, referee, group_id):
                     return existing_contact[
                         "resourceName"
                     ]  # Return existing contact id on conflict
-                else:
-                    return None  # Failed to create or find existing in conflict case
+
+                return None  # Failed to create or find existing in conflict case
             else:  # Other HTTP errors
                 logging.error("An HTTP error occurred during contact creation: %s", error)
                 print(f"   Full error details (contact creation): {error.content.decode()}")
