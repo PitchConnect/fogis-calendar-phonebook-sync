@@ -238,14 +238,64 @@ pytest -k "config"
 pytest -m unit
 ```
 
+## Continuous Integration
+
+We use GitHub Actions for continuous integration to automatically run tests and code quality checks on every push and pull request.
+
+### Workflows
+
+We have the following GitHub Actions workflows:
+
+#### Tests Workflow
+
+The tests workflow runs our test suite on every push to `main` and `develop` branches, as well as on every pull request to these branches.
+
+Key features:
+
+- Runs on Ubuntu with Python 3.9
+- Installs all dependencies
+- Runs pytest with coverage reporting
+- Uploads coverage reports to Codecov
+
+#### Code Quality Workflow
+
+The code quality workflow runs our code quality checks on every push to `main` and `develop` branches, as well as on every pull request to these branches.
+
+Key features:
+
+- Runs on Ubuntu with Python 3.9
+- Runs pre-commit hooks on all files
+- Runs bandit security checks
+- Runs flake8 linting
+
+#### Docker Build Workflow
+
+The Docker build workflow builds our Docker image on every push to `main` and `develop` branches, as well as on every pull request to these branches and on every tag.
+
+Key features:
+
+- Runs on Ubuntu
+- Sets up Docker Buildx
+- Caches Docker layers for faster builds
+- Extracts metadata for Docker tags and labels
+- Builds the Docker image
+
+### Configuration
+
+Our GitHub Actions workflows are configured in the `.github/workflows` directory:
+
+- `tests.yml`: Configuration for the tests workflow
+- `code-quality.yml`: Configuration for the code quality workflow
+- `docker-build.yml`: Configuration for the Docker build workflow
+
 ## Future Enhancements
 
-This is the sixth phase of our code quality standards implementation. Future phases will include:
+This is the seventh and final phase of our code quality standards implementation. All phases have been completed:
 
 1. ✅ Basic Pre-commit Setup (completed)
 2. ✅ Code Formatting with Black and isort (completed)
 3. ✅ Linting - Phase 1 with Flake8 (completed)
 4. ✅ Linting - Phase 2 with Pylint (completed)
 5. ✅ Security Checks with Bandit (completed)
-6. ✅ Test Integration with Pytest (current phase)
-7. CI Integration
+6. ✅ Test Integration with Pytest (completed)
+7. ✅ CI Integration with GitHub Actions (current phase)
