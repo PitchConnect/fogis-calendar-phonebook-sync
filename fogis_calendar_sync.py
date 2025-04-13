@@ -10,6 +10,7 @@ import hashlib  # Import for generating hashes
 import json
 import logging
 import os
+import sys
 from datetime import timedelta, timezone
 
 import google.auth
@@ -49,10 +50,10 @@ try:
     logging.info("Successfully loaded configuration from config.json.")
 except FileNotFoundError:
     logging.error("Configuration file not found: config.json. Exiting.")
-    exit()
+    sys.exit(1)
 except json.JSONDecodeError as err:
     logging.error("Error decoding JSON in config.json: %s. Exiting.", err)
-    exit()
+    sys.exit(1)
 
 
 def authorize_google_calendar():

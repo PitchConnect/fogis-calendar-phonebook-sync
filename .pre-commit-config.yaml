@@ -61,8 +61,7 @@ repos:
         pass_filenames: false
         always_run: true
         args: [
-            "--cov=.",
-            "--cov-report=term-missing",
+            "-xvs",
         ]
     -   id: pytest-check
         name: pytest-check
