@@ -1,11 +1,11 @@
-"""
-Pytest configuration file.
+"""Pytest configuration file.
 
 This file contains fixtures and configuration for pytest.
 """
 
 import os
 import sys
+
 import pytest
 
 # Add the parent directory to sys.path to allow importing modules from the project
@@ -25,8 +25,8 @@ def sample_config():
         "LOCAL_MATCH_DATA_FILE": "test_local_matches.json",
         "SCOPES": [
             "https://www.googleapis.com/auth/calendar",
-            "https://www.googleapis.com/auth/contacts"
-        ]
+            "https://www.googleapis.com/auth/contacts",
+        ],
     }
 
 
@@ -42,6 +42,6 @@ def sample_match_data():
             "ArenaName": "Test Arena",
             "MatchDateTime": "2023-05-15T18:00:00",
             "LeagueName": "Test League",
-            "MatchStatus": 1
+            "MatchStatus": 1,
         }
     ]

@@ -1,6 +1,4 @@
-"""
-Tests for configuration loading and validation.
-"""
+"""Tests for configuration loading and validation."""
 
 import json
 import os
@@ -38,7 +36,7 @@ def test_load_config():
             mock_json_load.return_value = config
 
             # Load the config (this is a simplified version of what the actual code would do)
-            with open(temp_file_path, "r") as f:
+            with open(temp_file_path, "r", encoding="utf-8") as f:
                 loaded_config = json.load(f)
 
             # Verify the config was loaded correctly

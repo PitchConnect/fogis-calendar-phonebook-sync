@@ -1,6 +1,4 @@
-"""
-Unit tests for utility functions.
-"""
+"""Unit tests for utility functions."""
 
 import os
 import tempfile
@@ -31,7 +29,7 @@ def test_file_operations():
         assert os.path.exists(temp_file_path)
 
         # Test file content
-        with open(temp_file_path, "r") as f:
+        with open(temp_file_path, "r", encoding="utf-8") as f:
             content = f.read()
         assert content == "test content"
     finally:
@@ -54,7 +52,7 @@ def test_mock_google_api():
     mock_events.list.return_value.execute.return_value = {
         "items": [
             {"id": "event1", "summary": "Test Event 1"},
-            {"id": "event2", "summary": "Test Event 2"}
+            {"id": "event2", "summary": "Test Event 2"},
         ]
     }
 
