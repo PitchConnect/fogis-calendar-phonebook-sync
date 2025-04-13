@@ -9,12 +9,13 @@ import argparse
 import json
 import logging
 import os
-import requests
 import subprocess
 import sys
 import time
 from datetime import datetime
 from typing import Dict, List, Optional, Tuple, Union
+
+import requests
 
 # Configure logging
 logging.basicConfig(

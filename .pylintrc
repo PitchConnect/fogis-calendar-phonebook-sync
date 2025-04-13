@@ -44,6 +44,8 @@ disable=
     duplicate-code,  # Too strict for initial implementation
     no-member,  # Too many false positives with dynamic attributes
     logging-fstring-interpolation,  # Prefer readability of f-strings over lazy % formatting
+    too-many-nested-blocks,  # Requires careful refactoring
+    too-many-return-statements,  # Requires careful refactoring
 
 [REPORTS]
 # Set the output format
