@@ -21,7 +21,7 @@ unsafe-load-any-extension=no
 extension-pkg-whitelist=
 
 # Allow optimization of some AST trees
-optimize-ast=no
+# optimize-ast option is deprecated
 
 [MESSAGES CONTROL]
 # Disable specific messages/warnings
@@ -43,20 +43,21 @@ disable=
     unused-import,  # Handled by flake8
     duplicate-code,  # Too strict for initial implementation
     no-member,  # Too many false positives with dynamic attributes
+    logging-fstring-interpolation,  # Prefer readability of f-strings over lazy % formatting
 
 [REPORTS]
 # Set the output format
 output-format=text
 
 # Include message's id in output
-include-ids=no
+# include-ids option is deprecated
 
 # Include symbolic ids of messages in output
-symbols=no
+# symbols option is deprecated
 
 # Put messages in a separate file for each module / package specified on the
 # command line instead of printing them on stdout
-files-output=no
+# files-output option is deprecated
 
 # Tells whether to display a full report or only the messages
 reports=no
@@ -161,7 +162,7 @@ ignored-classes=SQLObject
 
 # When zope mode is activated, add a predefined set of Zope acquired attributes
 # to generated-members
-zope=no
+# zope option is deprecated
 
 # List of members which are set dynamically and missed by pylint inference
 # system, and so shouldn't trigger E0201 when accessed. Python regular
@@ -244,4 +245,4 @@ int-import-graph=
 
 [EXCEPTIONS]
 # Exceptions that will emit a warning when being caught
-overgeneral-exceptions=Exception
+overgeneral-exceptions=builtins.Exception
