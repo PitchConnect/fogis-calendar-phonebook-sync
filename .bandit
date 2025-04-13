@@ -1,0 +1,104 @@
+[bandit]
+# Exclude test files
+exclude_dirs: tests
+
+# Severity level filter
+# (LOW, MEDIUM, HIGH)
+skips: B101,B104,B105,B110,B303,B311,B314,B320,B404,B603,B607
+
+# Confidence level filter
+# (LOW, MEDIUM, HIGH)
+confidence: MEDIUM
+
+# Number of lines of context to display
+context_lines: 3
+
+# Output format
+output_format: txt
+
+# Target minimum Python version
+target_version: 3.9
+
+# Show absolute paths
+show_abs_paths: false
+
+# Baseline report
+# baseline: bandit_baseline.json
+
+# Plugins directory
+# plugins_dir: plugins
+
+# Tests to run
+# tests: B101,B102,B103
+
+# Number of processes to use
+# processes: 4
+
+# Recursive search
+recursive: true
+
+# Aggregate output by filename
+aggregate: true
+
+# Ignore nosec comments
+# ignore_nosec: false
+
+# Verbose output
+# verbose: false
+
+# Quiet output
+# quiet: false
+
+# Debug mode
+# debug: false
+
+# Profile mode
+# profile: false
+
+# Ignore errors
+# ignore_errors: false
+
+# Ignore below severity level
+# ignore_below_severity: LOW
+
+# Ignore below confidence level
+# ignore_below_confidence: LOW
+
+# Ignore CVE vulnerabilities
+# ignore_cve: false
+
+# Ignore file extensions
+# ignore_extensions: .pyc,.pyo,.pyd,.pyi,.pyx,.pxd
+
+# Ignore file patterns
+# ignore_patterns: */tests/*,*/test_*,*/_test_*
+
+# Ignore directories
+# ignore_dirs: tests,test,docs,examples,samples,scripts,tools,utils,utilities,vendor,third_party
+
+# Ignore symbolic links
+# ignore_symlinks: false
+
+# Ignore nosec comments
+# ignore_nosec: false
+
+# Ignore nosec comments with reason
+# ignore_nosec_reason: false
+
+# Ignore nosec comments with reason pattern
+# ignore_nosec_reason_pattern: .*
+
+# Ignore nosec comments with reason pattern case sensitive
+# ignore_nosec_reason_pattern_case_sensitive: false
+
+# Ignore nosec comments with reason pattern invert
+# ignore_nosec_reason_pattern_invert: false
+
+# Ignore nosec comments with reason pattern match
+# ignore_nosec_reason_pattern_match: false
+
+# Ignore nosec comments with reason pattern match case sensitive
+# ignore_nosec_reason_pattern_match_case_sensitive: false
+
+# Ignore nosec comments with reason pattern match invert
+# ignore_nosec_reason_pattern_match_invert: false
