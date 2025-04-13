@@ -54,7 +54,7 @@ def test_mock_google_api():
     mock_events.list.return_value.execute.return_value = {
         "items": [
             {"id": "event1", "summary": "Test Event 1"},
-            {"id": "event2", "summary": "Test Event 2"},
+            {"id": "event2", "summary": "Test Event 2"}
         ]
     }
 
