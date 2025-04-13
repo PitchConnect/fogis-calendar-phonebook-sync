@@ -49,7 +49,7 @@ repos:
     rev: 1.7.8
     hooks:
     -   id: bandit
-        args: ["--configfile", ".bandit", "--recursive"]
+        args: ["--configfile", ".bandit.yaml", "--recursive"]
         exclude: ^tests/
 
 -   repo: local

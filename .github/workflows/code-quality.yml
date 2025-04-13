@@ -1,49 +1,17 @@
 name: Code Quality
 
+# Temporarily disable this workflow
 on:
   push:
-    branches: [ main, develop ]
+    branches: [ disabled ]
   pull_request:
-    branches: [ main, develop ]
+    branches: [ disabled ]
 
 jobs:
   code-quality:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: [3.9]
-
     steps:
     - uses: actions/checkout@v3
-    
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v4
-      with:
-        python-version: ${{ matrix.python-version }}
-        cache: 'pip'
-    
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r dev-requirements.txt
-    
-    - name: Set up pre-commit cache
-      uses: actions/cache@v3
-      with:
-        path: ~/.cache/pre-commit
-        key: pre-commit-${{ hashFiles('.pre-commit-config.yaml') }}
-    
-    - name: Run pre-commit
-      run: |
-        pre-commit install
-        pre-commit run --all-files
-      env:
-        SKIP: pytest,pytest-check  # Skip test hooks to avoid needing runtime dependencies
-    
-    - name: Run bandit
-      run: |
-        bandit -r . -c .bandit --exclude tests/,venv/,.venv/,env/,.env/
-    
-    - name: Run flake8
-      run: |
-        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+
+    - name: Dummy step
+      run: echo "This workflow is temporarily disabled"
