@@ -30,3 +30,17 @@ repos:
             'flake8-docstrings',
             'flake8-bugbear',
         ]
+
+-   repo: https://github.com/pycqa/pylint
+    rev: v3.1.0
+    hooks:
+    -   id: pylint
+        args: ["--rcfile=.pylintrc"]
+        additional_dependencies: [
+            'flask',
+            'google-api-python-client',
+            'google-auth-oauthlib',
+            'google-auth-httplib2',
+            'tabulate',
+            'python-dotenv',
+        ]
