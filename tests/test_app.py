@@ -22,11 +22,15 @@ def client():
 def test_health_endpoint(client):
     """Test the health endpoint."""
     # Mock os.path.exists to return True for the data directory check
-    with patch("os.path.exists", return_value=True):
+    # Mock get_version to return a test version
+    with patch("os.path.exists", return_value=True), patch("app.get_version", return_value="test-version"):
         response = client.get("/health")
         assert response.status_code == 200
         data = json.loads(response.data)
         assert data["status"] == "healthy"
+        assert "version" in data
+        assert data["version"] == "test-version"
+        assert "environment" in data
 
 
 @pytest.mark.unit
