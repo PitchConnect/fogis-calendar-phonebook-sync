@@ -42,7 +42,14 @@ jobs:
 
     - name: Run bandit
       run: |
-        bandit -r . -c .bandit.yaml --exclude tests/,venv/,.venv/,env/,.env/
+        bandit -r . -c .bandit.yaml --exclude tests/,venv/,.venv/,env/,.env/,build/,dist/ --format json --output bandit-results.json
+        echo "Bandit security scan completed. Results saved to bandit-results.json"
+        if [ -s bandit-results.json ]; then
+          echo "Security issues found. See bandit-results.json for details."
+          cat bandit-results.json | python -m json.tool
+        else
+          echo "No security issues found."
+        fi
 
     - name: Run flake8
       run: |

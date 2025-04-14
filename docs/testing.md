@@ -108,10 +108,10 @@ def test_function_name():
     """Test that function_name does what it's supposed to do."""
     # Arrange
     input_data = ...
-    
+
     # Act
     result = function_name(input_data)
-    
+
     # Assert
     assert result == expected_result
 ```
