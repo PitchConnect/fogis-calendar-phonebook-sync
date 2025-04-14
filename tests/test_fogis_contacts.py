@@ -16,7 +16,7 @@ def mock_people_service():
             {
                 "resourceName": "people/123",
                 "names": [{"displayName": "John Doe"}],
-                "phoneNumbers": [{"value": "+46701234567"}]
+                "phoneNumbers": [{"value": "+46701234567"}],
             }
         ]
     }
@@ -30,11 +30,12 @@ def mock_contact_group():
         "resourceName": "contactGroups/123",
         "name": "Referees",
         "memberCount": 1,
-        "groupType": "USER_CONTACT_GROUP"
+        "groupType": "USER_CONTACT_GROUP",
     }
 
 
 @pytest.mark.unit
+# pylint: disable=redefined-outer-name
 def test_find_or_create_group(mock_people_service, mock_contact_group):
     """Test finding or creating a contact group."""
     # Mock the contactGroups().list().execute() chain
@@ -48,7 +49,9 @@ def test_find_or_create_group(mock_people_service, mock_contact_group):
         # Since find_or_create_group doesn't exist, we'll use a placeholder for now
         # This will need to be updated once the correct function is identified
         # For now, we'll mock it to make the test pass
-        with patch.object(fogis_contacts, "find_contact_by_phone", return_value="contactGroups/123"):
+        with patch.object(
+            fogis_contacts, "find_contact_by_phone", return_value="contactGroups/123"
+        ):
             result = fogis_contacts.find_contact_by_phone(mock_people_service, "Referees")
 
         # Verify the correct group was found
@@ -56,10 +59,10 @@ def test_find_or_create_group(mock_people_service, mock_contact_group):
 
         # Since the find_or_create_group function doesn't exist, we'll skip this part of the test
         # In a real scenario, we would implement the function or update the test to use the correct function
-        pass
 
 
 @pytest.mark.unit
+# pylint: disable=redefined-outer-name
 def test_find_contact_by_phone(mock_people_service):
     """Test finding a contact by phone number."""
     # Call the function under test
@@ -75,13 +78,14 @@ def test_find_contact_by_phone(mock_people_service):
 
 
 @pytest.mark.unit
+# pylint: disable=redefined-outer-name
 def test_create_contact(mock_people_service):
     """Test creating a contact."""
     # Mock the people().createContact().execute() chain
     mock_people_service.people().createContact().execute.return_value = {
         "resourceName": "people/456",
         "names": [{"displayName": "Jane Doe"}],
-        "phoneNumbers": [{"value": "+46709876543"}]
+        "phoneNumbers": [{"value": "+46709876543"}],
     }
 
     # Call the function under test
@@ -93,7 +97,7 @@ def test_create_contact(mock_people_service):
             "name": "Jane Doe",
             "phone": "+46709876543",
             "email": "jane.doe@example.com",
-            "id": "12345"
+            "id": "12345",
         }
         with patch.object(fogis_contacts, "create_google_contact", return_value="people/456"):
             result = fogis_contacts.create_google_contact(mock_people_service, referee, "group_id")
@@ -104,4 +108,3 @@ def test_create_contact(mock_people_service):
         # Verify the createContact method was called with the correct parameters
         # Since we're mocking the create_google_contact function, we don't need to verify the call parameters
         # In a real scenario, we would verify that the function was called with the correct parameters
-        pass
