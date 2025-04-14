@@ -21,10 +21,12 @@ def client():
 # pylint: disable=redefined-outer-name
 def test_health_endpoint(client):
     """Test the health endpoint."""
-    response = client.get("/health")
-    assert response.status_code == 200
-    data = json.loads(response.data)
-    assert data["status"] == "healthy"
+    # Mock os.path.exists to return True for the data directory check
+    with patch("os.path.exists", return_value=True):
+        response = client.get("/health")
+        assert response.status_code == 200
+        data = json.loads(response.data)
+        assert data["status"] == "healthy"
 
 
 @pytest.mark.unit
