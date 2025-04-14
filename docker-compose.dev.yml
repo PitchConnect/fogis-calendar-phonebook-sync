@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  fogis-sync:
+    image: ghcr.io/${GITHUB_REPOSITORY}:${IMAGE_TAG:-latest}
+    environment:
+      - ENVIRONMENT=development
+      - DEBUG=true
+    # Development-specific settings
+    ports:
+      - "5003:5003"
+    volumes:
+      - ./token.json:/app/token.json
+      - ./data:/app/data
+      # Mount source code for development
+      - .:/app/src
+    # Less strict resource limits for development
+    deploy:
+      resources:
+        limits:
+          cpus: '0.75'
+          memory: 768M
+    # Add labels for development environment
+    labels:
+      - "environment=development"
+      - "version=${IMAGE_TAG:-latest}"

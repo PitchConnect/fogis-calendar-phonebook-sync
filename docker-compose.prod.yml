@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  fogis-sync:
+    image: ghcr.io/${GITHUB_REPOSITORY}:${IMAGE_TAG:-latest}
+    environment:
+      - ENVIRONMENT=production
+      - DEBUG=false
+    # Production-specific settings
+    ports:
+      - "127.0.0.1:5003:5003"  # Only expose locally, use reverse proxy for external access
+    volumes:
+      - ./token.json:/app/token.json:ro  # Read-only in production
+      - ./data:/app/data
+    # Stricter resource limits for production
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+      restart_policy:
+        condition: any
+        delay: 5s
+        max_attempts: 3
+        window: 120s
+    # Add labels for production environment
+    labels:
+      - "environment=production"
+      - "version=${IMAGE_TAG:-latest}"
