@@ -81,8 +81,7 @@ def test_check_service_health():
 @pytest.mark.unit
 def test_start_service(service_config):
     """Test starting a service."""
-    # Use the fixture with a different name to avoid pylint warning
-    config = service_config
+    # Use the fixture directly to avoid variable redefinition
 
     # Mock the run_command function
     with patch.object(docker_orchestrator, "run_command") as mock_run_command:
@@ -93,11 +92,13 @@ def test_start_service(service_config):
         ]
 
         # Mock the check_service_health function
-        with patch.object(docker_orchestrator, "check_service_health", return_value=True):
+        with patch.object(
+            docker_orchestrator, "check_service_health", return_value=True
+        ):
             # Call the function under test
             with patch.object(docker_orchestrator, "logger"):
                 result = docker_orchestrator.start_service(
-                    "test-service", config
+                    "test-service", service_config
                 )
 
                 # Verify the result
@@ -106,10 +107,10 @@ def test_start_service(service_config):
                 # Verify the commands that were run
                 assert mock_run_command.call_count == 2
                 build_cmd = mock_run_command.call_args_list[0][0][0]
-                assert "docker-compose" in build_cmd[0]
+                assert "docker" in build_cmd[0]
                 assert "build" in build_cmd
 
                 up_cmd = mock_run_command.call_args_list[1][0][0]
-                assert "docker-compose" in up_cmd[0]
+                assert "docker" in up_cmd[0]
                 assert "up" in up_cmd
                 assert "-d" in up_cmd
