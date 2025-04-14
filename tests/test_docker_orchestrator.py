@@ -34,14 +34,15 @@ def test_run_command():
         assert "hello" in stdout
         assert stderr == ""
 
-    # Test with a command that should fail
+    # Test with a command that should fail - using a more reliable approach
     with patch.object(docker_orchestrator, "logger"):
+        # Using a command that will definitely fail on any system
         exit_code, stdout, stderr = docker_orchestrator.run_command(
-            ["ls", "/nonexistent_directory"]
+            ["false"]
         )
 
         # Verify the results for a failed command
-        assert exit_code != 0
+        assert exit_code == 1
 
 
 @pytest.mark.unit
