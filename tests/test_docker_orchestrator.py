@@ -22,27 +22,24 @@ def mock_service_config():
 @pytest.mark.unit
 def test_run_command():
     """Test running a shell command."""
-    # Mock the subprocess.Popen
-    with patch("subprocess.Popen") as mock_popen:
-        # Configure the mock
-        mock_process = MagicMock()
-        mock_process.communicate.return_value = ("stdout output", "stderr output")
-        mock_process.returncode = 0
-        mock_popen.return_value = mock_process
+    # Create a real subprocess result for testing
+    test_command = ["echo", "hello"]
 
-        # Call the function under test
-        with patch.object(docker_orchestrator, "logger"):
-            exit_code, stdout, stderr = docker_orchestrator.run_command(["echo", "hello"])
+    # Call the function under test with a real command
+    with patch.object(docker_orchestrator, "logger"):
+        exit_code, stdout, stderr = docker_orchestrator.run_command(test_command)
 
-            # Verify the results
-            assert exit_code == 0
-            assert stdout == "stdout output"
-            assert stderr == "stderr output"
+        # Verify the results for a successful command
+        assert exit_code == 0
+        assert "hello" in stdout
+        assert stderr == ""
 
-            # Test with a non-zero exit code
-            mock_process.returncode = 1
-            exit_code, stdout, stderr = docker_orchestrator.run_command(["echo", "error"])
-            assert exit_code == 1
+    # Test with a command that should fail
+    with patch.object(docker_orchestrator, "logger"):
+        exit_code, stdout, stderr = docker_orchestrator.run_command(["ls", "/nonexistent_directory"])
+
+        # Verify the results for a failed command
+        assert exit_code != 0
 
 
 @pytest.mark.unit
@@ -96,10 +93,10 @@ def test_start_service(mock_service_config):
                 # Verify the commands that were run
                 assert mock_run_command.call_count == 2
                 build_cmd = mock_run_command.call_args_list[0][0][0]
-                assert "docker-compose" in build_cmd[0]
+                assert "docker" in build_cmd[0]
                 assert "build" in build_cmd
 
                 up_cmd = mock_run_command.call_args_list[1][0][0]
-                assert "docker-compose" in up_cmd[0]
+                assert "docker" in up_cmd[0]
                 assert "up" in up_cmd
                 assert "-d" in up_cmd

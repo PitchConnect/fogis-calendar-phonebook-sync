@@ -50,7 +50,7 @@ repos:
     hooks:
     -   id: bandit
         args: ["--configfile", ".bandit.yaml", "--recursive"]
-        exclude: ^tests/
+        exclude: ^(tests/|venv/|.venv/|env/|.env/|build/|dist/)
 
 -   repo: local
     hooks:
