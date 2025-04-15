@@ -22,6 +22,9 @@ _API_LATENCY = None
 _ERROR_COUNTER = None
 _ACTIVE_SYNCS = None
 
+# Flag to track if metrics have been initialized
+_METRICS_INITIALIZED = False
+
 
 def init_metrics(app: Flask) -> PrometheusMetrics:
     """Initialize Prometheus metrics for the application.
@@ -33,7 +36,12 @@ def init_metrics(app: Flask) -> PrometheusMetrics:
         The configured PrometheusMetrics instance
     """
     # pylint: disable=global-statement
-    global _metrics, _SYNC_COUNTER, _API_LATENCY, _ERROR_COUNTER, _ACTIVE_SYNCS
+    global _metrics, _SYNC_COUNTER, _API_LATENCY, _ERROR_COUNTER, _ACTIVE_SYNCS, _METRICS_INITIALIZED
+
+    # If metrics are already initialized, return the existing instance
+    # This prevents duplicate registration errors in tests
+    if _METRICS_INITIALIZED and _metrics is not None:
+        return _metrics
 
     # Initialize with Flask app
     _metrics = PrometheusMetrics(app)
@@ -58,6 +66,9 @@ def init_metrics(app: Flask) -> PrometheusMetrics:
         version="1.0.0",
         app_name="FogisCalendarPhoneBookSync",
     )
+
+    # Mark metrics as initialized
+    _METRICS_INITIALIZED = True
 
     return _metrics
 
@@ -107,3 +118,20 @@ class SyncOperation:
         """Decrement active syncs gauge when exiting context."""
         if _ACTIVE_SYNCS:
             _ACTIVE_SYNCS.dec()
+
+
+def reset_metrics_for_testing():
+    """Reset metrics for testing purposes.
+
+    This function is only intended to be used in tests to reset the metrics
+    state between test runs.
+    """
+    # pylint: disable=global-statement
+    global _metrics, _SYNC_COUNTER, _API_LATENCY, _ERROR_COUNTER, _ACTIVE_SYNCS, _METRICS_INITIALIZED
+
+    _metrics = None
+    _SYNC_COUNTER = None
+    _API_LATENCY = None
+    _ERROR_COUNTER = None
+    _ACTIVE_SYNCS = None
+    _METRICS_INITIALIZED = False

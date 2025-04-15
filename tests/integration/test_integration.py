@@ -97,20 +97,19 @@ def test_end_to_end_sync(setup_test_environment):
     }
 
     # Patch the necessary functions
-    with patch.object(
-        fogis_calendar_sync,
-        "build_calendar_service",
-        return_value=mock_calendar_service,
+    with patch(
+        "googleapiclient.discovery.build",
+        side_effect=lambda service, version, credentials: (
+            mock_calendar_service if service == "calendar" else mock_people_service
+        ),
     ), patch.object(
-        fogis_contacts, "build_people_service", return_value=mock_people_service
+        fogis_contacts, "authorize_google_people", return_value=MagicMock()
     ), patch.object(
-        fogis_calendar_sync, "sys"
+        fogis_calendar_sync, "logging", MagicMock()
     ), patch.object(
-        fogis_contacts, "sys"
-    ), patch.object(
-        fogis_calendar_sync, "logging"
-    ), patch.object(
-        fogis_contacts, "logging"
+        fogis_contacts, "logging", MagicMock()
+    ), patch(
+        "subprocess.run", return_value=MagicMock(returncode=0, stdout="Success", stderr="")
     ), patch(
         "os.path.exists", return_value=True
     ), patch(
