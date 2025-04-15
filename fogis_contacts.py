@@ -22,7 +22,10 @@ from googleapiclient.errors import HttpError
 load_dotenv()
 
 
-SCOPES = ["https://www.googleapis.com/auth/calendar", "https://www.googleapis.com/auth/contacts"]
+SCOPES = [
+    "https://www.googleapis.com/auth/calendar",
+    "https://www.googleapis.com/auth/contacts",
+]
 
 CREDENTIALS_FILE = "credentials.json"
 
@@ -64,7 +67,8 @@ def authorize_google_people():
                     logging.info("New Google People Creds Auth Completed after refresh failure")
                 except Exception as inner_e:
                     logging.error(
-                        "Failed to get new credentials after refresh failure: %s", inner_e
+                        "Failed to get new credentials after refresh failure: %s",
+                        inner_e,
                     )
                     return None
         else:
@@ -243,7 +247,9 @@ def find_contact_by_name_and_phone(service, name, phone, referee):
                 service.people()
                 .connections()
                 .list(
-                    resourceName="people/me", personFields="names", pageSize=1000  # phoneNumbers',
+                    resourceName="people/me",
+                    personFields="names",
+                    pageSize=1000,  # phoneNumbers',
                 )
             )
             while request:
@@ -391,8 +397,8 @@ def create_contact_data(referee, match_date_str=None):
         "names": [
             {
                 "displayName": referee["personnamn"],
-                "givenName": referee["personnamn"].split()[0] if referee["personnamn"] else "",
-                "familyName": referee["personnamn"].split()[-1] if referee["personnamn"] else "",
+                "givenName": (referee["personnamn"].split()[0] if referee["personnamn"] else ""),
+                "familyName": (referee["personnamn"].split()[-1] if referee["personnamn"] else ""),
             }
         ],
         "phoneNumbers": [{"value": referee["mobiltelefon"], "type": "mobile"}],
@@ -449,7 +455,11 @@ def find_contact_by_phone(service, phone):
             results = (
                 service.people()
                 .connections()
-                .list(resourceName="people/me", personFields="names,phoneNumbers", pageSize=100)
+                .list(
+                    resourceName="people/me",
+                    personFields="names,phoneNumbers",
+                    pageSize=100,
+                )
                 .execute()
             )
             connections = results.get("connections", [])
@@ -584,7 +594,11 @@ def test_google_contacts_connection(service):
             results = (
                 service.people()
                 .connections()
-                .list(resourceName="people/me", personFields="names,phoneNumbers", pageSize=10)
+                .list(
+                    resourceName="people/me",
+                    personFields="names,phoneNumbers",
+                    pageSize=10,
+                )
                 .execute()
             )
 

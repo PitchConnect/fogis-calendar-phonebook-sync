@@ -98,7 +98,9 @@ def test_end_to_end_sync(setup_test_environment):
 
     # Patch the necessary functions
     with patch.object(
-        fogis_calendar_sync, "build_calendar_service", return_value=mock_calendar_service
+        fogis_calendar_sync,
+        "build_calendar_service",
+        return_value=mock_calendar_service,
     ), patch.object(
         fogis_contacts, "build_people_service", return_value=mock_people_service
     ), patch.object(

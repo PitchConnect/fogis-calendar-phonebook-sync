@@ -237,6 +237,29 @@ pre-commit install
 
 This will set up pre-commit hooks to ensure code quality standards are met. For more information on our code quality standards, see [docs/code_quality.md](docs/code_quality.md).
 
+## Deployment
+
+This project uses GitHub Actions for continuous integration and deployment (CI/CD) with a self-hosted deployment approach using Docker Compose.
+
+### Deployment Environments
+
+- **Development**: Automatically deployed when changes are pushed to the `develop` branch
+- **Production**: Requires manual approval before deployment when changes are pushed to the `main` branch
+
+### Docker Deployment
+
+You can also deploy the application manually using Docker Compose:
+
+```bash
+# Development environment
+docker-compose -f docker-compose.yml -f docker-compose.dev.yml up -d
+
+# Production environment
+docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+```
+
+For detailed information about the deployment process, see [docs/deployment.md](docs/deployment.md).
+
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE.txt) file for details.

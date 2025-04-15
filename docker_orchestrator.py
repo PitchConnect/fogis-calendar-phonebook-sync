@@ -242,7 +242,15 @@ def cleanup_docker_resources(older_than_days: int = 7) -> None:
 
     # Remove unused images
     _, _, _ = run_command(
-        ["docker", "image", "prune", "-a", "-f", "--filter", f"until={older_than_days}d"]
+        [
+            "docker",
+            "image",
+            "prune",
+            "-a",
+            "-f",
+            "--filter",
+            f"until={older_than_days}d",
+        ]
     )
 
     # Remove unused volumes
@@ -426,7 +434,14 @@ def check_all_services_health() -> Dict[str, bool]:
             )
         else:
             # If no health endpoint, check if the container is running
-            cmd = ["docker", "ps", "--filter", f"name={service_name}", "--format", "{{.Names}}"]
+            cmd = [
+                "docker",
+                "ps",
+                "--filter",
+                f"name={service_name}",
+                "--format",
+                "{{.Names}}",
+            ]
             exit_code, stdout, _ = run_command(cmd)
 
             if exit_code == 0 and service_name in stdout:
@@ -455,7 +470,10 @@ def main():
     # Options
     parser.add_argument("--force-rebuild", action="store_true", help="Force rebuild of services")
     parser.add_argument(
-        "--cleanup-days", type=int, default=7, help="Clean up resources older than this many days"
+        "--cleanup-days",
+        type=int,
+        default=7,
+        help="Clean up resources older than this many days",
     )
     parser.add_argument("--verbose", "-v", action="store_true", help="Enable verbose logging")
 

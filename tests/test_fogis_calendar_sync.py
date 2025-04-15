@@ -143,7 +143,8 @@ def test_find_event_by_match_id():
 
     # Call the function under test
     with patch.object(fogis_calendar_sync, "logging"), patch.dict(
-        fogis_calendar_sync.config_dict, {"CALENDAR_ID": "calendar_id", "SYNC_TAG": "TEST_SYNC_TAG"}
+        fogis_calendar_sync.config_dict,
+        {"CALENDAR_ID": "calendar_id", "SYNC_TAG": "TEST_SYNC_TAG"},
     ):
         result = fogis_calendar_sync.find_event_by_match_id(mock_service, "calendar_id", 12345)
 

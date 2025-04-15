@@ -28,10 +28,8 @@ from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 from tabulate import tabulate
 
-from fogis_contacts import (  # Removed other functions
-    process_referees,
-    test_google_contacts_connection,
-)
+from fogis_contacts import process_referees  # Removed other functions
+from fogis_contacts import test_google_contacts_connection
 
 # Load environment variables from .env file
 load_dotenv()
@@ -63,7 +61,10 @@ def authorize_google_calendar():
 
     if os.path.exists("token.json"):
         try:
-            logging.info("Token file exists, attempting to load. Scopes: %s", config_dict["SCOPES"])
+            logging.info(
+                "Token file exists, attempting to load. Scopes: %s",
+                config_dict["SCOPES"],
+            )
             creds = google.oauth2.credentials.Credentials.from_authorized_user_file(
                 "token.json", scopes=config_dict["SCOPES"]
             )
@@ -118,7 +119,8 @@ def authorize_google_calendar():
                         token_json = creds.to_json()
                         token.write(token_json)
                         logging.info(
-                            "New credentials saved to token.json (length: %d)", len(token_json)
+                            "New credentials saved to token.json (length: %d)",
+                            len(token_json),
                         )
                 except Exception as save_error:
                     logging.error("Error saving token.json: %s", save_error)
@@ -162,7 +164,12 @@ def generate_match_hash(match):
 
     # Sort the referee data to ensure consistent hashing
     referee_data.sort(
-        key=lambda x: (x["personnamn"], x["epostadress"], x["telefonnummer"], x["adress"])
+        key=lambda x: (
+            x["personnamn"],
+            x["epostadress"],
+            x["telefonnummer"],
+            x["adress"],
+        )
     )
     data["referees"] = referee_data
 
@@ -214,7 +221,9 @@ def find_event_by_match_id(service, calendar_id, match_id):
         return None
     except Exception as e:
         logging.exception(
-            "An unexpected error occurred while finding event for match %s: %s", match_id, e
+            "An unexpected error occurred while finding event for match %s: %s",
+            match_id,
+            e,
         )
         return None
 
@@ -366,7 +375,10 @@ def sync_calendar(match, service, args):
             "reminders": {
                 "useDefault": False,
                 "overrides": [
-                    {"method": "popup", "minutes": 48 * 60},  # 2 days before (popup) - 48 hours
+                    {
+                        "method": "popup",
+                        "minutes": 48 * 60,
+                    },  # 2 days before (popup) - 48 hours
                 ],
             },
         }
@@ -422,7 +434,9 @@ def sync_calendar(match, service, args):
 
         except HttpError as error:
             logging.error(
-                "An error occurred during calendar sync for match %s: %s", match_id, error
+                "An error occurred during calendar sync for match %s: %s",
+                match_id,
+                error,
             )  # Use logging
 
     except Exception as e:
@@ -432,7 +446,9 @@ def sync_calendar(match, service, args):
 def main():
     parser = argparse.ArgumentParser(description="Syncs FOGIS match data with Google Calendar.")
     parser.add_argument(
-        "--delete", action="store_true", help="Delete existing calendar events before syncing."
+        "--delete",
+        action="store_true",
+        help="Delete existing calendar events before syncing.",
     )
     parser.add_argument(
         "--download", action="store_true", help="Downloads data from FOGIS to local."
