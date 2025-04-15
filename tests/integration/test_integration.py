@@ -97,10 +97,11 @@ def test_end_to_end_sync(setup_test_environment):
     }
 
     # Create a mock build function that returns the appropriate service
+    # pylint: disable=unused-argument
     def mock_build(service_name, version, credentials=None):
         if service_name == "calendar":
             return mock_calendar_service
-        elif service_name == "people":
+        if service_name == "people":
             return mock_people_service
         return MagicMock()
 
@@ -111,9 +112,7 @@ def test_end_to_end_sync(setup_test_environment):
     mock_process.returncode = 0
 
     # Patch the necessary functions
-    with patch(
-        "googleapiclient.discovery.build", side_effect=mock_build
-    ), patch(
+    with patch("googleapiclient.discovery.build", side_effect=mock_build), patch(
         "os.path.exists", return_value=True
     ), patch(
         "builtins.open",
