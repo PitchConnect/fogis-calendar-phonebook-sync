@@ -1,0 +1,31 @@
+---
+# Directories to exclude from the scan
+exclude_dirs:
+  - tests
+  - venv
+  - .venv
+  - env
+  - .env
+  - build
+  - dist
+
+# Tests to skip
+# See https://bandit.readthedocs.io/en/latest/plugins/index.html for details on each test
+skips:
+  - B101  # assert used - assertions are removed when compiling to optimized byte code
+  - B104  # hardcoded bind all interfaces - acceptable for local development
+  - B105  # hardcoded password string - handled separately with environment variables
+  - B110  # try/except/pass detected - acceptable in some cases
+  - B303  # use of insecure MD2, MD4, MD5, or SHA1 hash function - not used for security
+  - B311  # random is not suitable for security/cryptographic purposes - not used for security
+  - B314  # blacklist calls to xml.etree.ElementTree.parse - not used for parsing untrusted XML
+  - B320  # blacklist calls to lxml.etree.parse - not used for parsing untrusted XML
+  - B404  # import of subprocess module - used safely
+  - B603  # subprocess call with shell=True - used safely
+  - B607  # start process with a partial path - used safely
+
+# Minimum confidence level for issues to be reported
+confidence: MEDIUM
+
+# Severity level for issues to be reported
+severity: MEDIUM

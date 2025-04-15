@@ -1,0 +1,234 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main, develop]
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'development'
+        type: choice
+        options:
+          - development
+          - production
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      image_tag: ${{ steps.meta.outputs.tags }}
+      version: ${{ steps.version.outputs.version }}
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v2
+
+    - name: Login to GitHub Container Registry
+      uses: docker/login-action@v2
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Generate version
+      id: version
+      run: |
+        if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+          VERSION=${GITHUB_REF#refs/tags/v}
+        elif [[ "${{ github.ref }}" == refs/heads/main ]]; then
+          VERSION=main-$(date +'%Y%m%d')-${GITHUB_SHA::8}
+        else
+          VERSION=dev-$(date +'%Y%m%d')-${GITHUB_SHA::8}
+        fi
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+        echo "VERSION=$VERSION" >> $GITHUB_ENV
+
+    - name: Extract metadata for Docker
+      id: meta
+      uses: docker/metadata-action@v4
+      with:
+        images: ghcr.io/${{ github.repository }}
+        tags: |
+          type=ref,event=branch
+          type=ref,event=pr
+          type=semver,pattern={{version}}
+          type=semver,pattern={{major}}.{{minor}}
+          type=sha,format=short
+          ${{ env.VERSION }}
+
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v4
+      with:
+        context: .
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        build-args: |
+          VERSION=${{ steps.version.outputs.version }}
+
+  # Deployment steps are commented out until the server is ready
+  # Uncomment and configure when your deployment server is prepared
+
+  notify-development:
+    needs: build
+    if: github.ref == 'refs/heads/develop' || (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'development')
+    runs-on: ubuntu-latest
+    environment: development
+
+    steps:
+    - name: Image ready notification
+      run: |
+        echo "Docker image has been built and pushed to GitHub Container Registry"
+        echo "Image: ghcr.io/${{ github.repository }}:${{ needs.build.outputs.version }}"
+        echo "To deploy manually, run:"
+        echo "docker pull ghcr.io/${{ github.repository }}:${{ needs.build.outputs.version }}"
+        echo "export IMAGE_TAG=${{ needs.build.outputs.version }}"
+        echo "docker-compose -f docker-compose.yml -f docker-compose.dev.yml up -d"
+
+    # The following steps are commented out until your deployment server is ready
+    # Uncomment and configure these when you're ready to deploy
+
+    # - name: Checkout code
+    #   uses: actions/checkout@v3
+    #
+    # - name: Create .env file
+    #   run: |
+    #     echo "FOGIS_USERNAME=${{ secrets.FOGIS_USERNAME }}" > .env
+    #     echo "FOGIS_PASSWORD=${{ secrets.FOGIS_PASSWORD }}" >> .env
+    #     echo "GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}" >> .env
+    #     echo "GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}" >> .env
+    #     echo "VERSION=${{ needs.build.outputs.version }}" >> .env
+    #     echo "ENVIRONMENT=development" >> .env
+    #
+    # - name: Set up SSH key
+    #   uses: webfactory/ssh-agent@v0.7.0
+    #   with:
+    #     ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+    #
+    # - name: Add host key
+    #   run: |
+    #     mkdir -p ~/.ssh
+    #     ssh-keyscan ${{ secrets.DEV_SERVER_HOST }} >> ~/.ssh/known_hosts
+    #
+    # - name: Copy deployment files
+    #   run: |
+    #     scp -r docker-compose.yml docker-compose.dev.yml scripts .env Dockerfile ${{ secrets.DEV_SERVER_USER }}@${{ secrets.DEV_SERVER_HOST }}:${{ secrets.DEV_SERVER_PATH }}
+    #
+    # - name: Deploy to development server
+    #   run: |
+    #     ssh ${{ secrets.DEV_SERVER_USER }}@${{ secrets.DEV_SERVER_HOST }} "cd ${{ secrets.DEV_SERVER_PATH }} && \
+    #     export IMAGE_TAG=${{ needs.build.outputs.version }} && \
+    #     docker pull ghcr.io/${{ github.repository }}:${{ needs.build.outputs.version }} && \
+    #     docker-compose -f docker-compose.yml -f docker-compose.dev.yml down && \
+    #     docker-compose -f docker-compose.yml -f docker-compose.dev.yml up -d"
+    #
+    # - name: Verify deployment
+    #   run: |
+    #     echo "Waiting for service to start..."
+    #     sleep 10
+    #     MAX_RETRIES=12
+    #     RETRY_COUNT=0
+    #
+    #     while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+    #       if ssh ${{ secrets.DEV_SERVER_USER }}@${{ secrets.DEV_SERVER_HOST }} "curl -s http://localhost:5003/health" | grep -q "healthy"; then
+    #         echo "Service is healthy!"
+    #         exit 0
+    #       fi
+    #
+    #       echo "Service not ready yet, retrying in 5 seconds..."
+    #       sleep 5
+    #       RETRY_COUNT=$((RETRY_COUNT+1))
+    #     done
+    #
+    #     echo "Service failed to start properly after 60 seconds"
+    #     ssh ${{ secrets.DEV_SERVER_USER }}@${{ secrets.DEV_SERVER_HOST }} "cd ${{ secrets.DEV_SERVER_PATH }} && docker-compose -f docker-compose.yml -f docker-compose.dev.yml logs"
+    #     exit 1
+
+  notify-production:
+    needs: build
+    if: github.ref == 'refs/heads/main' || (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'production')
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: https://fogis-sync.example.com  # Replace with your actual production URL when ready
+
+    steps:
+    - name: Image ready notification
+      run: |
+        echo "Docker image has been built and pushed to GitHub Container Registry"
+        echo "Image: ghcr.io/${{ github.repository }}:${{ needs.build.outputs.version }}"
+        echo "To deploy manually, run:"
+        echo "docker pull ghcr.io/${{ github.repository }}:${{ needs.build.outputs.version }}"
+        echo "export IMAGE_TAG=${{ needs.build.outputs.version }}"
+        echo "docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d"
+
+    # The following steps are commented out until your deployment server is ready
+    # Uncomment and configure these when you're ready to deploy
+
+    # - name: Checkout code
+    #   uses: actions/checkout@v3
+    #
+    # - name: Create .env file
+    #   run: |
+    #     echo "FOGIS_USERNAME=${{ secrets.FOGIS_USERNAME }}" > .env
+    #     echo "FOGIS_PASSWORD=${{ secrets.FOGIS_PASSWORD }}" >> .env
+    #     echo "GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}" >> .env
+    #     echo "GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}" >> .env
+    #     echo "VERSION=${{ needs.build.outputs.version }}" >> .env
+    #     echo "ENVIRONMENT=production" >> .env
+    #
+    # - name: Set up SSH key
+    #   uses: webfactory/ssh-agent@v0.7.0
+    #   with:
+    #     ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+    #
+    # - name: Add host key
+    #   run: |
+    #     mkdir -p ~/.ssh
+    #     ssh-keyscan ${{ secrets.PROD_SERVER_HOST }} >> ~/.ssh/known_hosts
+    #
+    # - name: Copy deployment files
+    #   run: |
+    #     scp -r docker-compose.yml docker-compose.prod.yml scripts .env Dockerfile ${{ secrets.PROD_SERVER_USER }}@${{ secrets.PROD_SERVER_HOST }}:${{ secrets.PROD_SERVER_PATH }}
+    #
+    # - name: Deploy to production server
+    #   run: |
+    #     ssh ${{ secrets.PROD_SERVER_USER }}@${{ secrets.PROD_SERVER_HOST }} "cd ${{ secrets.PROD_SERVER_PATH }} && \
+    #     export IMAGE_TAG=${{ needs.build.outputs.version }} && \
+    #     ./scripts/backup.sh && \
+    #     docker pull ghcr.io/${{ github.repository }}:${{ needs.build.outputs.version }} && \
+    #     docker-compose -f docker-compose.yml -f docker-compose.prod.yml down && \
+    #     docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d"
+    #
+    # - name: Verify deployment
+    #   run: |
+    #     echo "Waiting for service to start..."
+    #     sleep 10
+    #     MAX_RETRIES=12
+    #     RETRY_COUNT=0
+    #
+    #     while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+    #       if ssh ${{ secrets.PROD_SERVER_USER }}@${{ secrets.PROD_SERVER_HOST }} "curl -s http://localhost:5003/health" | grep -q "healthy"; then
+    #         echo "Service is healthy!"
+    #         exit 0
+    #       fi
+    #
+    #       echo "Service not ready yet, retrying in 5 seconds..."
+    #       sleep 5
+    #       RETRY_COUNT=$((RETRY_COUNT+1))
+    #     done
+    #
+    #     echo "Service failed to start properly after 60 seconds"
+    #     ssh ${{ secrets.PROD_SERVER_USER }}@${{ secrets.PROD_SERVER_HOST }} "cd ${{ secrets.PROD_SERVER_PATH }} && docker-compose -f docker-compose.yml -f docker-compose.prod.yml logs"
+    #
+    #     echo "Rolling back to previous version..."
+    #     ssh ${{ secrets.PROD_SERVER_USER }}@${{ secrets.PROD_SERVER_HOST }} "cd ${{ secrets.PROD_SERVER_PATH }} && ./scripts/rollback.sh"
+    #     exit 1
