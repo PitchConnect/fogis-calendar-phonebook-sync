@@ -62,8 +62,8 @@ repos:
         always_run: true
         args: [
             "-xvs",
+            "-k", "not integration and not slow",
         ]
-        stages: [manual]
     -   id: pytest-check
         name: pytest-check
         entry: pytest
@@ -72,5 +72,5 @@ repos:
         files: ^tests/.*\.py$
         args: [
             "-xvs",
+            "-k", "not integration and not slow",
         ]
-        stages: [manual]
