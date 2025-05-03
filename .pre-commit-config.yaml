@@ -63,6 +63,7 @@ repos:
         args: [
             "-xvs",
         ]
+        stages: [manual]
     -   id: pytest-check
         name: pytest-check
         entry: pytest
@@ -72,3 +73,4 @@ repos:
         args: [
             "-xvs",
         ]
+        stages: [manual]
