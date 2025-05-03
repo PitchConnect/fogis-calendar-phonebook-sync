@@ -139,7 +139,9 @@ def process_referees(match):
     # Get the user's referee number from environment variable
     user_referee_number = os.environ.get("USER_REFEREE_NUMBER")
     if user_referee_number:
-        logging.info(f"User referee number set to {user_referee_number}, will skip updating this contact")
+        logging.info(
+            f"User referee number set to {user_referee_number}, will skip updating this contact"
+        )
 
     try:
         service = build("people", "v1", credentials=creds)
@@ -151,7 +153,9 @@ def process_referees(match):
 
             # Skip updating the current user's contact
             if user_referee_number and referee_number == user_referee_number:
-                logging.info(f"Skipping contact update for current user: {name} (Referee #{referee_number})")
+                logging.info(
+                    f"Skipping contact update for current user: {name} (Referee #{referee_number})"
+                )
                 continue
 
             try:
