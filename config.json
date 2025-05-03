@@ -10,6 +10,7 @@
   "MATCH_FILE": "matches.json",
   "USE_LOCAL_MATCH_DATA": false,
   "LOCAL_MATCH_DATA_FILE": "local_matches.json",
+  "DAYS_TO_KEEP_PAST_EVENTS": 7,
   "SCOPES":[
         "https://www.googleapis.com/auth/calendar",
         "https://www.googleapis.com/auth/contacts"
