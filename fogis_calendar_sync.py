@@ -190,7 +190,9 @@ def find_event_by_match_id(service, calendar_id, match_id):
     """Finds an event in the calendar with the given match ID in extendedProperties."""
     try:
         today = datetime.date.today()
-        days_to_look_back = config_dict.get("DAYS_TO_KEEP_PAST_EVENTS", 7)  # Default to 7 days if not specified
+        days_to_look_back = config_dict.get(
+            "DAYS_TO_KEEP_PAST_EVENTS", 7
+        )  # Default to 7 days if not specified
         from_date = (today - timedelta(days=days_to_look_back)).strftime("%Y-%m-%d")
         time_min_utc = datetime.datetime.combine(
             datetime.datetime.strptime(from_date, "%Y-%m-%d").date(),
@@ -554,7 +556,9 @@ def main():
 
         # Delete orphaned events (events with syncTag that are not in the match_list)
         print("\n--- Deleting Orphaned Calendar Events ---")
-        days_to_keep = config_dict.get("DAYS_TO_KEEP_PAST_EVENTS", 7)  # Default to 7 days if not specified
+        days_to_keep = config_dict.get(
+            "DAYS_TO_KEEP_PAST_EVENTS", 7
+        )  # Default to 7 days if not specified
         logging.info(f"Using {days_to_keep} days as the window for orphaned events detection")
         delete_orphaned_events(service, match_list, days_to_keep)
 
