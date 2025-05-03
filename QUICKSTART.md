@@ -27,7 +27,7 @@ This guide will help you quickly set up and run the FOGIS Calendar & Contacts Sy
 2. **Set up Google API credentials**
 
    If you don't have `credentials.json`:
-   
+
    a. Go to the [Google Cloud Console](https://console.cloud.google.com/)
    b. Create a new project or select an existing one
    c. Enable the Google Calendar API and Google People API
@@ -38,14 +38,14 @@ This guide will help you quickly set up and run the FOGIS Calendar & Contacts Sy
 3. **Configure your calendar**
 
    Make sure your `config.json` has the correct Calendar ID:
-   
+
    ```json
    {
      "CALENDAR_ID": "your_calendar_id@group.calendar.google.com",
      ...
    }
    ```
-   
+
    You can find your Calendar ID in Google Calendar:
    - Go to Settings for the calendar
    - Scroll down to "Integrate calendar"
@@ -54,7 +54,7 @@ This guide will help you quickly set up and run the FOGIS Calendar & Contacts Sy
 4. **Set up FOGIS credentials**
 
    Create a `.env` file with your FOGIS credentials:
-   
+
    ```
    FOGIS_USERNAME=your_fogis_username
    FOGIS_PASSWORD=your_fogis_password
