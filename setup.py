@@ -16,6 +16,7 @@ import shlex
 import shutil
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 
@@ -54,6 +55,58 @@ def print_error(text):
 def print_info(text):
     """Print an info message."""
     print(f"{Colors.BLUE}ℹ {text}{Colors.ENDC}")
+
+
+def check_write_permission(directory):
+    """Check if the user has write permission for the given directory.
+
+    Args:
+        directory: The directory to check
+
+    Returns:
+        bool: True if the user has write permission, False otherwise
+    """
+    try:
+        # Create a temporary file to test write permission
+        with tempfile.NamedTemporaryFile(dir=directory, delete=True):
+            # If we can create a temp file, we have write permission
+            return True
+    except OSError:
+        return False
+
+
+def check_permissions():
+    """Check if the user has the necessary permissions.
+
+    Returns:
+        bool: True if all permission checks pass, False otherwise
+    """
+    print_header("Checking Permissions")
+
+    # Check write permission for the current directory
+    current_dir = os.getcwd()
+    if not check_write_permission(current_dir):
+        print_error(f"You don't have write permission for the current directory: {current_dir}")
+        print_info("Please run this script from a directory where you have write permission.")
+        print_info("Or run the script with elevated privileges (e.g., sudo on Linux/macOS).")
+        return False
+
+    print_success(f"You have write permission for the current directory: {current_dir}")
+
+    # Check if we can create a .env file
+    env_file = os.path.join(current_dir, ".env.test")
+    try:
+        with open(env_file, "w", encoding="utf-8") as f:
+            f.write("# Test write permission\n")
+        os.remove(env_file)  # Clean up the test file
+        print_success("You have permission to create files in the current directory")
+    except OSError as e:
+        print_error(f"You don't have permission to create files in the current directory: {e}")
+        print_info("Please run this script from a directory where you have write permission.")
+        print_info("Or run the script with elevated privileges (e.g., sudo on Linux/macOS).")
+        return False
+
+    return True
 
 
 def run_command(command, cwd=None):
@@ -156,6 +209,15 @@ def setup_virtual_environment():
                 print(f"  source {venv_dir}/bin/activate")
         return True
 
+    # Check if we have permission to create the virtual environment directory
+    if not check_write_permission(os.path.dirname(os.path.abspath(venv_dir))):
+        print_error(
+            f"You don't have permission to create a virtual environment in {os.path.dirname(os.path.abspath(venv_dir))}"
+        )
+        print_info("Please run this script from a directory where you have write permission.")
+        print_info("Or run the script with elevated privileges (e.g., sudo on Linux/macOS).")
+        return False
+
     # Create virtual environment
     print_info("Creating virtual environment...")
     success, output = run_command(f"{sys.executable} -m venv {venv_dir}")
@@ -215,10 +277,23 @@ def setup_env_file():
         if modify != "y":
             return True
 
+    # Check if we have permission to create/modify the .env file
+    if not check_write_permission(os.getcwd()):
+        print_error("You don't have permission to create/modify the .env file")
+        print_info("Please run this script from a directory where you have write permission.")
+        print_info("Or run the script with elevated privileges (e.g., sudo on Linux/macOS).")
+        return False
+
     # Create .env file from .env.example if it exists
     if not os.path.exists(".env") and os.path.exists(".env.example"):
-        shutil.copy(".env.example", ".env")
-        print_success("Created .env file from .env.example")
+        try:
+            shutil.copy(".env.example", ".env")
+            print_success("Created .env file from .env.example")
+        except OSError as e:
+            print_error(f"Failed to create .env file: {e}")
+            print_info("Please run this script from a directory where you have write permission.")
+            print_info("Or run the script with elevated privileges (e.g., sudo on Linux/macOS).")
+            return False
 
     # Get FOGIS credentials
     print_info("Please enter your FOGIS credentials:")
@@ -226,12 +301,17 @@ def setup_env_file():
     fogis_password = input("FOGIS Password: ")
 
     # Write to .env file
-    with open(".env", "w", encoding="utf-8") as f:
-        f.write(f"FOGIS_USERNAME={fogis_username}\n")
-        f.write(f"FOGIS_PASSWORD={fogis_password}\n")
-
-    print_success("Environment variables saved to .env file")
-    return True
+    try:
+        with open(".env", "w", encoding="utf-8") as f:
+            f.write(f"FOGIS_USERNAME={fogis_username}\n")
+            f.write(f"FOGIS_PASSWORD={fogis_password}\n")
+        print_success("Environment variables saved to .env file")
+        return True
+    except OSError as e:
+        print_error(f"Failed to write to .env file: {e}")
+        print_info("Please run this script from a directory where you have write permission.")
+        print_info("Or run the script with elevated privileges (e.g., sudo on Linux/macOS).")
+        return False
 
 
 def check_google_credentials():
@@ -339,6 +419,13 @@ def main():
     # Check Python version
     if not check_python_version():
         print_error("Please install Python 3.6 or higher and run this script again.")
+        return
+
+    # Check permissions
+    if not check_permissions():
+        print_error(
+            "Permission checks failed. Please resolve the issues and run this script again."
+        )
         return
 
     # Check required files
