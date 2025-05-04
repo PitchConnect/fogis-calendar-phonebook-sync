@@ -60,7 +60,7 @@ def run_command(command, cwd=None):
     """Run a command and return the result.
 
     Args:
-        command: The command to run as a list of arguments
+        command: The command to run as a list of arguments or string
         cwd: Working directory for the command
 
     Returns:
