@@ -136,12 +136,28 @@ def process_referees(match):
         logging.error("Failed to obtain Google People API credentials for referee processing.")
         return False
 
+    # Get the user's referee number from environment variable
+    user_referee_number = os.environ.get("USER_REFEREE_NUMBER")
+    if user_referee_number:
+        logging.info(
+            f"User referee number set to {user_referee_number}, will skip updating this contact"
+        )
+
     try:
         service = build("people", "v1", credentials=creds)
 
         for referee in match["domaruppdraglista"]:
             name = referee["personnamn"]
             phone = referee["mobiltelefon"]
+            referee_number = referee.get("domarnr")
+
+            # Skip updating the current user's contact
+            if user_referee_number and referee_number == user_referee_number:
+                logging.info(
+                    f"Skipping contact update for current user: {name} (Referee #{referee_number})"
+                )
+                continue
+
             try:
                 existing_contact = find_contact_by_name_and_phone(service, name, phone, referee)
 
