@@ -33,6 +33,10 @@ from fogis_contacts import (  # Removed other functions
     test_google_contacts_connection,
 )
 
+# Import headless authentication modules
+import auth_server
+import token_manager
+
 # Load environment variables from .env file
 load_dotenv()
 
@@ -56,8 +60,32 @@ except json.JSONDecodeError as err:
     sys.exit(1)
 
 
-def authorize_google_calendar():
-    """Authorizes access to the Google Calendar API."""
+def authorize_google_calendar(headless=False):
+    """Authorizes access to the Google Calendar API.
+
+    Args:
+        headless (bool): Whether to use headless authentication mode
+
+    Returns:
+        google.oauth2.credentials.Credentials: The authorized credentials
+    """
+    if headless:
+        logging.info("Using headless authentication mode")
+        # Check if token needs refreshing and refresh if needed
+        if auth_server.check_and_refresh_auth():
+            # Load the refreshed token
+            creds = token_manager.load_token()
+            if creds and creds.valid:
+                logging.info("Successfully authenticated in headless mode")
+                return creds
+            else:
+                logging.error("Headless authentication failed")
+                return None
+        else:
+            logging.error("Headless authentication failed")
+            return None
+
+    # Non-headless (interactive) authentication
     creds = None
     logging.info("Starting Google Calendar authorization process")
 
@@ -86,16 +114,14 @@ def authorize_google_calendar():
                 creds.refresh(google.auth.transport.requests.Request())
                 logging.info("Google Calendar credentials successfully refreshed")
                 # Save the refreshed credentials
-                with open("token.json", "w", encoding="utf-8") as token:
-                    token.write(creds.to_json())
+                token_manager.save_token(creds)
                 logging.info("Refreshed credentials saved to token.json")
             except google.auth.exceptions.RefreshError as e:  # Catch refresh-specific errors
                 logging.error(
                     f"Error refreshing Google Calendar credentials: {e}. Deleting token.json."
                 )
-                if os.path.exists("token.json"):
-                    os.remove("token.json")
-                    logging.info("Deleted invalid token.json file")
+                token_manager.delete_token()
+                logging.info("Deleted invalid token.json file")
                 creds = None  # Force re-authentication
             except Exception as e:
                 logging.error("Error refreshing Google Calendar credentials: %s", e)
@@ -113,18 +139,8 @@ def authorize_google_calendar():
                 logging.info("OAuth flow completed successfully")
 
                 # Save the credentials for the next run
-                try:
-                    with open("token.json", "w", encoding="utf-8") as token:
-                        token_json = creds.to_json()
-                        token.write(token_json)
-                        logging.info(
-                            "New credentials saved to token.json (length: %d)", len(token_json)
-                        )
-                except Exception as save_error:
-                    logging.error("Error saving token.json: %s", save_error)
-                    # Continue anyway since we have valid credentials in memory
-
-                logging.info("New Google Calendar credentials obtained.")
+                token_manager.save_token(creds)
+                logging.info("New Google Calendar credentials obtained and saved")
             except FileNotFoundError:
                 logging.error("Credentials file not found: %s", config_dict["CREDENTIALS_FILE"])
                 return None
@@ -462,6 +478,10 @@ def main():
     parser.add_argument(
         "--download", action="store_true", help="Downloads data from FOGIS to local."
     )
+    parser.add_argument(
+        "--headless", action="store_true",
+        help="Use headless authentication mode for server environments."
+    )
     parser.add_argument("--username", dest="fogis_username", required=False, help="FOGIS username")
     parser.add_argument("--password", dest="fogis_password", required=False, help="FOGIS password")
     args = parser.parse_args()
@@ -517,7 +537,7 @@ def main():
     print(tabulate(table_data, headers=headers, tablefmt="grid"))
 
     # Authorize Google Calendar
-    creds = authorize_google_calendar()
+    creds = authorize_google_calendar(headless=args.headless)
 
     if not creds:
         logging.error("Failed to obtain Google Calendar Credentials")
