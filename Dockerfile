@@ -1,9 +1,15 @@
 FROM python:3.9-slim
 
+# Add build arguments for versioning
+ARG VERSION=dev
+
 WORKDIR /app
 
 # Install curl for healthcheck
 RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
+
+# Set version as environment variable
+ENV VERSION=${VERSION}
 
 # Copy requirements first to leverage Docker cache
 COPY requirements.txt .

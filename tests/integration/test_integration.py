@@ -96,20 +96,23 @@ def test_end_to_end_sync(setup_test_environment):
         "phoneNumbers": [{"value": "+46701234567"}],
     }
 
+    # Create a mock build function that returns the appropriate service
+    # pylint: disable=unused-argument
+    def mock_build(service_name, version, credentials=None):
+        if service_name == "calendar":
+            return mock_calendar_service
+        if service_name == "people":
+            return mock_people_service
+        return MagicMock()
+
+    # Mock subprocess.run to prevent actual command execution
+    mock_process = MagicMock()
+    mock_process.stdout = "Mock output"
+    mock_process.stderr = ""
+    mock_process.returncode = 0
+
     # Patch the necessary functions
-    with patch.object(
-        fogis_calendar_sync, "build_calendar_service", return_value=mock_calendar_service
-    ), patch.object(
-        fogis_contacts, "build_people_service", return_value=mock_people_service
-    ), patch.object(
-        fogis_calendar_sync, "sys"
-    ), patch.object(
-        fogis_contacts, "sys"
-    ), patch.object(
-        fogis_calendar_sync, "logging"
-    ), patch.object(
-        fogis_contacts, "logging"
-    ), patch(
+    with patch("googleapiclient.discovery.build", side_effect=mock_build), patch(
         "os.path.exists", return_value=True
     ), patch(
         "builtins.open",
@@ -117,6 +120,10 @@ def test_end_to_end_sync(setup_test_environment):
         side_effect=lambda f, *args, **kwargs: (
             open(f, *args, **kwargs) if os.path.exists(f) else MagicMock()
         ),
+    ), patch(
+        "app.get_version", return_value="test-version"
+    ), patch(
+        "subprocess.run", return_value=mock_process
     ):
 
         # Override the config.json path

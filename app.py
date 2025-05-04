@@ -6,6 +6,9 @@ import subprocess
 from dotenv import load_dotenv
 from flask import Flask, jsonify, request
 
+# Import version information
+from version import get_version
+
 # Load environment variables from .env file
 load_dotenv()
 
@@ -37,7 +40,19 @@ def health_check():
 
         # Add any other critical checks here
 
-        return jsonify({"status": "healthy"}), 200
+        # Get version information
+        version = get_version()
+
+        return (
+            jsonify(
+                {
+                    "status": "healthy",
+                    "version": version,
+                    "environment": os.environ.get("ENVIRONMENT", "development"),
+                }
+            ),
+            200,
+        )
     except Exception as e:
         logging.exception("Health check failed")
         return jsonify({"status": "error", "message": str(e)}), 500
