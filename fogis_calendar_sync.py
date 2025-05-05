@@ -33,6 +33,10 @@ from fogis_contacts import (  # Removed other functions
     test_google_contacts_connection,
 )
 
+# Import headless authentication modules
+import auth_server
+import token_manager
+
 # Load environment variables from .env file
 load_dotenv()
 
@@ -56,8 +60,32 @@ except json.JSONDecodeError as err:
     sys.exit(1)
 
 
-def authorize_google_calendar():
-    """Authorizes access to the Google Calendar API."""
+def authorize_google_calendar(headless=False):
+    """Authorizes access to the Google Calendar API.
+
+    Args:
+        headless (bool): Whether to use headless authentication mode
+
+    Returns:
+        google.oauth2.credentials.Credentials: The authorized credentials
+    """
+    if headless:
+        logging.info("Using headless authentication mode")
+        # Check if token needs refreshing and refresh if needed
+        if auth_server.check_and_refresh_auth():
+            # Load the refreshed token
+            creds = token_manager.load_token()
+            if creds and creds.valid:
+                logging.info("Successfully authenticated in headless mode")
+                return creds
+            else:
+                logging.error("Headless authentication failed")
+                return None
+        else:
+            logging.error("Headless authentication failed")
+            return None
+
+    # Non-headless (interactive) authentication
     creds = None
     logging.info("Starting Google Calendar authorization process")
 
@@ -86,16 +114,14 @@ def authorize_google_calendar():
                 creds.refresh(google.auth.transport.requests.Request())
                 logging.info("Google Calendar credentials successfully refreshed")
                 # Save the refreshed credentials
-                with open("token.json", "w", encoding="utf-8") as token:
-                    token.write(creds.to_json())
+                token_manager.save_token(creds)
                 logging.info("Refreshed credentials saved to token.json")
             except google.auth.exceptions.RefreshError as e:  # Catch refresh-specific errors
                 logging.error(
                     f"Error refreshing Google Calendar credentials: {e}. Deleting token.json."
                 )
-                if os.path.exists("token.json"):
-                    os.remove("token.json")
-                    logging.info("Deleted invalid token.json file")
+                token_manager.delete_token()
+                logging.info("Deleted invalid token.json file")
                 creds = None  # Force re-authentication
             except Exception as e:
                 logging.error("Error refreshing Google Calendar credentials: %s", e)
@@ -113,18 +139,8 @@ def authorize_google_calendar():
                 logging.info("OAuth flow completed successfully")
 
                 # Save the credentials for the next run
-                try:
-                    with open("token.json", "w", encoding="utf-8") as token:
-                        token_json = creds.to_json()
-                        token.write(token_json)
-                        logging.info(
-                            "New credentials saved to token.json (length: %d)", len(token_json)
-                        )
-                except Exception as save_error:
-                    logging.error("Error saving token.json: %s", save_error)
-                    # Continue anyway since we have valid credentials in memory
-
-                logging.info("New Google Calendar credentials obtained.")
+                token_manager.save_token(creds)
+                logging.info("New Google Calendar credentials obtained and saved")
             except FileNotFoundError:
                 logging.error("Credentials file not found: %s", config_dict["CREDENTIALS_FILE"])
                 return None
@@ -190,7 +206,10 @@ def find_event_by_match_id(service, calendar_id, match_id):
     """Finds an event in the calendar with the given match ID in extendedProperties."""
     try:
         today = datetime.date.today()
-        from_date = (today - timedelta(days=7)).strftime("%Y-%m-%d")
+        days_to_look_back = config_dict.get(
+            "DAYS_TO_KEEP_PAST_EVENTS", 7
+        )  # Default to 7 days if not specified
+        from_date = (today - timedelta(days=days_to_look_back)).strftime("%Y-%m-%d")
         time_min_utc = datetime.datetime.combine(
             datetime.datetime.strptime(from_date, "%Y-%m-%d").date(),
             datetime.time.min,
@@ -248,19 +267,38 @@ def delete_calendar_events(service, match_list):
             )  # Removed logging to keep prints clean
 
 
-def delete_orphaned_events(service, match_list):
-    """Deletes events from the calendar with SYNC_TAG that are not in the match_list."""
+def delete_orphaned_events(service, match_list, days_to_keep_past_events=7):
+    """Deletes events from the calendar with SYNC_TAG that are not in the match_list.
+
+    Args:
+        service: The Google Calendar service object
+        match_list: List of matches from FOGIS
+        days_to_keep_past_events: Number of days in the past to look for orphaned events.
+            Events older than this will be preserved regardless of match_list.
+    """
     existing_match_ids = {
         str(match["matchid"]) for match in match_list
     }  # Use a set for faster lookup
 
+    # Calculate the cutoff date for orphaned events
+    today = datetime.date.today()
+    from_date = (today - timedelta(days=days_to_keep_past_events)).strftime("%Y-%m-%d")
+    time_min_utc = datetime.datetime.combine(
+        datetime.datetime.strptime(from_date, "%Y-%m-%d").date(),
+        datetime.time.min,
+        tzinfo=timezone.utc,
+    )
+
+    logging.info(f"Looking for orphaned events from {from_date} onwards")
+
     try:
-        # Retrieve all events with the syncTag
+        # Retrieve events with the syncTag that are newer than the cutoff date
         events_result = (
             service.events()
             .list(
                 calendarId=config_dict["CALENDAR_ID"],
                 privateExtendedProperty=f"syncTag={config_dict['SYNC_TAG']}",
+                timeMin=time_min_utc.isoformat(),  # Only look at events from cutoff date onwards
                 maxResults=2500,  # Max results per page
                 singleEvents=True,
                 orderBy="startTime",
@@ -268,28 +306,31 @@ def delete_orphaned_events(service, match_list):
             .execute()
         )
     except HttpError as error:
-        print(
-            f"An error occurred listing calendar events: {error}"
-        )  # Removed logging to keep prints clean
+        logging.error(f"An error occurred listing calendar events: {error}")
         return
 
     events = events_result.get("items", [])
+    logging.info(f"Found {len(events)} events to check for orphaning")
 
+    orphaned_count = 0
     for event in events:
         match_id = event.get("extendedProperties", {}).get("private", {}).get("matchId")
+        event_date = event.get("start", {}).get("dateTime", "Unknown")
 
         if match_id is None or match_id not in existing_match_ids:
             try:
                 service.events().delete(
                     calendarId=config_dict["CALENDAR_ID"], eventId=event["id"]
                 ).execute()
-                print(
-                    f"Deleted orphaned event: {event['summary']}"
-                )  # Removed logging to keep prints clean
+                orphaned_count += 1
+                logging.info(f"Deleted orphaned event: {event['summary']} on {event_date}")
             except HttpError as error:
-                print(
-                    f"An error occurred deleting orphaned event: {error}"
-                )  # Removed logging to keep prints clean
+                logging.error(f"An error occurred deleting orphaned event: {error}")
+
+    if orphaned_count > 0:
+        print(f"Deleted {orphaned_count} orphaned events from {from_date} onwards")
+    else:
+        print(f"No orphaned events found from {from_date} onwards")
 
 
 def sync_calendar(match, service, args):
@@ -437,6 +478,10 @@ def main():
     parser.add_argument(
         "--download", action="store_true", help="Downloads data from FOGIS to local."
     )
+    parser.add_argument(
+        "--headless", action="store_true",
+        help="Use headless authentication mode for server environments."
+    )
     parser.add_argument("--username", dest="fogis_username", required=False, help="FOGIS username")
     parser.add_argument("--password", dest="fogis_password", required=False, help="FOGIS password")
     args = parser.parse_args()
@@ -492,7 +537,7 @@ def main():
     print(tabulate(table_data, headers=headers, tablefmt="grid"))
 
     # Authorize Google Calendar
-    creds = authorize_google_calendar()
+    creds = authorize_google_calendar(headless=args.headless)
 
     if not creds:
         logging.error("Failed to obtain Google Calendar Credentials")
@@ -530,8 +575,12 @@ def main():
             old_matches = {}
 
         # Delete orphaned events (events with syncTag that are not in the match_list)
-        print("\n--- Deleting Orphaned Calendar Events ---")  # Removed logging to keep prints clean
-        delete_orphaned_events(service, match_list)
+        print("\n--- Deleting Orphaned Calendar Events ---")
+        days_to_keep = config_dict.get(
+            "DAYS_TO_KEEP_PAST_EVENTS", 7
+        )  # Default to 7 days if not specified
+        logging.info(f"Using {days_to_keep} days as the window for orphaned events detection")
+        delete_orphaned_events(service, match_list, days_to_keep)
 
         if args.delete:
             print(
