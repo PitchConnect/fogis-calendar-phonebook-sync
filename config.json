@@ -13,7 +13,8 @@
   "DAYS_TO_KEEP_PAST_EVENTS": 7,
   "SCOPES":[
         "https://www.googleapis.com/auth/calendar",
-        "https://www.googleapis.com/auth/contacts"
+        "https://www.googleapis.com/auth/contacts",
+        "https://www.googleapis.com/auth/drive"
     ],
   "NOTIFICATION_METHOD": "email",
   "NOTIFICATION_EMAIL_SENDER": "bartek.svaberg@gmail.com",
