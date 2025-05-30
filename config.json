@@ -11,10 +11,10 @@
   "USE_LOCAL_MATCH_DATA": false,
   "LOCAL_MATCH_DATA_FILE": "local_matches.json",
   "DAYS_TO_KEEP_PAST_EVENTS": 7,
-  "SCOPES":[
-        "https://www.googleapis.com/auth/calendar",
-        "https://www.googleapis.com/auth/contacts"
-    ],
+  "SCOPES": [
+    "https://www.googleapis.com/auth/calendar",
+    "https://www.googleapis.com/auth/contacts"
+  ],
   "NOTIFICATION_METHOD": "email",
   "NOTIFICATION_EMAIL_SENDER": "your-email@gmail.com",
   "NOTIFICATION_EMAIL_RECEIVER": "your-email@gmail.com",
@@ -26,5 +26,6 @@
   "AUTH_SERVER_HOST": "localhost",
   "DISCORD_WEBHOOK_URL": "",
   "SLACK_WEBHOOK_URL": "",
-  "TOKEN_REFRESH_BUFFER_DAYS": 1
+  "TOKEN_REFRESH_BUFFER_DAYS": 1,
+  "USER_REFEREE_NUMBER": 61318
 }
