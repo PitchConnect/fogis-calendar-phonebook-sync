@@ -38,7 +38,7 @@ jobs:
         pre-commit install
         pre-commit run --all-files
       env:
-        SKIP: pytest,pytest-check  # Skip test hooks to avoid needing runtime dependencies
+        SKIP: pytest,pytest-check,pylint  # Skip test hooks and pylint (covered by flake8/bandit)
 
     - name: Run bandit
       run: |
