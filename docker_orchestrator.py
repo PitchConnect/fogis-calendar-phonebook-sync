@@ -124,7 +124,7 @@ def check_service_health(
     for attempt in range(max_retries):
         try:
             logger.info(
-                f"Checking health of {service_name} at {endpoint} (attempt {attempt+1}/{max_retries})"
+                f"Checking health of {service_name} at {endpoint} (attempt {attempt + 1}/{max_retries})"
             )
             response = requests.get(endpoint, timeout=10)
 

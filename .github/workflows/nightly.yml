@@ -1,0 +1,277 @@
+name: Nightly CI/CD
+
+on:
+  schedule:
+    # Run at 2 AM UTC every day on main (only if there are new commits)
+    - cron: '0 2 * * *'
+    # Run at 1 AM UTC every day on develop (catch issues early)
+    - cron: '0 1 * * *'
+  workflow_dispatch:
+    # Allow manual triggering
+    inputs:
+      target_branch:
+        description: 'Target branch to test'
+        required: false
+        default: 'main'
+        type: choice
+        options:
+          - main
+          - develop
+      force_run:
+        description: 'Force run even if no new commits'
+        required: false
+        default: 'false'
+        type: boolean
+
+jobs:
+  check-commits:
+    name: Check for New Commits
+    runs-on: ubuntu-latest
+    outputs:
+      should_run: ${{ steps.check.outputs.should_run }}
+      latest_commit: ${{ steps.check.outputs.latest_commit }}
+      target_branch: ${{ steps.check.outputs.target_branch }}
+    steps:
+    - name: Determine target branch
+      id: branch
+      run: |
+        # Determine which branch to check based on trigger
+        if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+          # Manual trigger - use input or default to main
+          target_branch="${{ github.event.inputs.target_branch || 'main' }}"
+        elif [[ "${{ github.event.schedule }}" == "0 1 * * *" ]]; then
+          # 1 AM schedule - develop branch
+          target_branch="develop"
+        else
+          # 2 AM schedule or other - main branch
+          target_branch="main"
+        fi
+        echo "target_branch=$target_branch" >> $GITHUB_OUTPUT
+        echo "🎯 Target branch: $target_branch"
+
+    - uses: actions/checkout@v3
+      with:
+        ref: ${{ steps.branch.outputs.target_branch }}
+        fetch-depth: 0
+
+    - name: Check for commits in last 24 hours
+      id: check
+      run: |
+        target_branch="${{ steps.branch.outputs.target_branch }}"
+        echo "target_branch=$target_branch" >> $GITHUB_OUTPUT
+
+        # Get the latest commit timestamp on target branch
+        latest_commit=$(git log -1 --format="%H")
+        latest_timestamp=$(git log -1 --format="%ct")
+        current_timestamp=$(date +%s)
+
+        # Calculate 24 hours ago
+        twenty_four_hours_ago=$((current_timestamp - 86400))
+
+        echo "latest_commit=$latest_commit" >> $GITHUB_OUTPUT
+
+        # Check if we should run (force run or new commits in last 24h)
+        if [[ "${{ github.event.inputs.force_run }}" == "true" ]] || [[ $latest_timestamp -gt $twenty_four_hours_ago ]]; then
+          echo "should_run=true" >> $GITHUB_OUTPUT
+          echo "✅ Will run nightly CI/CD on $target_branch (new commits found or forced)"
+        else
+          echo "should_run=false" >> $GITHUB_OUTPUT
+          echo "⏭️ Skipping nightly CI/CD on $target_branch (no new commits in last 24 hours)"
+        fi
+
+  comprehensive-tests:
+    name: Comprehensive Test Suite (${{ needs.check-commits.outputs.target_branch }})
+    runs-on: ubuntu-latest
+    needs: check-commits
+    if: needs.check-commits.outputs.should_run == 'true'
+    strategy:
+      matrix:
+        python-version: [3.9, 3.10, 3.11]  # Test multiple Python versions
+        test-type: [unit, integration]
+
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        ref: ${{ needs.check-commits.outputs.target_branch }}
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+        cache: 'pip'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -r dev-requirements.txt
+
+    - name: Run unit tests
+      if: matrix.test-type == 'unit'
+      run: |
+        pytest --cov=. --cov-report=xml --cov-report=html -k "not integration" -v
+      env:
+        PYTHONPATH: ${{ github.workspace }}
+
+    - name: Run integration tests
+      if: matrix.test-type == 'integration'
+      run: |
+        pytest --cov=. --cov-report=xml -k "integration" -v
+      env:
+        PYTHONPATH: ${{ github.workspace }}
+
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./coverage.xml
+        flags: nightly,${{ matrix.test-type }},python${{ matrix.python-version }}
+        fail_ci_if_error: false
+
+  code-quality-deep:
+    name: Deep Code Quality Analysis (${{ needs.check-commits.outputs.target_branch }})
+    runs-on: ubuntu-latest
+    needs: check-commits
+    if: needs.check-commits.outputs.should_run == 'true'
+
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        ref: ${{ needs.check-commits.outputs.target_branch }}
+
+    - name: Set up Python 3.9
+      uses: actions/setup-python@v4
+      with:
+        python-version: 3.9
+        cache: 'pip'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -r dev-requirements.txt
+
+    - name: Run comprehensive linting
+      run: |
+        echo "🔍 Running flake8..."
+        flake8 . --statistics --tee --output-file=flake8-report.txt
+
+        echo "🔍 Running pylint..."
+        pylint **/*.py --output-format=text --reports=yes > pylint-report.txt || true
+
+        echo "🔍 Running bandit security scan..."
+        bandit -r . -f json -o bandit-report.json || true
+
+        echo "🔍 Running mypy type checking..."
+        mypy . --ignore-missing-imports --html-report mypy-report || true
+
+    - name: Upload quality reports
+      uses: actions/upload-artifact@v3
+      with:
+        name: quality-reports
+        path: |
+          flake8-report.txt
+          pylint-report.txt
+          bandit-report.json
+          mypy-report/
+
+  dependency-check:
+    name: Dependency Security Scan (${{ needs.check-commits.outputs.target_branch }})
+    runs-on: ubuntu-latest
+    needs: check-commits
+    if: needs.check-commits.outputs.should_run == 'true'
+
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        ref: ${{ needs.check-commits.outputs.target_branch }}
+
+    - name: Set up Python 3.9
+      uses: actions/setup-python@v4
+      with:
+        python-version: 3.9
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install safety pip-audit
+
+    - name: Run dependency security scan
+      run: |
+        echo "🔒 Checking for known security vulnerabilities..."
+        safety check --json --output safety-report.json || true
+        pip-audit --format=json --output=pip-audit-report.json || true
+
+    - name: Upload security reports
+      uses: actions/upload-artifact@v3
+      with:
+        name: security-reports
+        path: |
+          safety-report.json
+          pip-audit-report.json
+
+  notify-results:
+    name: Notify Results
+    runs-on: ubuntu-latest
+    needs: [check-commits, comprehensive-tests, code-quality-deep, dependency-check]
+    if: always() && needs.check-commits.outputs.should_run == 'true'
+
+    steps:
+    - name: Determine overall status
+      id: status
+      run: |
+        if [[ "${{ needs.comprehensive-tests.result }}" == "success" && "${{ needs.code-quality-deep.result }}" == "success" && "${{ needs.dependency-check.result }}" == "success" ]]; then
+          echo "status=success" >> $GITHUB_OUTPUT
+          echo "message=✅ All nightly checks passed!" >> $GITHUB_OUTPUT
+        else
+          echo "status=failure" >> $GITHUB_OUTPUT
+          echo "message=❌ Some nightly checks failed. Please review the results." >> $GITHUB_OUTPUT
+        fi
+
+    - name: Create issue on failure
+      if: steps.status.outputs.status == 'failure'
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const branch = '${{ needs.check-commits.outputs.target_branch }}';
+          const title = `🌙 Nightly CI/CD Failed (${branch}) - ${new Date().toISOString().split('T')[0]}`;
+          const body = `
+          ## Nightly CI/CD Failure Report
+
+          **Branch:** \`${branch}\`
+          **Commit:** ${{ needs.check-commits.outputs.latest_commit }}
+          **Date:** ${new Date().toISOString()}
+
+          ### Failed Jobs:
+          - Comprehensive Tests: ${{ needs.comprehensive-tests.result }}
+          - Code Quality: ${{ needs.code-quality-deep.result }}
+          - Dependency Check: ${{ needs.dependency-check.result }}
+
+          ### Action Required:
+          Please review the [workflow run](${context.payload.repository.html_url}/actions/runs/${context.runId}) and address any issues.
+
+          ### Reports Available:
+          - Quality reports and security scans are available as artifacts in the workflow run.
+
+          ### Branch-Specific Notes:
+          ${branch === 'develop' ?
+            '⚠️ This failure is on the **develop** branch. Fix these issues before merging to main!' :
+            '🚨 This failure is on the **main** branch. This needs immediate attention!'}
+
+          ---
+          *This issue was automatically created by the nightly CI/CD workflow.*
+          `;
+
+          const labels = ['bug', 'ci/cd', 'nightly-failure'];
+          if (branch === 'develop') {
+            labels.push('develop-branch');
+          } else {
+            labels.push('main-branch', 'urgent');
+          }
+
+          github.rest.issues.create({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            title: title,
+            body: body,
+            labels: labels
+          });

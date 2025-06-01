@@ -19,11 +19,11 @@ logger = logging.getLogger(__name__)
 
 class AuthServer:
     """Lightweight authentication server for handling OAuth callbacks."""
-    
+
     def __init__(self, config: Dict, token_manager):
         """
         Initialize the authentication server.
-        
+
         Args:
             config: Configuration dictionary
             token_manager: TokenManager instance
@@ -38,17 +38,17 @@ class AuthServer:
         self.auth_completed = False
         self.auth_success = False
         self.timeout_seconds = 600  # 10 minutes
-        
+
         # Create Flask app
         self.app = Flask(__name__)
         self.app.logger.setLevel(logging.WARNING)  # Reduce Flask logging
-        
+
         # Setup routes
         self._setup_routes()
-    
+
     def _setup_routes(self):
         """Setup Flask routes for the authentication server."""
-        
+
         @self.app.route('/callback')
         def callback():
             """Handle OAuth callback."""
@@ -61,7 +61,7 @@ class AuthServer:
                         "error": "Invalid state parameter",
                         "success": False
                     }), 400
-                
+
                 # Check for error in callback
                 error = request.args.get('error')
                 if error:
@@ -72,7 +72,7 @@ class AuthServer:
                         "error": f"OAuth error: {error}",
                         "success": False
                     }), 400
-                
+
                 # Get authorization code
                 auth_code = request.args.get('code')
                 if not auth_code:
@@ -83,14 +83,14 @@ class AuthServer:
                         "error": "No authorization code received",
                         "success": False
                     }), 400
-                
+
                 # Complete the auth flow
                 authorization_response = request.url
                 success = self.token_manager.complete_auth_flow(authorization_response)
-                
+
                 self.auth_completed = True
                 self.auth_success = success
-                
+
                 if success:
                     logger.info("Authentication completed successfully")
                     return """
@@ -120,7 +120,7 @@ class AuthServer:
                     </body>
                     </html>
                     """, 500
-                    
+
             except Exception as e:
                 logger.exception("Exception in callback handler")
                 self.auth_completed = True
@@ -129,7 +129,7 @@ class AuthServer:
                     "error": f"Internal error: {str(e)}",
                     "success": False
                 }), 500
-        
+
         @self.app.route('/health')
         def health():
             """Health check endpoint."""
@@ -138,67 +138,67 @@ class AuthServer:
                 "auth_completed": self.auth_completed,
                 "auth_success": self.auth_success
             })
-    
+
     def start(self) -> str:
         """
         Start the authentication server.
-        
+
         Returns:
             Authorization URL for user to visit
         """
         # Generate secure state parameter
         self.state = secrets.token_urlsafe(32)
-        
+
         # Reset auth status
         self.auth_completed = False
         self.auth_success = False
-        
+
         # Create server
         self.server = make_server(
-            self.host, 
-            self.port, 
-            self.app, 
+            self.host,
+            self.port,
+            self.app,
             threaded=True
         )
-        
+
         # Start server in background thread
         self.server_thread = threading.Thread(target=self.server.serve_forever)
         self.server_thread.daemon = True
         self.server_thread.start()
-        
+
         logger.info(f"Authentication server started on {self.host}:{self.port}")
-        
+
         # Get authorization URL from token manager
         auth_url = self.token_manager.initiate_auth_flow()
-        
+
         # Add state parameter to URL
         separator = "&" if "?" in auth_url else "?"
         auth_url_with_state = f"{auth_url}{separator}state={self.state}"
-        
+
         return auth_url_with_state
-    
+
     def wait_for_auth(self, timeout: Optional[int] = None) -> bool:
         """
         Wait for authentication to complete.
-        
+
         Args:
             timeout: Timeout in seconds (default: self.timeout_seconds)
-            
+
         Returns:
             True if authentication successful, False otherwise
         """
         timeout = timeout or self.timeout_seconds
         start_time = time.time()
-        
+
         while not self.auth_completed and (time.time() - start_time) < timeout:
             time.sleep(1)
-        
+
         if not self.auth_completed:
             logger.warning(f"Authentication timed out after {timeout} seconds")
             return False
-        
+
         return self.auth_success
-    
+
     def stop(self):
         """Stop the authentication server."""
         if self.server:
@@ -208,16 +208,16 @@ class AuthServer:
                 self.server_thread.join(timeout=5)
             self.server = None
             self.server_thread = None
-    
+
     def get_auth_url(self) -> Optional[str]:
         """
         Get the current authorization URL.
-        
+
         Returns:
             Authorization URL or None if server not started
         """
         if not self.server or not self.state:
             return None
-        
+
         base_url = f"http://{self.host}:{self.port}/callback"
         return f"Please visit: {base_url} (with proper OAuth flow)"
