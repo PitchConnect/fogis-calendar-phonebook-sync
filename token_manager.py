@@ -21,12 +21,12 @@ logger = logging.getLogger(__name__)
 
 class TokenManager:
     """Manages Google OAuth tokens with proactive refresh capabilities."""
-    
-    def __init__(self, config: Dict, credentials_file: str = "credentials.json", 
+
+    def __init__(self, config: Dict, credentials_file: str = "credentials.json",
                  token_file: str = "token.json"):
         """
         Initialize the token manager.
-        
+
         Args:
             config: Configuration dictionary with SCOPES and other settings
             credentials_file: Path to Google OAuth credentials file
@@ -41,17 +41,17 @@ class TokenManager:
         ])
         self.refresh_buffer_days = config.get("TOKEN_REFRESH_BUFFER_DAYS", 6)
         self._credentials = None
-        
+
     def get_credentials(self) -> Optional[Credentials]:
         """
         Get valid credentials, refreshing if necessary.
-        
+
         Returns:
             Valid Google OAuth credentials or None if authentication needed
         """
         if self._credentials and self._credentials.valid:
             return self._credentials
-            
+
         # Try to load existing token
         if os.path.exists(self.token_file):
             try:
@@ -62,7 +62,7 @@ class TokenManager:
             except Exception as e:
                 logger.warning(f"Failed to load existing token: {e}")
                 self._credentials = None
-        
+
         # Refresh if expired but refreshable
         if self._credentials and self._credentials.expired and self._credentials.refresh_token:
             try:
@@ -74,69 +74,69 @@ class TokenManager:
             except Exception as e:
                 logger.error(f"Failed to refresh token: {e}")
                 self._credentials = None
-        
+
         # Return valid credentials or None
         if self._credentials and self._credentials.valid:
             return self._credentials
-        
+
         return None
-    
+
     def check_token_expiration(self) -> Tuple[bool, Optional[datetime]]:
         """
         Check if token needs proactive refresh.
-        
+
         Returns:
             Tuple of (needs_refresh, expiry_datetime)
         """
         credentials = self.get_credentials()
         if not credentials:
             return True, None
-            
+
         if not credentials.expiry:
             # No expiry info, assume it's good for now
             return False, None
-            
+
         # Check if we're within the buffer period
         buffer_time = timedelta(days=self.refresh_buffer_days)
         needs_refresh = datetime.utcnow() + buffer_time >= credentials.expiry
-        
+
         return needs_refresh, credentials.expiry
-    
+
     def initiate_auth_flow(self) -> str:
         """
         Initiate OAuth flow and return authorization URL.
-        
+
         Returns:
             Authorization URL for user to visit
         """
         if not os.path.exists(self.credentials_file):
             raise FileNotFoundError(f"Credentials file not found: {self.credentials_file}")
-        
+
         flow = InstalledAppFlow.from_client_secrets_file(
             self.credentials_file, self.scopes
         )
-        
+
         # Configure for headless mode
         flow.redirect_uri = f"http://{self.config.get('AUTH_SERVER_HOST', 'localhost')}:{self.config.get('AUTH_SERVER_PORT', 8080)}/callback"
-        
+
         auth_url, _ = flow.authorization_url(
             access_type='offline',
             include_granted_scopes='true',
             prompt='consent'  # Force consent to get refresh token
         )
-        
+
         # Store flow for later use
         self._flow = flow
-        
+
         return auth_url
-    
+
     def complete_auth_flow(self, authorization_response: str) -> bool:
         """
         Complete OAuth flow with authorization response.
-        
+
         Args:
             authorization_response: Full callback URL with authorization code
-            
+
         Returns:
             True if successful, False otherwise
         """
@@ -144,18 +144,18 @@ class TokenManager:
             if not hasattr(self, '_flow'):
                 logger.error("No active auth flow found")
                 return False
-                
+
             self._flow.fetch_token(authorization_response=authorization_response)
             self._credentials = self._flow.credentials
             self._save_token()
-            
+
             logger.info("Successfully completed authentication flow")
             return True
-            
+
         except Exception as e:
             logger.error(f"Failed to complete auth flow: {e}")
             return False
-    
+
     def _save_token(self):
         """Save credentials to token file."""
         try:
@@ -164,11 +164,11 @@ class TokenManager:
             logger.info(f"Token saved to {self.token_file}")
         except Exception as e:
             logger.error(f"Failed to save token: {e}")
-    
+
     def get_token_info(self) -> Dict:
         """
         Get information about current token status.
-        
+
         Returns:
             Dictionary with token status information
         """
@@ -180,9 +180,9 @@ class TokenManager:
                 "expiry": None,
                 "needs_refresh": True
             }
-        
+
         needs_refresh, expiry = self.check_token_expiration()
-        
+
         return {
             "valid": credentials.valid,
             "expired": credentials.expired,
