@@ -1,261 +1,192 @@
-"""Token Manager Module.
+"""
+Token Manager for Headless Google Authentication
 
-This module handles Google API token management, including tracking token expiration,
-proactive token refresh, and token storage.
+This module manages Google OAuth tokens, tracks expiration, and handles
+proactive refresh for headless server environments.
 """
 
-import datetime
 import json
 import logging
 import os
-from typing import Dict, Optional, Tuple, Union
+import pickle
+from datetime import datetime, timedelta
+from typing import Dict, Optional, Tuple
 
-import google.auth
-from google.auth.exceptions import RefreshError
-from google.auth.transport.requests import Request
+import google.auth.transport.requests
 from google.oauth2.credentials import Credentials
+from google_auth_oauthlib.flow import InstalledAppFlow
 
-# Configure logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
-# Constants
-TOKEN_FILE = "token.json"
-TOKEN_METADATA_FILE = "token_metadata.json"
-# Default buffer time (in days) before token expiration to trigger refresh
-DEFAULT_REFRESH_BUFFER_DAYS = 1
 
+class TokenManager:
+    """Manages Google OAuth tokens with proactive refresh capabilities."""
 
-def load_token() -> Optional[Credentials]:
-    """Load token from token file.
+    def __init__(
+        self,
+        config: Dict,
+        credentials_file: str = "credentials.json",
+        token_file: str = "token.json",
+    ):
+        """
+        Initialize the token manager.
 
-    Returns:
-        Optional[Credentials]: The loaded credentials or None if loading fails
-    """
-    if not os.path.exists(TOKEN_FILE):
-        logger.info("Token file does not exist: %s", TOKEN_FILE)
+        Args:
+            config: Configuration dictionary with SCOPES and other settings
+            credentials_file: Path to Google OAuth credentials file
+            token_file: Path to store/load tokens
+        """
+        self.config = config
+        self.credentials_file = credentials_file
+        self.token_file = token_file
+        self.scopes = config.get(
+            "SCOPES",
+            [
+                "https://www.googleapis.com/auth/calendar",
+                "https://www.googleapis.com/auth/contacts",
+            ],
+        )
+        self.refresh_buffer_days = config.get("TOKEN_REFRESH_BUFFER_DAYS", 6)
+        self._credentials = None
+
+    def get_credentials(self) -> Optional[Credentials]:
+        """
+        Get valid credentials, refreshing if necessary.
+
+        Returns:
+            Valid Google OAuth credentials or None if authentication needed
+        """
+        if self._credentials and self._credentials.valid:
+            return self._credentials
+
+        # Try to load existing token
+        if os.path.exists(self.token_file):
+            try:
+                self._credentials = Credentials.from_authorized_user_file(
+                    self.token_file, self.scopes
+                )
+                logger.info("Loaded existing credentials from token file")
+            except Exception as e:
+                logger.warning(f"Failed to load existing token: {e}")
+                self._credentials = None
+
+        # Refresh if expired but refreshable
+        if self._credentials and self._credentials.expired and self._credentials.refresh_token:
+            try:
+                request = google.auth.transport.requests.Request()
+                self._credentials.refresh(request)
+                self._save_token()
+                logger.info("Successfully refreshed expired token")
+                return self._credentials
+            except Exception as e:
+                logger.error(f"Failed to refresh token: {e}")
+                self._credentials = None
+
+        # Return valid credentials or None
+        if self._credentials and self._credentials.valid:
+            return self._credentials
+
         return None
 
-    try:
-        with open(TOKEN_FILE, "r", encoding="utf-8") as f:
-            token_data = json.load(f)
+    def check_token_expiration(self) -> Tuple[bool, Optional[datetime]]:
+        """
+        Check if token needs proactive refresh.
 
-        # Load config to get scopes
-        with open("config.json", "r", encoding="utf-8") as f:
-            config = json.load(f)
-            scopes = config.get("SCOPES", [])
+        Returns:
+            Tuple of (needs_refresh, expiry_datetime)
+        """
+        credentials = self.get_credentials()
+        if not credentials:
+            return True, None
 
-        creds = Credentials.from_authorized_user_info(token_data, scopes)
-        logger.info("Successfully loaded credentials from %s", TOKEN_FILE)
-        return creds
-    except Exception as e:
-        logger.error("Error loading credentials from %s: %s", TOKEN_FILE, e)
-        return None
+        if not credentials.expiry:
+            # No expiry info, assume it's good for now
+            return False, None
 
+        # Check if we're within the buffer period
+        buffer_time = timedelta(days=self.refresh_buffer_days)
+        needs_refresh = datetime.utcnow() + buffer_time >= credentials.expiry
 
-def save_token(creds: Credentials) -> bool:
-    """Save token to token file and update metadata.
+        return needs_refresh, credentials.expiry
 
-    Args:
-        creds (Credentials): The credentials to save
+    def initiate_auth_flow(self) -> str:
+        """
+        Initiate OAuth flow and return authorization URL.
 
-    Returns:
-        bool: True if saving was successful, False otherwise
-    """
-    try:
-        # Save the token
-        token_json = creds.to_json()
-        with open(TOKEN_FILE, "w", encoding="utf-8") as f:
-            f.write(token_json)
+        Returns:
+            Authorization URL for user to visit
+        """
+        if not os.path.exists(self.credentials_file):
+            raise FileNotFoundError(f"Credentials file not found: {self.credentials_file}")
 
-        # Update metadata
-        metadata = {
-            "token_type": "google_oauth",
-            "created_at": datetime.datetime.now().isoformat(),
-            "expires_at": get_token_expiry(creds).isoformat() if creds.expiry else None,
-            "scopes": creds.scopes,
-        }
+        flow = InstalledAppFlow.from_client_secrets_file(self.credentials_file, self.scopes)
 
-        with open(TOKEN_METADATA_FILE, "w", encoding="utf-8") as f:
-            json.dump(metadata, f, indent=2)
+        # Configure for headless mode
+        flow.redirect_uri = f"http://{self.config.get('AUTH_SERVER_HOST', 'localhost')}:{self.config.get('AUTH_SERVER_PORT', 8080)}/callback"
 
-        logger.info("Saved credentials to %s and updated metadata", TOKEN_FILE)
-        return True
-    except Exception as e:
-        logger.error("Error saving credentials to %s: %s", TOKEN_FILE, e)
-        return False
+        auth_url, _ = flow.authorization_url(
+            access_type="offline",
+            include_granted_scopes="true",
+            prompt="consent",  # Force consent to get refresh token
+        )
 
+        # Store flow for later use
+        self._flow = flow
 
-def get_token_expiry(creds: Credentials) -> datetime.datetime:
-    """Get the expiry datetime of the token.
+        return auth_url
 
-    Args:
-        creds (Credentials): The credentials to check
+    def complete_auth_flow(self, authorization_response: str) -> bool:
+        """
+        Complete OAuth flow with authorization response.
 
-    Returns:
-        datetime.datetime: The expiry datetime
-    """
-    if not creds.expiry:
-        # If no expiry is set, assume it's 7 days from now (for refresh tokens in test mode)
-        return datetime.datetime.now() + datetime.timedelta(days=7)
-    return creds.expiry
+        Args:
+            authorization_response: Full callback URL with authorization code
 
-
-def is_token_expiring_soon(
-    creds: Credentials, buffer_days: int = DEFAULT_REFRESH_BUFFER_DAYS
-) -> bool:
-    """Check if the token is expiring soon.
-
-    Args:
-        creds (Credentials): The credentials to check
-        buffer_days (int): Number of days before expiration to consider "expiring soon"
-
-    Returns:
-        bool: True if the token is expiring within the buffer period, False otherwise
-    """
-    if not creds or not creds.valid:
-        return True
-
-    if creds.expiry:
-        expiry = creds.expiry
-    else:
-        # Check metadata for expiry if not in credentials
+        Returns:
+            True if successful, False otherwise
+        """
         try:
-            with open(TOKEN_METADATA_FILE, "r", encoding="utf-8") as f:
-                metadata = json.load(f)
-                expiry_str = metadata.get("expires_at")
-                if expiry_str:
-                    expiry = datetime.datetime.fromisoformat(expiry_str)
-                else:
-                    # Default to 7 days from creation if no expiry in metadata
-                    created_at_str = metadata.get("created_at")
-                    if created_at_str:
-                        created_at = datetime.datetime.fromisoformat(created_at_str)
-                        expiry = created_at + datetime.timedelta(days=7)
-                    else:
-                        # If no creation date, assume it's expiring soon
-                        return True
-        except (FileNotFoundError, json.JSONDecodeError, ValueError) as e:
-            logger.warning("Error reading token metadata: %s. Assuming token is expiring soon.", e)
+            if not hasattr(self, "_flow"):
+                logger.error("No active auth flow found")
+                return False
+
+            self._flow.fetch_token(authorization_response=authorization_response)
+            self._credentials = self._flow.credentials
+            self._save_token()
+
+            logger.info("Successfully completed authentication flow")
             return True
 
-    buffer_timedelta = datetime.timedelta(days=buffer_days)
-    return datetime.datetime.now() + buffer_timedelta >= expiry
+        except Exception as e:
+            logger.error(f"Failed to complete auth flow: {e}")
+            return False
 
+    def _save_token(self):
+        """Save credentials to token file."""
+        try:
+            with open(self.token_file, "w") as token_file:
+                token_file.write(self._credentials.to_json())
+            logger.info(f"Token saved to {self.token_file}")
+        except Exception as e:
+            logger.error(f"Failed to save token: {e}")
 
-def refresh_token(creds: Credentials) -> Tuple[Optional[Credentials], bool]:
-    """Attempt to refresh the token.
+    def get_token_info(self) -> Dict:
+        """
+        Get information about current token status.
 
-    Args:
-        creds (Credentials): The credentials to refresh
+        Returns:
+            Dictionary with token status information
+        """
+        credentials = self.get_credentials()
+        if not credentials:
+            return {"valid": False, "expired": True, "expiry": None, "needs_refresh": True}
 
-    Returns:
-        Tuple[Optional[Credentials], bool]: The refreshed credentials and a success flag
-    """
-    if not creds:
-        logger.error("Cannot refresh None credentials")
-        return None, False
+        needs_refresh, expiry = self.check_token_expiration()
 
-    if not creds.refresh_token:
-        logger.error("Credentials do not have a refresh token")
-        return creds, False
-
-    try:
-        logger.info("Attempting to refresh token")
-        creds.refresh(Request())
-        logger.info("Token refreshed successfully")
-
-        # Save the refreshed token
-        if save_token(creds):
-            return creds, True
-        else:
-            logger.warning("Token refreshed but failed to save")
-            return creds, True  # Still return True since refresh succeeded
-    except RefreshError as e:
-        logger.error("Error refreshing token (RefreshError): %s", e)
-        return creds, False
-    except Exception as e:
-        logger.error("Error refreshing token: %s", e)
-        return creds, False
-
-
-def check_and_refresh_token(
-    creds: Optional[Credentials] = None, buffer_days: int = DEFAULT_REFRESH_BUFFER_DAYS
-) -> Tuple[Optional[Credentials], bool]:
-    """Check if token needs refreshing and refresh if needed.
-
-    Args:
-        creds (Optional[Credentials]): The credentials to check, or None to load from file
-        buffer_days (int): Number of days before expiration to trigger refresh
-
-    Returns:
-        Tuple[Optional[Credentials], bool]: The (possibly refreshed) credentials and a success flag
-    """
-    if creds is None:
-        creds = load_token()
-        if creds is None:
-            return None, False
-
-    if not creds.valid:
-        if creds.expired and creds.refresh_token:
-            return refresh_token(creds)
-        else:
-            logger.warning("Token is invalid and cannot be refreshed")
-            return creds, False
-
-    if is_token_expiring_soon(creds, buffer_days):
-        logger.info("Token is expiring soon, attempting to refresh")
-        return refresh_token(creds)
-
-    logger.info("Token is valid and not expiring soon")
-    return creds, True
-
-
-def get_token_info() -> Dict[str, Union[str, bool, int]]:
-    """Get information about the current token.
-
-    Returns:
-        Dict[str, Union[str, bool, int]]: Information about the token
-    """
-    creds = load_token()
-    result = {
-        "exists": creds is not None,
-        "valid": False,
-        "expired": True,
-        "has_refresh_token": False,
-        "days_until_expiry": 0,
-        "scopes": [],
-    }
-
-    if creds:
-        result["valid"] = creds.valid
-        result["expired"] = creds.expired if hasattr(creds, "expired") else True
-        result["has_refresh_token"] = bool(creds.refresh_token)
-        result["scopes"] = creds.scopes
-
-        if creds.expiry:
-            days = (creds.expiry - datetime.datetime.now()).days
-            result["days_until_expiry"] = max(0, days)
-
-    return result
-
-
-def delete_token() -> bool:
-    """Delete the token file.
-
-    Returns:
-        bool: True if deletion was successful or file didn't exist, False otherwise
-    """
-    try:
-        if os.path.exists(TOKEN_FILE):
-            os.remove(TOKEN_FILE)
-            logger.info("Deleted token file: %s", TOKEN_FILE)
-
-        if os.path.exists(TOKEN_METADATA_FILE):
-            os.remove(TOKEN_METADATA_FILE)
-            logger.info("Deleted token metadata file: %s", TOKEN_METADATA_FILE)
-
-        return True
-    except Exception as e:
-        logger.error("Error deleting token files: %s", e)
-        return False
+        return {
+            "valid": credentials.valid,
+            "expired": credentials.expired,
+            "expiry": expiry.isoformat() if expiry else None,
+            "needs_refresh": needs_refresh,
+            "has_refresh_token": bool(credentials.refresh_token),
+        }

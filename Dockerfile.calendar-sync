@@ -1,0 +1,56 @@
+# Dockerfile for FOGIS Calendar Sync with Headless Authentication
+FROM python:3.11-slim-bullseye
+
+# Set working directory
+WORKDIR /app
+
+# Set environment variables
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    TZ=Europe/Stockholm
+
+# Install system dependencies
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    curl \
+    gcc \
+    python3-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements and install Python dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt && \
+    pip install --no-cache-dir \
+    google-auth \
+    google-auth-oauthlib \
+    google-auth-httplib2 \
+    google-api-python-client \
+    flask \
+    python-dotenv \
+    tabulate
+
+# Copy application code
+COPY *.py ./
+COPY config.json ./
+
+# Create directories for logs, data, and credentials
+RUN mkdir -p /app/logs /app/data /app/credentials && \
+    chmod -R 755 /app/logs /app/data /app/credentials
+
+# Add health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD curl -s -f http://localhost:8000/health || exit 1
+
+# Add metadata labels
+LABEL org.opencontainers.image.title="FOGIS Calendar Sync" \
+      org.opencontainers.image.description="FOGIS Calendar and Contacts Synchronization with Headless Authentication" \
+      org.opencontainers.image.source="https://github.com/PitchConnect/fogis-calendar-phonebook-sync" \
+      org.opencontainers.image.vendor="PitchConnect" \
+      org.opencontainers.image.licenses="MIT"
+
+# Expose port for health checks and auth server
+EXPOSE 8000 8080
+
+# Default command - run with headless authentication
+CMD ["python", "run_with_headless_auth.py"]

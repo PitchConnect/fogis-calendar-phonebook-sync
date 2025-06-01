@@ -1,239 +1,305 @@
-"""Notification Module.
+"""
+Notification System for Headless Authentication
 
-This module handles sending notifications via email, Discord, or Slack
-when authentication is needed.
+This module sends authentication notifications via email, Discord, or Slack
+when re-authentication is needed in headless server environments.
 """
 
 import json
 import logging
-import os
 import smtplib
-import ssl
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-from typing import Dict, Optional, Union
+from typing import Dict, Optional
+from urllib.parse import urlencode
+from urllib.request import Request, urlopen
 
-import requests
-
-# Configure logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 
-def load_config() -> Dict[str, Union[str, int]]:
-    """Load configuration from config.json.
+class NotificationSender:
+    """Handles sending notifications via various methods."""
 
-    Returns:
-        Dict[str, Union[str, int]]: Configuration dictionary
-    """
-    try:
-        with open("config.json", "r", encoding="utf-8") as f:
-            config = json.load(f)
-        return config
-    except (FileNotFoundError, json.JSONDecodeError) as e:
-        logger.error("Error loading config: %s", e)
-        return {}
-
-
-def send_email_notification(auth_url: str, config: Optional[Dict] = None) -> bool:
-    """Send an email notification with the authentication URL.
-
-    Args:
-        auth_url (str): The authentication URL to include in the email
-        config (Optional[Dict]): Configuration dictionary, or None to load from file
-
-    Returns:
-        bool: True if the email was sent successfully, False otherwise
-    """
-    if config is None:
-        config = load_config()
-
-    sender = config.get("NOTIFICATION_EMAIL_SENDER")
-    receiver = config.get("NOTIFICATION_EMAIL_RECEIVER")
-    smtp_server = config.get("SMTP_SERVER")
-    smtp_port = config.get("SMTP_PORT", 587)
-    smtp_username = config.get("SMTP_USERNAME")
-    smtp_password = config.get("SMTP_PASSWORD")
-
-    if not all([sender, receiver, smtp_server, smtp_username, smtp_password]):
-        logger.error("Missing email configuration parameters")
-        return False
-
-    try:
-        message = MIMEMultipart("alternative")
-        message["Subject"] = "FOGIS Calendar Sync - Authentication Required"
-        message["From"] = sender
-        message["To"] = receiver
-
-        # Create plain text and HTML versions of the message
-        text = f"""
-        FOGIS Calendar Sync requires authentication.
-
-        Please click the following link to authenticate:
-        {auth_url}
-
-        This link will be valid for 10 minutes.
-
-        If you did not request this authentication, please ignore this email.
+    def __init__(self, config: Dict):
         """
+        Initialize the notification sender.
 
-        html = f"""
-        <html>
-        <body>
-            <h2>FOGIS Calendar Sync - Authentication Required</h2>
-            <p>Your FOGIS Calendar Sync application requires authentication.</p>
-            <p><a href="{auth_url}">Click here to authenticate</a></p>
-            <p>Or copy and paste this URL into your browser:</p>
-            <p><code>{auth_url}</code></p>
-            <p>This link will be valid for 10 minutes.</p>
-            <p><em>If you did not request this authentication, please ignore this email.</em></p>
-        </body>
-        </html>
+        Args:
+            config: Configuration dictionary with notification settings
         """
+        self.config = config
+        self.method = config.get("NOTIFICATION_METHOD", "email").lower()
 
-        # Attach parts to the message
-        message.attach(MIMEText(text, "plain"))
-        message.attach(MIMEText(html, "html"))
+    def send_auth_notification(self, auth_url: str, expiry_info: str = "") -> bool:
+        """
+        Send authentication notification.
 
-        # Create a secure SSL context
-        context = ssl.create_default_context()
+        Args:
+            auth_url: Authorization URL for user to visit
+            expiry_info: Information about token expiry
 
-        # Try to log in to server and send email
-        with smtplib.SMTP(smtp_server, smtp_port) as server:
-            server.ehlo()  # Can be omitted
-            server.starttls(context=context)
-            server.ehlo()  # Can be omitted
-            server.login(smtp_username, smtp_password)
-            server.sendmail(sender, receiver, message.as_string())
+        Returns:
+            True if notification sent successfully, False otherwise
+        """
+        subject = "🔐 Google Authentication Required - FOGIS Calendar Sync"
 
-        logger.info("Email notification sent successfully to %s", receiver)
-        return True
-    except Exception as e:
-        logger.error("Error sending email notification: %s", e)
-        return False
+        message = f"""
+Google Authentication Required for FOGIS Calendar Sync
 
+Your Google authentication token needs to be refreshed to continue syncing your FOGIS calendar and contacts.
 
-def send_discord_notification(auth_url: str, config: Optional[Dict] = None) -> bool:
-    """Send a Discord notification with the authentication URL.
+{expiry_info}
 
-    Args:
-        auth_url (str): The authentication URL to include in the notification
-        config (Optional[Dict]): Configuration dictionary, or None to load from file
+To re-authenticate, please click the link below:
 
-    Returns:
-        bool: True if the notification was sent successfully, False otherwise
-    """
-    if config is None:
-        config = load_config()
+{auth_url}
 
-    webhook_url = config.get("DISCORD_WEBHOOK_URL")
+SECURITY NOTICE:
+- This link is valid for 10 minutes only
+- Only click this link if you are expecting this authentication request
+- The link will redirect you to Google's official authentication page
 
-    if not webhook_url:
-        logger.error("Missing Discord webhook URL")
-        return False
+After authentication, your FOGIS sync service will continue running automatically.
 
-    try:
-        data = {
-            "content": "FOGIS Calendar Sync requires authentication. Please click the link below to authenticate:",
-            "embeds": [
-                {
-                    "title": "Authentication Link",
-                    "description": auth_url,
-                    "color": 5814783,  # Blue color
-                    "footer": {"text": "This link will be valid for 10 minutes."},
-                }
-            ],
-        }
+---
+FOGIS Calendar Sync Service
+Automated notification system
+        """.strip()
 
-        response = requests.post(webhook_url, json=data, timeout=30)
-        response.raise_for_status()
+        # Log the notification regardless of method
+        logger.info(f"Authentication required. URL: {auth_url}")
 
-        logger.info("Discord notification sent successfully")
-        return True
-    except Exception as e:
-        logger.error("Error sending Discord notification: %s", e)
-        return False
+        success = False
 
+        if self.method == "email":
+            success = self._send_email(subject, message)
+        elif self.method == "discord":
+            success = self._send_discord(subject, message, auth_url)
+        elif self.method == "slack":
+            success = self._send_slack(subject, message, auth_url)
+        else:
+            logger.warning(f"Unknown notification method: {self.method}")
+            success = False
 
-def send_slack_notification(auth_url: str, config: Optional[Dict] = None) -> bool:
-    """Send a Slack notification with the authentication URL.
+        # Always log as fallback
+        if not success:
+            logger.warning("Failed to send notification via configured method")
+            logger.info(f"AUTHENTICATION REQUIRED: Please visit {auth_url}")
 
-    Args:
-        auth_url (str): The authentication URL to include in the notification
-        config (Optional[Dict]): Configuration dictionary, or None to load from file
+        return success
 
-    Returns:
-        bool: True if the notification was sent successfully, False otherwise
-    """
-    if config is None:
-        config = load_config()
+    def _send_email(self, subject: str, message: str) -> bool:
+        """Send email notification."""
+        try:
+            sender_email = self.config.get("NOTIFICATION_EMAIL_SENDER")
+            receiver_email = self.config.get("NOTIFICATION_EMAIL_RECEIVER")
+            smtp_server = self.config.get("SMTP_SERVER", "smtp.gmail.com")
+            smtp_port = self.config.get("SMTP_PORT", 587)
+            smtp_username = self.config.get("SMTP_USERNAME")
+            smtp_password = self.config.get("SMTP_PASSWORD")
 
-    webhook_url = config.get("SLACK_WEBHOOK_URL")
+            if not all([sender_email, receiver_email, smtp_username, smtp_password]):
+                logger.error("Missing email configuration parameters")
+                return False
 
-    if not webhook_url:
-        logger.error("Missing Slack webhook URL")
-        return False
+            # Create message
+            msg = MIMEMultipart()
+            msg["From"] = sender_email
+            msg["To"] = receiver_email
+            msg["Subject"] = subject
 
-    try:
-        data = {
-            "blocks": [
-                {
-                    "type": "section",
-                    "text": {
-                        "type": "mrkdwn",
-                        "text": "*FOGIS Calendar Sync requires authentication*",
+            # Add body
+            msg.attach(MIMEText(message, "plain"))
+
+            # Send email
+            with smtplib.SMTP(smtp_server, smtp_port) as server:
+                server.starttls()
+                server.login(smtp_username, smtp_password)
+                server.send_message(msg)
+
+            logger.info(f"Email notification sent to {receiver_email}")
+            return True
+
+        except Exception as e:
+            logger.error(f"Failed to send email notification: {e}")
+            return False
+
+    def _send_discord(self, subject: str, message: str, auth_url: str) -> bool:
+        """Send Discord webhook notification."""
+        try:
+            webhook_url = self.config.get("DISCORD_WEBHOOK_URL")
+            if not webhook_url:
+                logger.error("Discord webhook URL not configured")
+                return False
+
+            # Create Discord embed
+            embed = {
+                "title": "🔐 Google Authentication Required",
+                "description": "Your FOGIS Calendar Sync needs re-authentication",
+                "color": 0xFF6B35,  # Orange color
+                "fields": [
+                    {
+                        "name": "Action Required",
+                        "value": f"[Click here to authenticate]({auth_url})",
+                        "inline": False,
                     },
-                },
-                {
-                    "type": "section",
-                    "text": {
-                        "type": "mrkdwn",
-                        "text": f"Please click this link to authenticate:\n<{auth_url}|Authenticate FOGIS Calendar Sync>",
+                    {
+                        "name": "Security Notice",
+                        "value": "Only click if you are expecting this request. Link expires in 10 minutes.",
+                        "inline": False,
                     },
-                },
-                {
-                    "type": "context",
-                    "elements": [
-                        {"type": "mrkdwn", "text": "This link will be valid for 10 minutes."}
-                    ],
-                },
-            ]
-        }
+                ],
+                "footer": {"text": "FOGIS Calendar Sync Service"},
+            }
 
-        response = requests.post(webhook_url, json=data, timeout=30)
-        response.raise_for_status()
+            payload = {"embeds": [embed]}
 
-        logger.info("Slack notification sent successfully")
-        return True
-    except Exception as e:
-        logger.error("Error sending Slack notification: %s", e)
+            # Send webhook
+            req = Request(webhook_url)
+            req.add_header("Content-Type", "application/json")
+            req.data = json.dumps(payload).encode("utf-8")
+
+            with urlopen(req) as response:
+                if response.status == 204:
+                    logger.info("Discord notification sent successfully")
+                    return True
+                else:
+                    logger.error(f"Discord webhook returned status {response.status}")
+                    return False
+
+        except Exception as e:
+            logger.error(f"Failed to send Discord notification: {e}")
+            return False
+
+    def _send_slack(self, subject: str, message: str, auth_url: str) -> bool:
+        """Send Slack webhook notification."""
+        try:
+            webhook_url = self.config.get("SLACK_WEBHOOK_URL")
+            if not webhook_url:
+                logger.error("Slack webhook URL not configured")
+                return False
+
+            # Create Slack message
+            payload = {
+                "text": "🔐 Google Authentication Required",
+                "blocks": [
+                    {
+                        "type": "header",
+                        "text": {"type": "plain_text", "text": "🔐 Google Authentication Required"},
+                    },
+                    {
+                        "type": "section",
+                        "text": {
+                            "type": "mrkdwn",
+                            "text": "Your FOGIS Calendar Sync needs re-authentication to continue syncing.",
+                        },
+                    },
+                    {
+                        "type": "section",
+                        "text": {
+                            "type": "mrkdwn",
+                            "text": f"<{auth_url}|Click here to authenticate>",
+                        },
+                    },
+                    {
+                        "type": "context",
+                        "elements": [
+                            {
+                                "type": "mrkdwn",
+                                "text": "⚠️ Security Notice: Only click if you are expecting this request. Link expires in 10 minutes.",
+                            }
+                        ],
+                    },
+                ],
+            }
+
+            # Send webhook
+            req = Request(webhook_url)
+            req.add_header("Content-Type", "application/json")
+            req.data = json.dumps(payload).encode("utf-8")
+
+            with urlopen(req) as response:
+                if response.status == 200:
+                    logger.info("Slack notification sent successfully")
+                    return True
+                else:
+                    logger.error(f"Slack webhook returned status {response.status}")
+                    return False
+
+        except Exception as e:
+            logger.error(f"Failed to send Slack notification: {e}")
+            return False
+
+    def send_success_notification(self) -> bool:
+        """Send notification that authentication was successful."""
+        subject = "✅ Google Authentication Successful - FOGIS Calendar Sync"
+        message = """
+Google Authentication Successful
+
+Your FOGIS Calendar Sync has been successfully re-authenticated with Google.
+
+The service will now continue syncing your calendar and contacts automatically.
+
+No further action is required.
+
+---
+FOGIS Calendar Sync Service
+Automated notification system
+        """.strip()
+
+        if self.method == "email":
+            return self._send_email(subject, message)
+        elif self.method == "discord":
+            return self._send_discord_simple(
+                "✅ Authentication Successful",
+                "FOGIS Calendar Sync re-authentication completed successfully.",
+            )
+        elif self.method == "slack":
+            return self._send_slack_simple(
+                "✅ Authentication Successful",
+                "FOGIS Calendar Sync re-authentication completed successfully.",
+            )
+
         return False
 
+    def _send_discord_simple(self, title: str, description: str) -> bool:
+        """Send simple Discord message."""
+        try:
+            webhook_url = self.config.get("DISCORD_WEBHOOK_URL")
+            if not webhook_url:
+                return False
 
-def send_notification(auth_url: str, config: Optional[Dict] = None) -> bool:
-    """Send a notification using the configured method.
+            payload = {
+                "embeds": [
+                    {"title": title, "description": description, "color": 0x00FF00}  # Green color
+                ]
+            }
 
-    Args:
-        auth_url (str): The authentication URL to include in the notification
-        config (Optional[Dict]): Configuration dictionary, or None to load from file
+            req = Request(webhook_url)
+            req.add_header("Content-Type", "application/json")
+            req.data = json.dumps(payload).encode("utf-8")
 
-    Returns:
-        bool: True if the notification was sent successfully, False otherwise
-    """
-    if config is None:
-        config = load_config()
+            with urlopen(req):
+                return True
 
-    # Always log the URL as a fallback
-    logger.info("Authentication URL: %s", auth_url)
+        except Exception:
+            return False
 
-    notification_method = config.get("NOTIFICATION_METHOD", "email").lower()
+    def _send_slack_simple(self, title: str, description: str) -> bool:
+        """Send simple Slack message."""
+        try:
+            webhook_url = self.config.get("SLACK_WEBHOOK_URL")
+            if not webhook_url:
+                return False
 
-    if notification_method == "email":
-        return send_email_notification(auth_url, config)
-    elif notification_method == "discord":
-        return send_discord_notification(auth_url, config)
-    elif notification_method == "slack":
-        return send_slack_notification(auth_url, config)
-    else:
-        logger.warning("Unknown notification method: %s. Defaulting to email.", notification_method)
-        return send_email_notification(auth_url, config)
+            payload = {"text": f"{title}\n{description}"}
+
+            req = Request(webhook_url)
+            req.add_header("Content-Type", "application/json")
+            req.data = json.dumps(payload).encode("utf-8")
+
+            with urlopen(req):
+                return True
+
+        except Exception:
+            return False

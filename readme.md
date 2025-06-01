@@ -22,6 +22,12 @@ This Python script synchronizes match data from the FOGIS API with your Google C
     * Uses Fogis ID (DomarNr) and phone number to efficiently find and update existing contacts, minimizing duplicates.
     * Implements robust error handling and retry mechanisms for reliable contact management, even with Google API rate limits.
 
+* Headless Authentication:
+    * Run the application on servers without a browser or GUI.
+    * Receive authentication links via email, Discord, or Slack.
+    * Lightweight authentication server handles OAuth callbacks.
+    * Proactive token refresh to minimize authentication requests.
+
 * Logging: Comprehensive logging to track script execution, identify issues, and debug problems.
 
 ## Prerequisites
@@ -96,7 +102,19 @@ Before running this script, you need to have the following:
       ],
       "CALENDAR_ID": "your_google_calendar_id@group.calendar.google.com",
       "SYNC_TAG": "FOGIS_SYNC",
-      "MATCH_FILE": "matches_cache.json"
+      "MATCH_FILE": "matches_cache.json",
+      "NOTIFICATION_METHOD": "email",
+      "NOTIFICATION_EMAIL_SENDER": "your-email@gmail.com",
+      "NOTIFICATION_EMAIL_RECEIVER": "your-email@gmail.com",
+      "SMTP_SERVER": "smtp.gmail.com",
+      "SMTP_PORT": 587,
+      "SMTP_USERNAME": "your-email@gmail.com",
+      "SMTP_PASSWORD": "your-app-password",
+      "AUTH_SERVER_PORT": 8080,
+      "AUTH_SERVER_HOST": "localhost",
+      "DISCORD_WEBHOOK_URL": "",
+      "SLACK_WEBHOOK_URL": "",
+      "TOKEN_REFRESH_BUFFER_DAYS": 1
     }
     ```
     * `CREDENTIALS_FILE`:  Should be "credentials.json" if you followed step 3.
@@ -170,6 +188,14 @@ This will:
 
    **Warning:** Providing passwords directly in the command line is less secure than using environment variables.
 
+* `--headless`: Run in headless authentication mode for server environments.
+
+   ```bash
+   python fogis_calendar_sync.py --headless
+   ```
+
+   This mode starts a lightweight authentication server and sends a notification with an authentication link. Useful for running on servers without a browser.
+
 **Example with delete option:**
 
 ```bash
@@ -187,6 +213,21 @@ This will first delete all existing events in your calendar with the `SYNC_TAG` 
 * `CALENDAR_ID`:  The ID of your Google Calendar where events will be created.
 * `SYNC_TAG`:  A unique tag to identify events created by this script in your calendar.
 * `MATCH_FILE`:  Filename for caching match hashes to detect changes efficiently.
+
+### Headless Authentication Configuration
+
+* `NOTIFICATION_METHOD`: Method to send authentication notifications (`email`, `discord`, or `slack`).
+* `NOTIFICATION_EMAIL_SENDER`: Email address to send notifications from (when using email).
+* `NOTIFICATION_EMAIL_RECEIVER`: Email address to send notifications to (when using email).
+* `SMTP_SERVER`: SMTP server for sending email notifications (e.g., `smtp.gmail.com`).
+* `SMTP_PORT`: SMTP port (typically `587` for TLS).
+* `SMTP_USERNAME`: Username for SMTP authentication.
+* `SMTP_PASSWORD`: Password or app password for SMTP authentication.
+* `AUTH_SERVER_PORT`: Port for the authentication server (default: `8080`).
+* `AUTH_SERVER_HOST`: Host for the authentication server (default: `localhost`).
+* `DISCORD_WEBHOOK_URL`: Discord webhook URL for sending notifications (when using Discord).
+* `SLACK_WEBHOOK_URL`: Slack webhook URL for sending notifications (when using Slack).
+* `TOKEN_REFRESH_BUFFER_DAYS`: Number of days before token expiration to trigger refresh (default: `1`).
 
 ## Logging
 
@@ -212,6 +253,11 @@ Logs will show information about:
     * If you get authorization errors, delete the `token.json` file and run the script again. It will re-initiate the authorization flow.
     * Make sure `credentials.json` is correctly placed in the same directory as the scripts and is valid.
     * Verify that the `SCOPES` in `config.json` match the APIs you have enabled in your Google Cloud project.
+* Headless Authentication Issues:
+    * If using headless mode, ensure your notification settings in `config.json` are correct.
+    * For email notifications, make sure your SMTP settings are valid and the email account allows sending emails from less secure apps or has an app password configured.
+    * Check that the authentication server port (default: 8080) is not blocked by a firewall.
+    * The authentication link is valid for 10 minutes. If it expires, run the script again to generate a new link.
 * FOGIS Login Errors:
     * Double-check your FOGIS username and password environment variables or command-line arguments.
     * Ensure your FOGIS account is active and you have access to your match schedule.

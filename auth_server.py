@@ -1,344 +1,209 @@
-"""Authentication Server Module.
+"""Authentication Server for Headless Google OAuth.
 
-This module provides a lightweight web server for handling OAuth callbacks
-and managing the authentication flow in headless mode.
+This module provides a lightweight web server to handle OAuth callbacks
+in headless server environments.
 """
 
-import json
 import logging
-import os
 import secrets
 import threading
 import time
-import webbrowser
-from typing import Dict, Optional, Tuple, Union
+from typing import Dict, Optional
 
-import google.auth
-from flask import Flask, redirect, request, url_for
-from google_auth_oauthlib.flow import Flow
+from flask import Flask, jsonify, request
 from werkzeug.serving import make_server
 
-import notification
-import token_manager
-
-# Configure logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
-# Global variables
-AUTH_SERVER = None
-AUTH_SERVER_THREAD = None
-AUTH_FLOW = None
-AUTH_STATE = None
-AUTH_SUCCESS = False
-AUTH_TIMEOUT = 600  # 10 minutes in seconds
 
+class AuthServer:
+    """Lightweight authentication server for handling OAuth callbacks."""
 
-def load_config() -> Dict[str, Union[str, int]]:
-    """Load configuration from config.json.
-
-    Returns:
-        Dict[str, Union[str, int]]: Configuration dictionary
-    """
-    try:
-        with open("config.json", "r", encoding="utf-8") as f:
-            config = json.load(f)
-        return config
-    except (FileNotFoundError, json.JSONDecodeError) as e:
-        logger.error("Error loading config: %s", e)
-        return {}
-
-
-def create_auth_server() -> Flask:
-    """Create a Flask server for handling OAuth callbacks.
-
-    Returns:
-        Flask: The Flask application
-    """
-    app = Flask(__name__)
-
-    @app.route("/")
-    def index():
-        """Root endpoint that redirects to the auth endpoint."""
-        return redirect(url_for("start_auth"))
-
-    @app.route("/auth")
-    def start_auth():
-        """Start the OAuth flow."""
-        global AUTH_STATE
-
-        if not AUTH_FLOW:
-            return "Authentication server is not properly initialized.", 500
-
-        # Generate a state parameter for CSRF protection
-        AUTH_STATE = secrets.token_urlsafe(32)
-
-        # Create the authorization URL
-        auth_url, _ = AUTH_FLOW.authorization_url(
-            access_type="offline",
-            include_granted_scopes="true",
-            state=AUTH_STATE,
-            prompt="consent",  # Force consent screen to ensure we get a refresh token
-        )
-
-        # Redirect to the authorization URL
-        return redirect(auth_url)
-
-    @app.route("/oauth2callback")
-    def oauth2callback():
-        """Handle the OAuth callback."""
-        global AUTH_SUCCESS
-
-        if not AUTH_FLOW:
-            return "Authentication server is not properly initialized.", 500
-
-        # Verify state parameter to prevent CSRF
-        state = request.args.get("state", "")
-        if state != AUTH_STATE:
-            return "Invalid state parameter. Authentication failed.", 400
-
-        try:
-            # Exchange authorization code for credentials
-            AUTH_FLOW.fetch_token(authorization_response=request.url)
-            credentials = AUTH_FLOW.credentials
-
-            # Save the credentials
-            token_manager.save_token(credentials)
-
-            AUTH_SUCCESS = True
-
-            return """
-            <html>
-            <head>
-                <title>Authentication Successful</title>
-                <style>
-                    body {
-                        font-family: Arial, sans-serif;
-                        margin: 40px;
-                        text-align: center;
-                    }
-                    .success {
-                        color: green;
-                        font-size: 24px;
-                        margin-bottom: 20px;
-                    }
-                    .info {
-                        margin-bottom: 15px;
-                    }
-                </style>
-            </head>
-            <body>
-                <div class="success">Authentication Successful!</div>
-                <div class="info">You have successfully authenticated FOGIS Calendar Sync.</div>
-                <div class="info">You can now close this window and return to the application.</div>
-            </body>
-            </html>
-            """
-        except Exception as e:
-            logger.error("Error during OAuth callback: %s", e)
-            return f"Authentication failed: {str(e)}", 400
-
-    @app.route("/health")
-    def health():
-        """Health check endpoint."""
-        return {"status": "healthy"}, 200
-
-    return app
-
-
-class ServerThread(threading.Thread):
-    """Thread for running the Flask server."""
-
-    def __init__(self, app, host, port):
-        """Initialize the server thread.
+    def __init__(self, config: Dict, token_manager):
+        """Initialize the authentication server.
 
         Args:
-            app (Flask): The Flask application
-            host (str): The host to bind to
-            port (int): The port to bind to
+            config: Configuration dictionary
+            token_manager: TokenManager instance
         """
-        threading.Thread.__init__(self)
-        self.server = make_server(host, port, app)
-        self.ctx = app.app_context()
-        self.ctx.push()
+        self.config = config
+        self.token_manager = token_manager
+        self.host = config.get("AUTH_SERVER_HOST", "localhost")
+        self.port = config.get("AUTH_SERVER_PORT", 8080)
+        self.state = None
+        self.server = None
+        self.server_thread = None
+        self.auth_completed = False
+        self.auth_success = False
+        self.timeout_seconds = 600  # 10 minutes
 
-    def run(self):
-        """Run the server."""
-        logger.info("Starting authentication server")
-        self.server.serve_forever()
+        # Create Flask app
+        self.app = Flask(__name__)
+        self.app.logger.setLevel(logging.WARNING)  # Reduce Flask logging
 
-    def shutdown(self):
-        """Shutdown the server."""
-        logger.info("Shutting down authentication server")
-        self.server.shutdown()
+        # Setup routes
+        self._setup_routes()
 
+    def _setup_routes(self):
+        """Setup Flask routes for the authentication server."""
 
-def start_auth_server() -> Tuple[str, int]:
-    """Start the authentication server.
+        @self.app.route("/callback")
+        def callback():
+            """Handle OAuth callback."""
+            try:
+                # Verify state parameter for security
+                received_state = request.args.get("state")
+                if received_state != self.state:
+                    logger.error("Invalid state parameter in callback")
+                    return jsonify({"error": "Invalid state parameter", "success": False}), 400
 
-    Returns:
-        Tuple[str, int]: The server URL and port
-    """
-    global AUTH_SERVER, AUTH_SERVER_THREAD, AUTH_SUCCESS
+                # Check for error in callback
+                error = request.args.get("error")
+                if error:
+                    logger.error(f"OAuth error: {error}")
+                    self.auth_completed = True
+                    self.auth_success = False
+                    return jsonify({"error": f"OAuth error: {error}", "success": False}), 400
 
-    config = load_config()
-    host = config.get("AUTH_SERVER_HOST", "localhost")
-    port = config.get("AUTH_SERVER_PORT", 8080)
+                # Get authorization code
+                auth_code = request.args.get("code")
+                if not auth_code:
+                    logger.error("No authorization code received")
+                    self.auth_completed = True
+                    self.auth_success = False
+                    return (
+                        jsonify({"error": "No authorization code received", "success": False}),
+                        400,
+                    )
 
-    # Create the Flask app
-    AUTH_SERVER = create_auth_server()
+                # Complete the auth flow
+                authorization_response = request.url
+                success = self.token_manager.complete_auth_flow(authorization_response)
 
-    # Start the server in a separate thread
-    AUTH_SERVER_THREAD = ServerThread(AUTH_SERVER, host, port)
-    AUTH_SERVER_THREAD.daemon = True
-    AUTH_SERVER_THREAD.start()
+                self.auth_completed = True
+                self.auth_success = success
 
-    # Reset auth success flag
-    AUTH_SUCCESS = False
+                if success:
+                    logger.info("Authentication completed successfully")
+                    return """
+                    <html>
+                    <head><title>Authentication Successful</title></head>
+                    <body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
+                        <h1 style="color: green;">✅ Authentication Successful!</h1>
+                        <p>You have successfully authenticated with Google.</p>
+                        <p>You can now close this window and return to your application.</p>
+                        <script>
+                            setTimeout(function() {
+                                window.close();
+                            }, 3000);
+                        </script>
+                    </body>
+                    </html>
+                    """
+                else:
+                    logger.error("Failed to complete authentication flow")
+                    return (
+                        """
+                    <html>
+                    <head><title>Authentication Failed</title></head>
+                    <body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
+                        <h1 style="color: red;">❌ Authentication Failed</h1>
+                        <p>There was an error completing the authentication process.</p>
+                        <p>Please check the application logs and try again.</p>
+                    </body>
+                    </html>
+                    """,
+                        500,
+                    )
 
-    logger.info("Authentication server started at http://%s:%s", host, port)
-    return host, port
+            except Exception as e:
+                logger.exception("Exception in callback handler")
+                self.auth_completed = True
+                self.auth_success = False
+                return jsonify({"error": f"Internal error: {str(e)}", "success": False}), 500
 
+        @self.app.route("/health")
+        def health():
+            """Health check endpoint."""
+            return jsonify(
+                {
+                    "status": "running",
+                    "auth_completed": self.auth_completed,
+                    "auth_success": self.auth_success,
+                }
+            )
 
-def stop_auth_server():
-    """Stop the authentication server."""
-    global AUTH_SERVER_THREAD
+    def start(self) -> str:
+        """Start the authentication server.
 
-    if AUTH_SERVER_THREAD:
-        AUTH_SERVER_THREAD.shutdown()
-        AUTH_SERVER_THREAD.join()
-        AUTH_SERVER_THREAD = None
-        logger.info("Authentication server stopped")
+        Returns:
+            Authorization URL for user to visit
+        """
+        # Generate secure state parameter
+        self.state = secrets.token_urlsafe(32)
 
+        # Reset auth status
+        self.auth_completed = False
+        self.auth_success = False
 
-def initialize_oauth_flow() -> bool:
-    """Initialize the OAuth flow.
+        # Create server
+        self.server = make_server(self.host, self.port, self.app, threaded=True)
 
-    Returns:
-        bool: True if initialization was successful, False otherwise
-    """
-    global AUTH_FLOW
+        # Start server in background thread
+        self.server_thread = threading.Thread(target=self.server.serve_forever)
+        self.server_thread.daemon = True
+        self.server_thread.start()
 
-    config = load_config()
-    credentials_file = config.get("CREDENTIALS_FILE", "credentials.json")
-    scopes = config.get("SCOPES", [])
+        logger.info(f"Authentication server started on {self.host}:{self.port}")
 
-    if not os.path.exists(credentials_file):
-        logger.error("Credentials file not found: %s", credentials_file)
-        return False
+        # Get authorization URL from token manager
+        auth_url = self.token_manager.initiate_auth_flow()
 
-    try:
-        # Create the flow using the client secrets file
-        AUTH_FLOW = Flow.from_client_secrets_file(
-            credentials_file,
-            scopes=scopes,
-            redirect_uri=(
-                f"http://{config.get('AUTH_SERVER_HOST', 'localhost')}:"
-                f"{config.get('AUTH_SERVER_PORT', 8080)}/oauth2callback"
-            ),
-        )
+        # Add state parameter to URL
+        separator = "&" if "?" in auth_url else "?"
+        auth_url_with_state = f"{auth_url}{separator}state={self.state}"
 
-        logger.info("OAuth flow initialized successfully")
-        return True
-    except Exception as e:
-        logger.error("Error initializing OAuth flow: %s", e)
-        return False
+        return auth_url_with_state
 
+    def wait_for_auth(self, timeout: Optional[int] = None) -> bool:
+        """Wait for authentication to complete.
 
-def get_auth_url() -> str:
-    """Get the authentication URL.
+        Args:
+            timeout: Timeout in seconds (default: self.timeout_seconds)
 
-    Returns:
-        str: The authentication URL
-    """
-    config = load_config()
-    host = config.get("AUTH_SERVER_HOST", "localhost")
-    port = config.get("AUTH_SERVER_PORT", 8080)
+        Returns:
+            True if authentication successful, False otherwise
+        """
+        timeout = timeout or self.timeout_seconds
+        start_time = time.time()
 
-    return f"http://{host}:{port}/auth"
+        while not self.auth_completed and (time.time() - start_time) < timeout:
+            time.sleep(1)
 
-
-def wait_for_auth(timeout_seconds: int = AUTH_TIMEOUT) -> bool:
-    """Wait for authentication to complete.
-
-    Args:
-        timeout_seconds (int): Maximum time to wait in seconds
-
-    Returns:
-        bool: True if authentication was successful, False otherwise
-    """
-    start_time = time.time()
-    while time.time() - start_time < timeout_seconds:
-        if AUTH_SUCCESS:
-            return True
-        time.sleep(1)
-
-    logger.warning("Authentication timed out after %s seconds", timeout_seconds)
-    return False
-
-
-def start_headless_auth() -> bool:
-    """Start the headless authentication process.
-
-    Returns:
-        bool: True if authentication was successful, False otherwise
-    """
-    try:
-        # Start the authentication server
-        _host, _port = start_auth_server()
-
-        # Initialize the OAuth flow
-        if not initialize_oauth_flow():
-            stop_auth_server()
+        if not self.auth_completed:
+            logger.warning(f"Authentication timed out after {timeout} seconds")
             return False
 
-        # Get the authentication URL
-        auth_url = get_auth_url()
+        return self.auth_success
 
-        # Send notification with the authentication URL
-        notification.send_notification(auth_url)
+    def stop(self):
+        """Stop the authentication server."""
+        if self.server:
+            logger.info("Stopping authentication server")
+            self.server.shutdown()
+            if self.server_thread:
+                self.server_thread.join(timeout=5)
+            self.server = None
+            self.server_thread = None
 
-        # Wait for authentication to complete
-        success = wait_for_auth()
+    def get_auth_url(self) -> Optional[str]:
+        """Get the current authorization URL.
 
-        # Stop the authentication server
-        stop_auth_server()
+        Returns:
+            Authorization URL or None if server not started
+        """
+        if not self.server or not self.state:
+            return None
 
-        return success
-    except Exception as e:
-        logger.error("Error during headless authentication: %s", e)
-        stop_auth_server()
-        return False
-
-
-def check_and_refresh_auth() -> bool:
-    """Check if authentication is needed and refresh if necessary.
-
-    Returns:
-        bool: True if authentication is valid, False otherwise
-    """
-    # Load the token
-    creds = token_manager.load_token()
-
-    # If no token exists or it's invalid and can't be refreshed, start headless auth
-    if not creds or (
-        not creds.valid
-        and (not creds.refresh_token or not token_manager.is_token_expiring_soon(creds))
-    ):
-        logger.info("No valid token found, starting headless authentication")
-        return start_headless_auth()
-
-    # If token is expiring soon, try to refresh it
-    if token_manager.is_token_expiring_soon(creds):
-        logger.info("Token is expiring soon, attempting to refresh")
-        creds, success = token_manager.refresh_token(creds)
-
-        # If refresh failed, start headless auth
-        if not success:
-            logger.info("Token refresh failed, starting headless authentication")
-            return start_headless_auth()
-
-        return True
-
-    # Token is valid and not expiring soon
-    return True
+        base_url = f"http://{self.host}:{self.port}/callback"
+        return f"Please visit: {base_url} (with proper OAuth flow)"
