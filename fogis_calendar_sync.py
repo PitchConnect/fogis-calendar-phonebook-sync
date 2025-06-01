@@ -28,14 +28,13 @@ from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 from tabulate import tabulate
 
+# Import headless authentication modules
+import auth_server
+import token_manager
 from fogis_contacts import (  # Removed other functions
     process_referees,
     test_google_contacts_connection,
 )
-
-# Import headless authentication modules
-import auth_server
-import token_manager
 
 # Load environment variables from .env file
 load_dotenv()
@@ -479,8 +478,9 @@ def main():
         "--download", action="store_true", help="Downloads data from FOGIS to local."
     )
     parser.add_argument(
-        "--headless", action="store_true",
-        help="Use headless authentication mode for server environments."
+        "--headless",
+        action="store_true",
+        help="Use headless authentication mode for server environments.",
     )
     parser.add_argument("--username", dest="fogis_username", required=False, help="FOGIS username")
     parser.add_argument("--password", dest="fogis_password", required=False, help="FOGIS password")
@@ -551,7 +551,8 @@ def main():
         # Check if the calendar is reachable
         if not check_calendar_exists(service, config_dict["CALENDAR_ID"]):
             logging.critical(
-                f"Calendar with ID '{config_dict['CALENDAR_ID']}' not found or not accessible. Please verify the ID and permissions. Exiting."
+                f"Calendar with ID '{config_dict['CALENDAR_ID']}' not found or not accessible. "
+                f"Please verify the ID and permissions. Exiting."
             )
             return  # Early exit
 

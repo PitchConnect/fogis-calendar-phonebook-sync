@@ -14,7 +14,7 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const projectId = 'PVT_kwDODF_kVc4A4M8N';  // Organization PR Tracker project ID
-            
+
             // Add the PR to the project
             const addToProject = async () => {
               try {
@@ -30,7 +30,7 @@ jobs:
                     }
                   }
                 `);
-                
+
                 console.log(`Added PR #${context.payload.pull_request.number} to organization PR tracker project`);
                 return result.addProjectV2ItemById.item.id;
               } catch (error) {
@@ -39,11 +39,11 @@ jobs:
                 return null;
               }
             };
-            
+
             // Update PR status based on the event
             const updatePRStatus = async (itemId) => {
               if (!itemId) return;
-              
+
               // Get the status field ID
               const projectData = await github.graphql(`
                 query {
@@ -69,17 +69,17 @@ jobs:
                   }
                 }
               `);
-              
+
               const fields = projectData.organization.projectV2.fields.nodes;
               const statusField = fields.find(field => field.name === "PR Status");
-              
+
               if (!statusField) {
                 console.log("PR Status field not found");
                 return;
               }
-              
+
               let statusOptionId;
-              
+
               // Determine the status based on the PR event
               if (context.payload.action === "closed") {
                 if (context.payload.pull_request.merged) {
@@ -94,7 +94,7 @@ jobs:
               } else {
                 statusOptionId = statusField.options.find(option => option.name === "Open").id;
               }
-              
+
               // Update the status
               await github.graphql(`
                 mutation {
@@ -103,7 +103,7 @@ jobs:
                       projectId: "${projectId}",
                       itemId: "${itemId}",
                       fieldId: "${statusField.id}",
-                      value: { 
+                      value: {
                         singleSelectOptionId: "${statusOptionId}"
                       }
                     }
@@ -114,10 +114,10 @@ jobs:
                   }
                 }
               `);
-              
+
               console.log(`Updated PR status for PR #${context.payload.pull_request.number}`);
             };
-            
+
             // Main execution
             const itemId = await addToProject();
             if (itemId) {
