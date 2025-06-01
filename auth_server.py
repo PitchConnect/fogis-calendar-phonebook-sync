@@ -26,12 +26,12 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger(__name__)
 
 # Global variables
-auth_server = None
-auth_server_thread = None
-auth_flow = None
-auth_state = None
-auth_success = False
-auth_timeout = 600  # 10 minutes in seconds
+AUTH_SERVER = None
+AUTH_SERVER_THREAD = None
+AUTH_FLOW = None
+AUTH_STATE = None
+AUTH_SUCCESS = False
+AUTH_TIMEOUT = 600  # 10 minutes in seconds
 
 
 def load_config() -> Dict[str, Union[str, int]]:
@@ -65,7 +65,7 @@ def create_auth_server() -> Flask:
     @app.route("/auth")
     def start_auth():
         """Start the OAuth flow."""
-        global auth_flow, auth_state
+        global AUTH_FLOW, auth_state
 
         if not auth_flow:
             return "Authentication server is not properly initialized.", 500
@@ -87,7 +87,7 @@ def create_auth_server() -> Flask:
     @app.route("/oauth2callback")
     def oauth2callback():
         """Handle the OAuth callback."""
-        global auth_flow, auth_state, auth_success
+        global AUTH_FLOW, auth_state, auth_success
 
         if not auth_flow:
             return "Authentication server is not properly initialized.", 500
@@ -179,7 +179,7 @@ def start_auth_server() -> Tuple[str, int]:
     Returns:
         Tuple[str, int]: The server URL and port
     """
-    global auth_server, auth_server_thread, auth_flow, auth_success
+    global AUTH_SERVER, auth_server_thread, auth_flow, auth_success
 
     config = load_config()
     host = config.get("AUTH_SERVER_HOST", "localhost")
@@ -202,7 +202,7 @@ def start_auth_server() -> Tuple[str, int]:
 
 def stop_auth_server():
     """Stop the authentication server."""
-    global auth_server_thread
+    global AUTH_SERVER_thread
 
     if auth_server_thread:
         auth_server_thread.shutdown()
@@ -217,7 +217,7 @@ def initialize_oauth_flow() -> bool:
     Returns:
         bool: True if initialization was successful, False otherwise
     """
-    global auth_flow
+    global AUTH_FLOW
 
     config = load_config()
     credentials_file = config.get("CREDENTIALS_FILE", "credentials.json")
@@ -255,7 +255,7 @@ def get_auth_url() -> str:
     return f"http://{host}:{port}/auth"
 
 
-def wait_for_auth(timeout_seconds: int = auth_timeout) -> bool:
+def wait_for_auth(timeout_seconds: int = AUTH_TIMEOUT) -> bool:
     """Wait for authentication to complete.
 
     Args:
@@ -264,7 +264,7 @@ def wait_for_auth(timeout_seconds: int = auth_timeout) -> bool:
     Returns:
         bool: True if authentication was successful, False otherwise
     """
-    global auth_success
+    global AUTH_SUCCESS
 
     start_time = time.time()
     while time.time() - start_time < timeout_seconds:
@@ -284,7 +284,7 @@ def start_headless_auth() -> bool:
     """
     try:
         # Start the authentication server
-        host, port = start_auth_server()
+        _host, _port = start_auth_server()
 
         # Initialize the OAuth flow
         if not initialize_oauth_flow():
