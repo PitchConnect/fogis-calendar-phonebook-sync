@@ -551,7 +551,8 @@ def main():
         # Check if the calendar is reachable
         if not check_calendar_exists(service, config_dict["CALENDAR_ID"]):
             logging.critical(
-                f"Calendar with ID '{config_dict['CALENDAR_ID']}' not found or not accessible. Please verify the ID and permissions. Exiting."
+                f"Calendar with ID '{config_dict['CALENDAR_ID']}' not found or not accessible. "
+                f"Please verify the ID and permissions. Exiting."
             )
             return  # Early exit
 

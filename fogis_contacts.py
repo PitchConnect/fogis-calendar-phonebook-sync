@@ -109,7 +109,8 @@ def find_or_create_referees_group(service):
                 if attempt < MAX_RETRIES_GOOGLE_API - 1:
                     delay = BASE_DELAY_GOOGLE_API * (BACKOFF_FACTOR_GOOGLE_API**attempt)
                     logging.warning(
-                        f"Google People API Quota exceeded, retrying in {delay} seconds... (Attempt {attempt + 1}/{MAX_RETRIES_GOOGLE_API})"
+                        f"Google People API Quota exceeded, retrying in {delay} seconds... "
+                        f"(Attempt {attempt + 1}/{MAX_RETRIES_GOOGLE_API})"
                     )
                     time.sleep(delay)
                 else:
@@ -227,7 +228,8 @@ def find_contact_by_name_and_phone(service, name, phone, referee):
                             BACKOFF_FACTOR_GOOGLE_API**attempt
                         )  # Using increased BASE_DELAY
                         logging.warning(
-                            f"Google People API Quota exceeded (FogisId lookup), retrying in {delay} seconds... (Attempt {attempt + 1}/{MAX_RETRIES_GOOGLE_API})"
+                            f"Google People API Quota exceeded (FogisId lookup), retrying in {delay} seconds... "
+                            f"(Attempt {attempt + 1}/{MAX_RETRIES_GOOGLE_API})"
                         )
                         time.sleep(delay)
                     else:
@@ -290,7 +292,8 @@ def find_contact_by_name_and_phone(service, name, phone, referee):
                         BACKOFF_FACTOR_GOOGLE_API**attempt
                     )  # Using increased BASE_DELAY
                     logging.warning(
-                        f"Google People API Quota exceeded (phone lookup), retrying in {delay} seconds... (Attempt {attempt + 1}/{MAX_RETRIES_GOOGLE_API})"
+                        f"Google People API Quota exceeded (phone lookup), retrying in {delay} seconds... "
+                        f"(Attempt {attempt + 1}/{MAX_RETRIES_GOOGLE_API})"
                     )
                     time.sleep(delay)
                 else:
@@ -373,7 +376,8 @@ def update_google_contact(service, contact_id, referee):
                         BACKOFF_FACTOR_GOOGLE_API**attempt
                     )  # Using increased BASE_DELAY
                     logging.warning(
-                        f"Google People API Quota exceeded (contact update), retrying in {delay} seconds... (Attempt {attempt + 1}/{MAX_RETRIES_GOOGLE_API})"
+                        f"Google People API Quota exceeded (contact update), retrying in {delay} seconds... "
+                        f"(Attempt {attempt + 1}/{MAX_RETRIES_GOOGLE_API})"
                     )
                     time.sleep(delay)
                 else:
@@ -387,7 +391,8 @@ def update_google_contact(service, contact_id, referee):
                 and 'Invalid personFields mask path: "notes"' in error.content.decode()
             ):
                 logging.warning(
-                    f"Ignoring error 400 - Invalid personFields path 'notes'. Proceeding without updating notes. Full error: {error}"
+                    f"Ignoring error 400 - Invalid personFields path 'notes'. "
+                    f"Proceeding without updating notes. Full error: {error}"
                 )
                 return contact_id  # Return contact id and proceed without notes - specific error handling
             else:  # Other HTTP errors - LESS AGGRESSIVE (or no) BACKOFF if needed
@@ -488,7 +493,8 @@ def find_contact_by_phone(service, phone):
                 if attempt < MAX_RETRIES_GOOGLE_API - 1:
                     delay = BASE_DELAY_GOOGLE_API * (BACKOFF_FACTOR_GOOGLE_API**attempt)
                     logging.warning(
-                        f"Google People API Quota exceeded (find_contact_by_phone), retrying in {delay} seconds... (Attempt {attempt + 1}/{MAX_RETRIES_GOOGLE_API})"
+                        f"Google People API Quota exceeded (find_contact_by_phone), retrying in {delay} seconds... "
+                        f"(Attempt {attempt + 1}/{MAX_RETRIES_GOOGLE_API})"
                     )
                     time.sleep(delay)
                 else:
@@ -548,12 +554,14 @@ def create_google_contact(service, referee, group_id):
                         BACKOFF_FACTOR_GOOGLE_API**attempt
                     )  # Using increased BASE_DELAY
                     logging.warning(
-                        f"Google People API Quota exceeded (contact creation), retrying in {delay} seconds... (Attempt {attempt + 1}/{MAX_RETRIES_GOOGLE_API})"
+                        f"Google People API Quota exceeded (contact creation), retrying in {delay} seconds... "
+                        f"(Attempt {attempt + 1}/{MAX_RETRIES_GOOGLE_API})"
                     )
                     time.sleep(delay)
                 elif error.resp.status == 409:  # Conflict - contact already exists
                     logging.warning(
-                        f"  - Contact for referee '{referee['personnamn']}' already exists (Conflict Error 409). Skipping creation, finding existing by phone for group add."
+                        f"  - Contact for referee '{referee['personnamn']}' already exists (Conflict Error 409). "
+                        f"Skipping creation, finding existing by phone for group add."
                     )
                     existing_contact = find_contact_by_phone(service, referee["mobiltelefon"])
                     if existing_contact:
@@ -573,7 +581,8 @@ def create_google_contact(service, referee, group_id):
                 error.resp.status == 409
             ):  # 409 is conflict, contact already exists - handle gracefully
                 logging.warning(
-                    f"  - Contact for referee '{referee['personnamn']}' already exists (Conflict Error 409). Skipping creation, finding existing by phone."
+                    f"  - Contact for referee '{referee['personnamn']}' already exists (Conflict Error 409). "
+                    f"Skipping creation, finding existing by phone."
                 )
                 existing_contact = find_contact_by_phone(service, referee["mobiltelefon"])
                 if existing_contact:
@@ -621,7 +630,8 @@ def test_google_contacts_connection(service):
                 if attempt < MAX_RETRIES_GOOGLE_API - 1:
                     delay = BASE_DELAY_GOOGLE_API * (BACKOFF_FACTOR_GOOGLE_API**attempt)
                     logging.warning(
-                        f"Google People API Quota exceeded (connection test), retrying in {delay} seconds... (Attempt {attempt + 1}/{MAX_RETRIES_GOOGLE_API})"
+                        f"Google People API Quota exceeded (connection test), retrying in {delay} seconds... "
+                        f"(Attempt {attempt + 1}/{MAX_RETRIES_GOOGLE_API})"
                     )
                     time.sleep(delay)
                 else:

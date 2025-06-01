@@ -65,19 +65,19 @@ def create_auth_server() -> Flask:
     @app.route("/auth")
     def start_auth():
         """Start the OAuth flow."""
-        global AUTH_FLOW, auth_state
+        global AUTH_STATE
 
-        if not auth_flow:
+        if not AUTH_FLOW:
             return "Authentication server is not properly initialized.", 500
 
         # Generate a state parameter for CSRF protection
-        auth_state = secrets.token_urlsafe(32)
+        AUTH_STATE = secrets.token_urlsafe(32)
 
         # Create the authorization URL
-        auth_url, _ = auth_flow.authorization_url(
+        auth_url, _ = AUTH_FLOW.authorization_url(
             access_type="offline",
             include_granted_scopes="true",
-            state=auth_state,
+            state=AUTH_STATE,
             prompt="consent",  # Force consent screen to ensure we get a refresh token
         )
 
@@ -87,25 +87,25 @@ def create_auth_server() -> Flask:
     @app.route("/oauth2callback")
     def oauth2callback():
         """Handle the OAuth callback."""
-        global AUTH_FLOW, auth_state, auth_success
+        global AUTH_SUCCESS
 
-        if not auth_flow:
+        if not AUTH_FLOW:
             return "Authentication server is not properly initialized.", 500
 
         # Verify state parameter to prevent CSRF
         state = request.args.get("state", "")
-        if state != auth_state:
+        if state != AUTH_STATE:
             return "Invalid state parameter. Authentication failed.", 400
 
         try:
             # Exchange authorization code for credentials
-            auth_flow.fetch_token(authorization_response=request.url)
-            credentials = auth_flow.credentials
+            AUTH_FLOW.fetch_token(authorization_response=request.url)
+            credentials = AUTH_FLOW.credentials
 
             # Save the credentials
             token_manager.save_token(credentials)
 
-            auth_success = True
+            AUTH_SUCCESS = True
 
             return """
             <html>
@@ -179,22 +179,22 @@ def start_auth_server() -> Tuple[str, int]:
     Returns:
         Tuple[str, int]: The server URL and port
     """
-    global AUTH_SERVER, auth_server_thread, auth_flow, auth_success
+    global AUTH_SERVER, AUTH_SERVER_THREAD, AUTH_SUCCESS
 
     config = load_config()
     host = config.get("AUTH_SERVER_HOST", "localhost")
     port = config.get("AUTH_SERVER_PORT", 8080)
 
     # Create the Flask app
-    auth_server = create_auth_server()
+    AUTH_SERVER = create_auth_server()
 
     # Start the server in a separate thread
-    auth_server_thread = ServerThread(auth_server, host, port)
-    auth_server_thread.daemon = True
-    auth_server_thread.start()
+    AUTH_SERVER_THREAD = ServerThread(AUTH_SERVER, host, port)
+    AUTH_SERVER_THREAD.daemon = True
+    AUTH_SERVER_THREAD.start()
 
     # Reset auth success flag
-    auth_success = False
+    AUTH_SUCCESS = False
 
     logger.info("Authentication server started at http://%s:%s", host, port)
     return host, port
@@ -202,12 +202,12 @@ def start_auth_server() -> Tuple[str, int]:
 
 def stop_auth_server():
     """Stop the authentication server."""
-    global AUTH_SERVER_thread
+    global AUTH_SERVER_THREAD
 
-    if auth_server_thread:
-        auth_server_thread.shutdown()
-        auth_server_thread.join()
-        auth_server_thread = None
+    if AUTH_SERVER_THREAD:
+        AUTH_SERVER_THREAD.shutdown()
+        AUTH_SERVER_THREAD.join()
+        AUTH_SERVER_THREAD = None
         logger.info("Authentication server stopped")
 
 
@@ -229,7 +229,7 @@ def initialize_oauth_flow() -> bool:
 
     try:
         # Create the flow using the client secrets file
-        auth_flow = Flow.from_client_secrets_file(
+        AUTH_FLOW = Flow.from_client_secrets_file(
             credentials_file,
             scopes=scopes,
             redirect_uri=(
@@ -267,11 +267,9 @@ def wait_for_auth(timeout_seconds: int = AUTH_TIMEOUT) -> bool:
     Returns:
         bool: True if authentication was successful, False otherwise
     """
-    global AUTH_SUCCESS
-
     start_time = time.time()
     while time.time() - start_time < timeout_seconds:
-        if auth_success:
+        if AUTH_SUCCESS:
             return True
         time.sleep(1)
 
