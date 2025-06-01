@@ -84,17 +84,17 @@ def test_initialize_oauth_flow(mock_config_file):
 def test_wait_for_auth():
     """Test waiting for authentication."""
     # Test timeout case
-    auth_server.auth_success = False
+    auth_server.AUTH_SUCCESS = False
     result = auth_server.wait_for_auth(timeout_seconds=0.1)
     assert result is False
 
     # Test success case
-    auth_server.auth_success = True
+    auth_server.AUTH_SUCCESS = True
     result = auth_server.wait_for_auth(timeout_seconds=0.1)
     assert result is True
 
     # Reset global variable
-    auth_server.auth_success = False
+    auth_server.AUTH_SUCCESS = False
 
 
 @pytest.mark.integration
