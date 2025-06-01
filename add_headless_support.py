@@ -20,7 +20,7 @@ def backup_original():
         return False
 
     if not os.path.exists(backup):
-        with open(original, 'r') as src, open(backup, 'w') as dst:
+        with open(original, "r") as src, open(backup, "w") as dst:
             dst.write(src.read())
         print(f"✅ Created backup: {backup}")
     else:
@@ -41,7 +41,7 @@ except ImportError:
     print("⚠️  Headless authentication not available - missing modules")
 """
 
-    with open("fogis_calendar_sync.py", 'r') as f:
+    with open("fogis_calendar_sync.py", "r") as f:
         content = f.read()
 
     # Find a good place to insert the import (after other imports)
@@ -55,7 +55,7 @@ except ImportError:
         if end_point != -1:
             new_content = content[:end_point] + import_line + content[end_point:]
 
-            with open("fogis_calendar_sync.py", 'w') as f:
+            with open("fogis_calendar_sync.py", "w") as f:
                 f.write(new_content)
 
             print("✅ Added headless authentication import")
@@ -67,34 +67,34 @@ except ImportError:
 
 def add_headless_argument():
     """Add --headless argument to argument parser."""
-    with open("fogis_calendar_sync.py", 'r') as f:
+    with open("fogis_calendar_sync.py", "r") as f:
         content = f.read()
 
     # Find the argument parser section
-    if 'argparse.ArgumentParser' in content:
+    if "argparse.ArgumentParser" in content:
         # Look for where arguments are added
-        parser_section = content.find('add_argument')
+        parser_section = content.find("add_argument")
         if parser_section != -1:
             # Find a good insertion point (before parse_args())
-            parse_args_point = content.find('parse_args()')
+            parse_args_point = content.find("parse_args()")
             if parse_args_point != -1:
                 # Insert before parse_args()
-                headless_arg = '''
+                headless_arg = """
     parser.add_argument(
         "--headless",
         action="store_true",
         help="Enable headless authentication mode for server environments"
     )
-'''
+"""
                 # Find the line before parse_args()
-                lines = content[:parse_args_point].split('\n')
+                lines = content[:parse_args_point].split("\n")
                 insertion_line = len(lines) - 1
 
                 # Insert the argument
                 lines.insert(insertion_line, headless_arg.strip())
-                new_content = '\n'.join(lines) + content[parse_args_point:]
+                new_content = "\n".join(lines) + content[parse_args_point:]
 
-                with open("fogis_calendar_sync.py", 'w') as f:
+                with open("fogis_calendar_sync.py", "w") as f:
                     f.write(new_content)
 
                 print("✅ Added --headless argument")
@@ -106,17 +106,17 @@ def add_headless_argument():
 
 def modify_auth_function():
     """Modify the authorize_google_calendar function to support headless mode."""
-    with open("fogis_calendar_sync.py", 'r') as f:
+    with open("fogis_calendar_sync.py", "r") as f:
         content = f.read()
 
     # Find the authorize_google_calendar function
-    func_start = content.find('def authorize_google_calendar():')
+    func_start = content.find("def authorize_google_calendar():")
     if func_start == -1:
         print("❌ Could not find authorize_google_calendar function")
         return False
 
     # Find the end of the function (next def or end of file)
-    func_end = content.find('\ndef ', func_start + 1)
+    func_end = content.find("\ndef ", func_start + 1)
     if func_end == -1:
         func_end = len(content)
 
@@ -190,7 +190,7 @@ def modify_auth_function():
     # Replace the function
     new_content = content[:func_start] + new_func + content[func_end:]
 
-    with open("fogis_calendar_sync.py", 'w') as f:
+    with open("fogis_calendar_sync.py", "w") as f:
         f.write(new_content)
 
     print("✅ Modified authorize_google_calendar function for headless support")
@@ -199,17 +199,17 @@ def modify_auth_function():
 
 def add_main_integration():
     """Add headless mode integration to main function."""
-    with open("fogis_calendar_sync.py", 'r') as f:
+    with open("fogis_calendar_sync.py", "r") as f:
         content = f.read()
 
     # Find where authorize_google_calendar is called
-    auth_call = content.find('authorize_google_calendar()')
+    auth_call = content.find("authorize_google_calendar()")
     if auth_call != -1:
         # Replace the call to include headless parameter
-        new_call = 'authorize_google_calendar(headless_mode=args.headless)'
-        new_content = content.replace('authorize_google_calendar()', new_call)
+        new_call = "authorize_google_calendar(headless_mode=args.headless)"
+        new_content = content.replace("authorize_google_calendar()", new_call)
 
-        with open("fogis_calendar_sync.py", 'w') as f:
+        with open("fogis_calendar_sync.py", "w") as f:
             f.write(new_content)
 
         print("✅ Updated authorize_google_calendar call to support headless mode")

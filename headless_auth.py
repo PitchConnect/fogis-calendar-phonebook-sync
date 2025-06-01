@@ -36,7 +36,7 @@ class HeadlessAuthManager:
         self.token_manager = TokenManager(
             self.config,
             credentials_file=self.config.get("CREDENTIALS_FILE", "credentials.json"),
-            token_file="token.json"
+            token_file="token.json",
         )
         self.notification_sender = NotificationSender(self.config)
         self.auth_server = None
@@ -46,7 +46,7 @@ class HeadlessAuthManager:
     def _load_config(self) -> Dict:
         """Load configuration from file."""
         try:
-            with open(self.config_file, 'r', encoding='utf-8') as f:
+            with open(self.config_file, "r", encoding="utf-8") as f:
                 return json.load(f)
         except Exception as e:
             logger.error(f"Failed to load config from {self.config_file}: {e}")
@@ -163,7 +163,9 @@ class HeadlessAuthManager:
 
                     expiry_info = ""
                     if expiry:
-                        expiry_info = f"Current token expires: {expiry.strftime('%Y-%m-%d %H:%M:%S UTC')}"
+                        expiry_info = (
+                            f"Current token expires: {expiry.strftime('%Y-%m-%d %H:%M:%S UTC')}"
+                        )
 
                     success = self._perform_headless_auth(expiry_info)
                     if success:
@@ -222,7 +224,7 @@ def integrate_with_existing_auth(config_dict: Dict, headless_mode: bool = False)
         auth_manager.start_monitoring()
 
         # Store reference for cleanup (you might want to handle this differently)
-        if not hasattr(integrate_with_existing_auth, '_auth_managers'):
+        if not hasattr(integrate_with_existing_auth, "_auth_managers"):
             integrate_with_existing_auth._auth_managers = []
         integrate_with_existing_auth._auth_managers.append(auth_manager)
 
@@ -231,7 +233,7 @@ def integrate_with_existing_auth(config_dict: Dict, headless_mode: bool = False)
 
 def cleanup_auth_managers():
     """Clean up any running auth managers."""
-    if hasattr(integrate_with_existing_auth, '_auth_managers'):
+    if hasattr(integrate_with_existing_auth, "_auth_managers"):
         for manager in integrate_with_existing_auth._auth_managers:
             manager.stop_monitoring()
         integrate_with_existing_auth._auth_managers.clear()

@@ -9,13 +9,11 @@ and need to restart the authentication process.
 import json
 import logging
 import sys
+
 from headless_auth import HeadlessAuthManager
 
 # Set up logging
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(levelname)s - %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 
@@ -36,16 +34,16 @@ def main():
         print(f"  Expired: {token_status.get('expired', True)}")
         print(f"  Needs Refresh: {token_status.get('needs_refresh', True)}")
 
-        if token_status.get('expiry'):
+        if token_status.get("expiry"):
             print(f"  Expires: {token_status['expiry']}")
 
         print()
 
         # Ask user if they want to proceed
-        if token_status.get('valid', False) and not token_status.get('needs_refresh', True):
+        if token_status.get("valid", False) and not token_status.get("needs_refresh", True):
             print("✅ Token is still valid and doesn't need refresh.")
             proceed = input("Do you still want to force re-authentication? [y/N]: ").strip().lower()
-            if proceed not in ['y', 'yes']:
+            if proceed not in ["y", "yes"]:
                 print("ℹ️  Authentication restart cancelled.")
                 return 0
 

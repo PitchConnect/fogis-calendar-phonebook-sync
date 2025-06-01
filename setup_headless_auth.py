@@ -6,10 +6,10 @@ This script helps configure the headless authentication system for
 long-term container operation.
 """
 
+import getpass
 import json
 import os
 import sys
-import getpass
 from typing import Dict
 
 
@@ -140,10 +140,10 @@ def test_configuration():
         print(f"Token expired: {token_status.get('expired', True)}")
         print(f"Needs refresh: {token_status.get('needs_refresh', True)}")
 
-        if token_status.get('expiry'):
+        if token_status.get("expiry"):
             print(f"Token expiry: {token_status['expiry']}")
 
-        if not token_status.get('valid', False):
+        if not token_status.get("valid", False):
             print("\n⚠️  No valid token found - you'll need to authenticate")
             print("Run the application with --headless flag to start authentication")
         else:
@@ -171,12 +171,12 @@ def main():
 
     # Setup email notifications
     setup_email = input("\nSetup email notifications? [y/N]: ").strip().lower()
-    if setup_email in ['y', 'yes']:
+    if setup_email in ["y", "yes"]:
         setup_email_notifications(config)
 
     # Setup auth server
     setup_server = input("\nSetup authentication server? [y/N]: ").strip().lower()
-    if setup_server in ['y', 'yes']:
+    if setup_server in ["y", "yes"]:
         setup_auth_server(config)
 
     # Save configuration
@@ -184,7 +184,7 @@ def main():
 
     # Test configuration
     test_config = input("\nTest configuration? [Y/n]: ").strip().lower()
-    if test_config not in ['n', 'no']:
+    if test_config not in ["n", "no"]:
         test_configuration()
 
     print("\n🎉 Setup Complete!")

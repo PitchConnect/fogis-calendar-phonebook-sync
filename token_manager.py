@@ -22,8 +22,12 @@ logger = logging.getLogger(__name__)
 class TokenManager:
     """Manages Google OAuth tokens with proactive refresh capabilities."""
 
-    def __init__(self, config: Dict, credentials_file: str = "credentials.json",
-                 token_file: str = "token.json"):
+    def __init__(
+        self,
+        config: Dict,
+        credentials_file: str = "credentials.json",
+        token_file: str = "token.json",
+    ):
         """
         Initialize the token manager.
 
@@ -35,10 +39,13 @@ class TokenManager:
         self.config = config
         self.credentials_file = credentials_file
         self.token_file = token_file
-        self.scopes = config.get("SCOPES", [
-            "https://www.googleapis.com/auth/calendar",
-            "https://www.googleapis.com/auth/contacts"
-        ])
+        self.scopes = config.get(
+            "SCOPES",
+            [
+                "https://www.googleapis.com/auth/calendar",
+                "https://www.googleapis.com/auth/contacts",
+            ],
+        )
         self.refresh_buffer_days = config.get("TOKEN_REFRESH_BUFFER_DAYS", 6)
         self._credentials = None
 
@@ -112,17 +119,15 @@ class TokenManager:
         if not os.path.exists(self.credentials_file):
             raise FileNotFoundError(f"Credentials file not found: {self.credentials_file}")
 
-        flow = InstalledAppFlow.from_client_secrets_file(
-            self.credentials_file, self.scopes
-        )
+        flow = InstalledAppFlow.from_client_secrets_file(self.credentials_file, self.scopes)
 
         # Configure for headless mode
         flow.redirect_uri = f"http://{self.config.get('AUTH_SERVER_HOST', 'localhost')}:{self.config.get('AUTH_SERVER_PORT', 8080)}/callback"
 
         auth_url, _ = flow.authorization_url(
-            access_type='offline',
-            include_granted_scopes='true',
-            prompt='consent'  # Force consent to get refresh token
+            access_type="offline",
+            include_granted_scopes="true",
+            prompt="consent",  # Force consent to get refresh token
         )
 
         # Store flow for later use
@@ -141,7 +146,7 @@ class TokenManager:
             True if successful, False otherwise
         """
         try:
-            if not hasattr(self, '_flow'):
+            if not hasattr(self, "_flow"):
                 logger.error("No active auth flow found")
                 return False
 
@@ -159,7 +164,7 @@ class TokenManager:
     def _save_token(self):
         """Save credentials to token file."""
         try:
-            with open(self.token_file, 'w') as token_file:
+            with open(self.token_file, "w") as token_file:
                 token_file.write(self._credentials.to_json())
             logger.info(f"Token saved to {self.token_file}")
         except Exception as e:
@@ -174,12 +179,7 @@ class TokenManager:
         """
         credentials = self.get_credentials()
         if not credentials:
-            return {
-                "valid": False,
-                "expired": True,
-                "expiry": None,
-                "needs_refresh": True
-            }
+            return {"valid": False, "expired": True, "expiry": None, "needs_refresh": True}
 
         needs_refresh, expiry = self.check_token_expiration()
 
@@ -188,5 +188,5 @@ class TokenManager:
             "expired": credentials.expired,
             "expiry": expiry.isoformat() if expiry else None,
             "needs_refresh": needs_refresh,
-            "has_refresh_token": bool(credentials.refresh_token)
+            "has_refresh_token": bool(credentials.refresh_token),
         }

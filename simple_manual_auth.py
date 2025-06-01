@@ -7,7 +7,7 @@ import json
 import os
 
 # Set environment variable to allow HTTP for localhost
-os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
+os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"
 
 
 def main():
@@ -19,26 +19,23 @@ def main():
         from google_auth_oauthlib.flow import InstalledAppFlow
 
         # Load config
-        with open('config.json', 'r') as f:
+        with open("config.json", "r") as f:
             config = json.load(f)
 
-        scopes = config.get('SCOPES')
+        scopes = config.get("SCOPES")
         print("Required scopes:")
         for scope in scopes:
             print(f"  - {scope}")
         print()
 
         # Create flow
-        flow = InstalledAppFlow.from_client_secrets_file('credentials.json', scopes)
+        flow = InstalledAppFlow.from_client_secrets_file("credentials.json", scopes)
 
         # Use a simple redirect URI that will show an error page (but we'll get the code)
-        flow.redirect_uri = 'http://localhost:1'
+        flow.redirect_uri = "http://localhost:1"
 
         # Generate auth URL
-        auth_url, state = flow.authorization_url(
-            access_type='offline',
-            prompt='consent'
-        )
+        auth_url, state = flow.authorization_url(access_type="offline", prompt="consent")
 
         print("🔗 Authentication URL:")
         print(auth_url)
@@ -59,7 +56,7 @@ def main():
         credentials = flow.credentials
 
         # Save the token
-        with open('token.json', 'w') as token_file:
+        with open("token.json", "w") as token_file:
             token_file.write(credentials.to_json())
 
         print()
@@ -75,6 +72,7 @@ def main():
     except Exception as e:
         print(f"❌ Error: {e}")
         import traceback
+
         traceback.print_exc()
         return 1
 

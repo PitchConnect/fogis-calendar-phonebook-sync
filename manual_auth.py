@@ -5,6 +5,7 @@ This bypasses the duplicate state parameter issue.
 """
 
 import json
+
 from google_auth_oauthlib.flow import InstalledAppFlow
 
 
@@ -14,14 +15,17 @@ def main():
     print("=" * 50)
 
     # Load config
-    with open('config.json', 'r') as f:
+    with open("config.json", "r") as f:
         config = json.load(f)
 
-    scopes = config.get('SCOPES', [
-        'https://www.googleapis.com/auth/calendar',
-        'https://www.googleapis.com/auth/contacts',
-        'https://www.googleapis.com/auth/drive'
-    ])
+    scopes = config.get(
+        "SCOPES",
+        [
+            "https://www.googleapis.com/auth/calendar",
+            "https://www.googleapis.com/auth/contacts",
+            "https://www.googleapis.com/auth/drive",
+        ],
+    )
 
     print("Required scopes:")
     for scope in scopes:
@@ -29,14 +33,11 @@ def main():
     print()
 
     # Create flow
-    flow = InstalledAppFlow.from_client_secrets_file('credentials.json', scopes)
-    flow.redirect_uri = 'http://localhost:8080/callback'
+    flow = InstalledAppFlow.from_client_secrets_file("credentials.json", scopes)
+    flow.redirect_uri = "http://localhost:8080/callback"
 
     # Generate clean auth URL
-    auth_url, state = flow.authorization_url(
-        access_type='offline',
-        prompt='consent'
-    )
+    auth_url, state = flow.authorization_url(access_type="offline", prompt="consent")
 
     print("🔗 Authentication URL:")
     print(auth_url)
@@ -57,7 +58,7 @@ def main():
         credentials = flow.credentials
 
         # Save the token
-        with open('token.json', 'w') as token_file:
+        with open("token.json", "w") as token_file:
             token_file.write(credentials.to_json())
 
         print()

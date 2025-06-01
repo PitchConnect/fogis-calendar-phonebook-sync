@@ -104,12 +104,12 @@ Automated notification system
 
             # Create message
             msg = MIMEMultipart()
-            msg['From'] = sender_email
-            msg['To'] = receiver_email
-            msg['Subject'] = subject
+            msg["From"] = sender_email
+            msg["To"] = receiver_email
+            msg["Subject"] = subject
 
             # Add body
-            msg.attach(MIMEText(message, 'plain'))
+            msg.attach(MIMEText(message, "plain"))
 
             # Send email
             with smtplib.SMTP(smtp_server, smtp_port) as server:
@@ -141,27 +141,23 @@ Automated notification system
                     {
                         "name": "Action Required",
                         "value": f"[Click here to authenticate]({auth_url})",
-                        "inline": False
+                        "inline": False,
                     },
                     {
                         "name": "Security Notice",
                         "value": "Only click if you are expecting this request. Link expires in 10 minutes.",
-                        "inline": False
-                    }
+                        "inline": False,
+                    },
                 ],
-                "footer": {
-                    "text": "FOGIS Calendar Sync Service"
-                }
+                "footer": {"text": "FOGIS Calendar Sync Service"},
             }
 
-            payload = {
-                "embeds": [embed]
-            }
+            payload = {"embeds": [embed]}
 
             # Send webhook
             req = Request(webhook_url)
-            req.add_header('Content-Type', 'application/json')
-            req.data = json.dumps(payload).encode('utf-8')
+            req.add_header("Content-Type", "application/json")
+            req.data = json.dumps(payload).encode("utf-8")
 
             with urlopen(req) as response:
                 if response.status == 204:
@@ -189,41 +185,38 @@ Automated notification system
                 "blocks": [
                     {
                         "type": "header",
-                        "text": {
-                            "type": "plain_text",
-                            "text": "🔐 Google Authentication Required"
-                        }
+                        "text": {"type": "plain_text", "text": "🔐 Google Authentication Required"},
                     },
                     {
                         "type": "section",
                         "text": {
                             "type": "mrkdwn",
-                            "text": "Your FOGIS Calendar Sync needs re-authentication to continue syncing."
-                        }
+                            "text": "Your FOGIS Calendar Sync needs re-authentication to continue syncing.",
+                        },
                     },
                     {
                         "type": "section",
                         "text": {
                             "type": "mrkdwn",
-                            "text": f"<{auth_url}|Click here to authenticate>"
-                        }
+                            "text": f"<{auth_url}|Click here to authenticate>",
+                        },
                     },
                     {
                         "type": "context",
                         "elements": [
                             {
                                 "type": "mrkdwn",
-                                "text": "⚠️ Security Notice: Only click if you are expecting this request. Link expires in 10 minutes."
+                                "text": "⚠️ Security Notice: Only click if you are expecting this request. Link expires in 10 minutes.",
                             }
-                        ]
-                    }
-                ]
+                        ],
+                    },
+                ],
             }
 
             # Send webhook
             req = Request(webhook_url)
-            req.add_header('Content-Type', 'application/json')
-            req.data = json.dumps(payload).encode('utf-8')
+            req.add_header("Content-Type", "application/json")
+            req.data = json.dumps(payload).encode("utf-8")
 
             with urlopen(req) as response:
                 if response.status == 200:
@@ -257,11 +250,15 @@ Automated notification system
         if self.method == "email":
             return self._send_email(subject, message)
         elif self.method == "discord":
-            return self._send_discord_simple("✅ Authentication Successful",
-                                             "FOGIS Calendar Sync re-authentication completed successfully.")
+            return self._send_discord_simple(
+                "✅ Authentication Successful",
+                "FOGIS Calendar Sync re-authentication completed successfully.",
+            )
         elif self.method == "slack":
-            return self._send_slack_simple("✅ Authentication Successful",
-                                           "FOGIS Calendar Sync re-authentication completed successfully.")
+            return self._send_slack_simple(
+                "✅ Authentication Successful",
+                "FOGIS Calendar Sync re-authentication completed successfully.",
+            )
 
         return False
 
@@ -273,16 +270,14 @@ Automated notification system
                 return False
 
             payload = {
-                "embeds": [{
-                    "title": title,
-                    "description": description,
-                    "color": 0x00FF00  # Green color
-                }]
+                "embeds": [
+                    {"title": title, "description": description, "color": 0x00FF00}  # Green color
+                ]
             }
 
             req = Request(webhook_url)
-            req.add_header('Content-Type', 'application/json')
-            req.data = json.dumps(payload).encode('utf-8')
+            req.add_header("Content-Type", "application/json")
+            req.data = json.dumps(payload).encode("utf-8")
 
             with urlopen(req):
                 return True
@@ -297,13 +292,11 @@ Automated notification system
             if not webhook_url:
                 return False
 
-            payload = {
-                "text": f"{title}\n{description}"
-            }
+            payload = {"text": f"{title}\n{description}"}
 
             req = Request(webhook_url)
-            req.add_header('Content-Type', 'application/json')
-            req.data = json.dumps(payload).encode('utf-8')
+            req.add_header("Content-Type", "application/json")
+            req.data = json.dumps(payload).encode("utf-8")
 
             with urlopen(req):
                 return True

@@ -11,7 +11,9 @@ import logging
 import threading
 import time
 from datetime import datetime
-from flask import Flask, render_template_string, request, jsonify, redirect
+
+from flask import Flask, jsonify, redirect, render_template_string, request
+
 from headless_auth import HeadlessAuthManager
 
 # Set up logging
@@ -104,7 +106,7 @@ HTML_TEMPLATE = """
 """
 
 
-@app.route('/')
+@app.route("/")
 def index():
     """Main authentication management page."""
     global auth_manager
@@ -115,12 +117,12 @@ def index():
     token_status = auth_manager.get_token_status()
     current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-    return render_template_string(HTML_TEMPLATE,
-                                  token_status=token_status,
-                                  current_time=current_time)
+    return render_template_string(
+        HTML_TEMPLATE, token_status=token_status, current_time=current_time
+    )
 
 
-@app.route('/restart-auth', methods=['POST'])
+@app.route("/restart-auth", methods=["POST"])
 def restart_auth():
     """Restart the authentication process."""
     global auth_manager
@@ -146,20 +148,19 @@ def restart_auth():
         thread.daemon = True
         thread.start()
 
-        return jsonify({
-            "success": True,
-            "message": "Authentication process started! Check your email for the new authentication link."
-        })
+        return jsonify(
+            {
+                "success": True,
+                "message": "Authentication process started! Check your email for the new authentication link.",
+            }
+        )
 
     except Exception as e:
         logger.exception(f"Error starting authentication: {e}")
-        return jsonify({
-            "success": False,
-            "message": f"Error: {str(e)}"
-        }), 500
+        return jsonify({"success": False, "message": f"Error: {str(e)}"}), 500
 
 
-@app.route('/status')
+@app.route("/status")
 def status():
     """API endpoint for token status."""
     global auth_manager
@@ -179,7 +180,7 @@ def main():
     print("🔖 Bookmark this URL for easy authentication restarts!")
     print("=" * 50)
 
-    app.run(host='0.0.0.0', port=8090, debug=False)
+    app.run(host="0.0.0.0", port=8090, debug=False)
 
 
 if __name__ == "__main__":

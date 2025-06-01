@@ -1,5 +1,4 @@
-"""
-Authentication Server for Headless Google OAuth
+"""Authentication Server for Headless Google OAuth.
 
 This module provides a lightweight web server to handle OAuth callbacks
 in headless server environments.
@@ -11,7 +10,7 @@ import threading
 import time
 from typing import Dict, Optional
 
-from flask import Flask, request, jsonify
+from flask import Flask, jsonify, request
 from werkzeug.serving import make_server
 
 logger = logging.getLogger(__name__)
@@ -21,8 +20,7 @@ class AuthServer:
     """Lightweight authentication server for handling OAuth callbacks."""
 
     def __init__(self, config: Dict, token_manager):
-        """
-        Initialize the authentication server.
+        """Initialize the authentication server.
 
         Args:
             config: Configuration dictionary
@@ -49,40 +47,34 @@ class AuthServer:
     def _setup_routes(self):
         """Setup Flask routes for the authentication server."""
 
-        @self.app.route('/callback')
+        @self.app.route("/callback")
         def callback():
             """Handle OAuth callback."""
             try:
                 # Verify state parameter for security
-                received_state = request.args.get('state')
+                received_state = request.args.get("state")
                 if received_state != self.state:
                     logger.error("Invalid state parameter in callback")
-                    return jsonify({
-                        "error": "Invalid state parameter",
-                        "success": False
-                    }), 400
+                    return jsonify({"error": "Invalid state parameter", "success": False}), 400
 
                 # Check for error in callback
-                error = request.args.get('error')
+                error = request.args.get("error")
                 if error:
                     logger.error(f"OAuth error: {error}")
                     self.auth_completed = True
                     self.auth_success = False
-                    return jsonify({
-                        "error": f"OAuth error: {error}",
-                        "success": False
-                    }), 400
+                    return jsonify({"error": f"OAuth error: {error}", "success": False}), 400
 
                 # Get authorization code
-                auth_code = request.args.get('code')
+                auth_code = request.args.get("code")
                 if not auth_code:
                     logger.error("No authorization code received")
                     self.auth_completed = True
                     self.auth_success = False
-                    return jsonify({
-                        "error": "No authorization code received",
-                        "success": False
-                    }), 400
+                    return (
+                        jsonify({"error": "No authorization code received", "success": False}),
+                        400,
+                    )
 
                 # Complete the auth flow
                 authorization_response = request.url
@@ -110,7 +102,8 @@ class AuthServer:
                     """
                 else:
                     logger.error("Failed to complete authentication flow")
-                    return """
+                    return (
+                        """
                     <html>
                     <head><title>Authentication Failed</title></head>
                     <body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
@@ -119,29 +112,29 @@ class AuthServer:
                         <p>Please check the application logs and try again.</p>
                     </body>
                     </html>
-                    """, 500
+                    """,
+                        500,
+                    )
 
             except Exception as e:
                 logger.exception("Exception in callback handler")
                 self.auth_completed = True
                 self.auth_success = False
-                return jsonify({
-                    "error": f"Internal error: {str(e)}",
-                    "success": False
-                }), 500
+                return jsonify({"error": f"Internal error: {str(e)}", "success": False}), 500
 
-        @self.app.route('/health')
+        @self.app.route("/health")
         def health():
             """Health check endpoint."""
-            return jsonify({
-                "status": "running",
-                "auth_completed": self.auth_completed,
-                "auth_success": self.auth_success
-            })
+            return jsonify(
+                {
+                    "status": "running",
+                    "auth_completed": self.auth_completed,
+                    "auth_success": self.auth_success,
+                }
+            )
 
     def start(self) -> str:
-        """
-        Start the authentication server.
+        """Start the authentication server.
 
         Returns:
             Authorization URL for user to visit
@@ -154,12 +147,7 @@ class AuthServer:
         self.auth_success = False
 
         # Create server
-        self.server = make_server(
-            self.host,
-            self.port,
-            self.app,
-            threaded=True
-        )
+        self.server = make_server(self.host, self.port, self.app, threaded=True)
 
         # Start server in background thread
         self.server_thread = threading.Thread(target=self.server.serve_forever)
@@ -178,8 +166,7 @@ class AuthServer:
         return auth_url_with_state
 
     def wait_for_auth(self, timeout: Optional[int] = None) -> bool:
-        """
-        Wait for authentication to complete.
+        """Wait for authentication to complete.
 
         Args:
             timeout: Timeout in seconds (default: self.timeout_seconds)
@@ -210,8 +197,7 @@ class AuthServer:
             self.server_thread = None
 
     def get_auth_url(self) -> Optional[str]:
-        """
-        Get the current authorization URL.
+        """Get the current authorization URL.
 
         Returns:
             Authorization URL or None if server not started

@@ -12,10 +12,7 @@ import os
 import sys
 
 # Set up logging
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(levelname)s - %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 
@@ -37,7 +34,7 @@ def check_dependencies():
         "token_manager.py",
         "auth_server.py",
         "notification.py",
-        "headless_auth.py"
+        "headless_auth.py",
     ]
 
     missing_files = []
@@ -65,10 +62,12 @@ def setup_headless_monitoring():
 
         # Check current token status
         token_status = auth_manager.get_token_status()
-        logger.info(f"Token status: valid={token_status.get('valid', False)}, "
-                    f"needs_refresh={token_status.get('needs_refresh', True)}")
+        logger.info(
+            f"Token status: valid={token_status.get('valid', False)}, "
+            f"needs_refresh={token_status.get('needs_refresh', True)}"
+        )
 
-        if token_status.get('needs_refresh', True):
+        if token_status.get("needs_refresh", True):
             logger.info("Token needs refresh - starting headless authentication")
 
             # Get valid credentials (this will trigger auth flow if needed)
@@ -100,9 +99,9 @@ def run_calendar_sync():
         logger.info("Starting FOGIS Calendar Sync...")
 
         # Run the main application
-        result = subprocess.run([
-            sys.executable, "fogis_calendar_sync.py"
-        ], capture_output=True, text=True)
+        result = subprocess.run(
+            [sys.executable, "fogis_calendar_sync.py"], capture_output=True, text=True
+        )
 
         if result.returncode == 0:
             logger.info("Calendar sync completed successfully")
