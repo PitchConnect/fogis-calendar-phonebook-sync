@@ -232,7 +232,10 @@ def initialize_oauth_flow() -> bool:
         auth_flow = Flow.from_client_secrets_file(
             credentials_file,
             scopes=scopes,
-            redirect_uri=f"http://{config.get('AUTH_SERVER_HOST', 'localhost')}:{config.get('AUTH_SERVER_PORT', 8080)}/oauth2callback",
+            redirect_uri=(
+                f"http://{config.get('AUTH_SERVER_HOST', 'localhost')}:"
+                f"{config.get('AUTH_SERVER_PORT', 8080)}/oauth2callback"
+            ),
         )
 
         logger.info("OAuth flow initialized successfully")
