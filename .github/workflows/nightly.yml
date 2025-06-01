@@ -49,7 +49,7 @@ jobs:
         echo "target_branch=$target_branch" >> $GITHUB_OUTPUT
         echo "🎯 Target branch: $target_branch"
 
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         ref: ${{ steps.branch.outputs.target_branch }}
         fetch-depth: 0
@@ -86,16 +86,16 @@ jobs:
     if: needs.check-commits.outputs.should_run == 'true'
     strategy:
       matrix:
-        python-version: [3.9, 3.10, 3.11]  # Test multiple Python versions
+        python-version: ["3.9", "3.10", "3.11"]  # Test multiple Python versions
         test-type: [unit, integration]
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         ref: ${{ needs.check-commits.outputs.target_branch }}
 
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
         cache: 'pip'
@@ -134,12 +134,12 @@ jobs:
     if: needs.check-commits.outputs.should_run == 'true'
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         ref: ${{ needs.check-commits.outputs.target_branch }}
 
     - name: Set up Python 3.9
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: 3.9
         cache: 'pip'
@@ -165,7 +165,7 @@ jobs:
         mypy . --ignore-missing-imports --html-report mypy-report || true
 
     - name: Upload quality reports
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: quality-reports
         path: |
@@ -181,12 +181,12 @@ jobs:
     if: needs.check-commits.outputs.should_run == 'true'
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         ref: ${{ needs.check-commits.outputs.target_branch }}
 
     - name: Set up Python 3.9
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: 3.9
 
@@ -202,7 +202,7 @@ jobs:
         pip-audit --format=json --output=pip-audit-report.json || true
 
     - name: Upload security reports
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: security-reports
         path: |
