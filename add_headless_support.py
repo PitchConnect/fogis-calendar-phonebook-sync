@@ -14,18 +14,18 @@ def backup_original():
     """Create backup of original file."""
     original = "fogis_calendar_sync.py"
     backup = "fogis_calendar_sync.py.backup"
-    
+
     if not os.path.exists(original):
         print(f"❌ {original} not found!")
         return False
-    
+
     if not os.path.exists(backup):
         with open(original, 'r') as src, open(backup, 'w') as dst:
             dst.write(src.read())
         print(f"✅ Created backup: {backup}")
     else:
         print(f"ℹ️  Backup already exists: {backup}")
-    
+
     return True
 
 
@@ -40,10 +40,10 @@ except ImportError:
     HEADLESS_AUTH_AVAILABLE = False
     print("⚠️  Headless authentication not available - missing modules")
 """
-    
+
     with open("fogis_calendar_sync.py", 'r') as f:
         content = f.read()
-    
+
     # Find a good place to insert the import (after other imports)
     if "from fogis_contacts import" in content:
         insertion_point = content.find("from fogis_contacts import")
@@ -51,16 +51,16 @@ except ImportError:
         end_point = content.find("\n\n", insertion_point)
         if end_point == -1:
             end_point = content.find("\n#", insertion_point)
-        
+
         if end_point != -1:
             new_content = content[:end_point] + import_line + content[end_point:]
-            
+
             with open("fogis_calendar_sync.py", 'w') as f:
                 f.write(new_content)
-            
+
             print("✅ Added headless authentication import")
             return True
-    
+
     print("❌ Could not find suitable location for import")
     return False
 
@@ -69,7 +69,7 @@ def add_headless_argument():
     """Add --headless argument to argument parser."""
     with open("fogis_calendar_sync.py", 'r') as f:
         content = f.read()
-    
+
     # Find the argument parser section
     if 'argparse.ArgumentParser' in content:
         # Look for where arguments are added
@@ -89,17 +89,17 @@ def add_headless_argument():
                 # Find the line before parse_args()
                 lines = content[:parse_args_point].split('\n')
                 insertion_line = len(lines) - 1
-                
+
                 # Insert the argument
                 lines.insert(insertion_line, headless_arg.strip())
                 new_content = '\n'.join(lines) + content[parse_args_point:]
-                
+
                 with open("fogis_calendar_sync.py", 'w') as f:
                     f.write(new_content)
-                
+
                 print("✅ Added --headless argument")
                 return True
-    
+
     print("❌ Could not find argument parser section")
     return False
 
@@ -108,25 +108,22 @@ def modify_auth_function():
     """Modify the authorize_google_calendar function to support headless mode."""
     with open("fogis_calendar_sync.py", 'r') as f:
         content = f.read()
-    
+
     # Find the authorize_google_calendar function
     func_start = content.find('def authorize_google_calendar():')
     if func_start == -1:
         print("❌ Could not find authorize_google_calendar function")
         return False
-    
+
     # Find the end of the function (next def or end of file)
     func_end = content.find('\ndef ', func_start + 1)
     if func_end == -1:
         func_end = len(content)
-    
-    # Extract the function
-    original_func = content[func_start:func_end]
-    
+
     # Create new function with headless support
     new_func = '''def authorize_google_calendar(headless_mode=False):
     """Authorizes access to the Google Calendar API."""
-    
+
     # Try headless authentication first if enabled
     if headless_mode and HEADLESS_AUTH_AVAILABLE:
         logging.info("Attempting headless authentication")
@@ -136,7 +133,7 @@ def modify_auth_function():
             return creds
         else:
             logging.warning("Headless authentication failed, falling back to standard method")
-    
+
     # Original authentication logic
     creds = None
     logging.info("Starting Google Calendar authorization process")
@@ -186,16 +183,16 @@ def modify_auth_function():
                 logging.error("Cannot perform interactive authentication in headless mode")
                 logging.error("Please run setup_headless_auth.py to configure headless authentication")
                 return None
-            
+
             # Interactive authentication (original code continues...)
 '''
-    
+
     # Replace the function
     new_content = content[:func_start] + new_func + content[func_end:]
-    
+
     with open("fogis_calendar_sync.py", 'w') as f:
         f.write(new_content)
-    
+
     print("✅ Modified authorize_google_calendar function for headless support")
     return True
 
@@ -204,20 +201,20 @@ def add_main_integration():
     """Add headless mode integration to main function."""
     with open("fogis_calendar_sync.py", 'r') as f:
         content = f.read()
-    
+
     # Find where authorize_google_calendar is called
     auth_call = content.find('authorize_google_calendar()')
     if auth_call != -1:
         # Replace the call to include headless parameter
         new_call = 'authorize_google_calendar(headless_mode=args.headless)'
         new_content = content.replace('authorize_google_calendar()', new_call)
-        
+
         with open("fogis_calendar_sync.py", 'w') as f:
             f.write(new_content)
-        
+
         print("✅ Updated authorize_google_calendar call to support headless mode")
         return True
-    
+
     print("❌ Could not find authorize_google_calendar() call")
     return False
 
@@ -226,24 +223,24 @@ def main():
     """Main function to add headless support."""
     print("🔧 Adding Headless Authentication Support")
     print("=" * 50)
-    
+
     if not backup_original():
         return 1
-    
+
     success = True
-    
+
     if not add_headless_import():
         success = False
-    
+
     if not add_headless_argument():
         success = False
-    
+
     if not modify_auth_function():
         success = False
-    
+
     if not add_main_integration():
         success = False
-    
+
     if success:
         print("\n✅ Successfully added headless authentication support!")
         print("\nNext steps:")
@@ -253,7 +250,7 @@ def main():
     else:
         print("\n❌ Some modifications failed. Check the output above.")
         print("You may need to manually integrate the headless authentication.")
-    
+
     return 0 if success else 1
 
 

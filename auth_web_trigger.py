@@ -45,7 +45,7 @@ HTML_TEMPLATE = """
 </head>
 <body>
     <h1>🔐 FOGIS Authentication Manager</h1>
-    
+
     <div class="token-info">
         <h3>📊 Current Token Status</h3>
         <p><strong>Valid:</strong> {{ token_status.valid }}</p>
@@ -57,7 +57,7 @@ HTML_TEMPLATE = """
         <p><strong>Has Refresh Token:</strong> {{ token_status.has_refresh_token }}</p>
         <p><strong>Last Updated:</strong> {{ current_time }}</p>
     </div>
-    
+
     {% if token_status.valid and not token_status.needs_refresh %}
     <div class="status success">
         ✅ Token is valid and doesn't need refresh. Your FOGIS sync is working properly!
@@ -71,22 +71,22 @@ HTML_TEMPLATE = """
         ❌ No valid token found. Authentication required.
     </div>
     {% endif %}
-    
+
     <div class="refresh">
         <h3>🔄 Authentication Actions</h3>
-        
+
         <form method="post" action="/restart-auth" style="display: inline;">
             <button type="submit" class="danger">🚀 Start New Authentication</button>
         </form>
-        
+
         <button onclick="location.reload()">🔄 Refresh Status</button>
-        
+
         <p><small>
-            <strong>Note:</strong> Starting new authentication will send you a fresh email 
+            <strong>Note:</strong> Starting new authentication will send you a fresh email
             with a new 10-minute authentication window.
         </small></p>
     </div>
-    
+
     <div class="status info">
         <h4>💡 How to Use This Page</h4>
         <ul>
@@ -96,39 +96,41 @@ HTML_TEMPLATE = """
             <li><strong>Complete authentication</strong> within 10 minutes of receiving the email</li>
         </ul>
     </div>
-    
+
     <hr>
     <p><small>FOGIS Calendar Sync - Headless Authentication Manager</small></p>
 </body>
 </html>
 """
 
+
 @app.route('/')
 def index():
     """Main authentication management page."""
     global auth_manager
-    
+
     if not auth_manager:
         auth_manager = HeadlessAuthManager()
-    
+
     token_status = auth_manager.get_token_status()
     current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    
-    return render_template_string(HTML_TEMPLATE, 
-                                token_status=token_status, 
-                                current_time=current_time)
+
+    return render_template_string(HTML_TEMPLATE,
+                                  token_status=token_status,
+                                  current_time=current_time)
+
 
 @app.route('/restart-auth', methods=['POST'])
 def restart_auth():
     """Restart the authentication process."""
     global auth_manager
-    
+
     try:
         if not auth_manager:
             auth_manager = HeadlessAuthManager()
-        
+
         logger.info("Web interface triggered authentication restart")
-        
+
         # Start authentication in background thread to avoid blocking the web response
         def auth_thread():
             try:
@@ -139,16 +141,16 @@ def restart_auth():
                     logger.error("Web-triggered authentication failed")
             except Exception as e:
                 logger.exception(f"Error in web-triggered authentication: {e}")
-        
+
         thread = threading.Thread(target=auth_thread)
         thread.daemon = True
         thread.start()
-        
+
         return jsonify({
             "success": True,
             "message": "Authentication process started! Check your email for the new authentication link."
         })
-        
+
     except Exception as e:
         logger.exception(f"Error starting authentication: {e}")
         return jsonify({
@@ -156,16 +158,18 @@ def restart_auth():
             "message": f"Error: {str(e)}"
         }), 500
 
+
 @app.route('/status')
 def status():
     """API endpoint for token status."""
     global auth_manager
-    
+
     if not auth_manager:
         auth_manager = HeadlessAuthManager()
-    
+
     token_status = auth_manager.get_token_status()
     return jsonify(token_status)
+
 
 def main():
     """Run the web authentication trigger service."""
@@ -174,8 +178,9 @@ def main():
     print("📱 Access at: http://localhost:8090")
     print("🔖 Bookmark this URL for easy authentication restarts!")
     print("=" * 50)
-    
+
     app.run(host='0.0.0.0', port=8090, debug=False)
+
 
 if __name__ == "__main__":
     main()

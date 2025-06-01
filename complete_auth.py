@@ -21,16 +21,16 @@ authorization_response = 'http://localhost:8080/callback?state=CdJuw0chqZcjvJuuX
 try:
     flow.fetch_token(authorization_response=authorization_response)
     credentials = flow.credentials
-    
+
     # Save the token
     with open('token.json', 'w') as token_file:
         token_file.write(credentials.to_json())
-    
+
     print('✅ Authentication successful!')
     print('✅ Token saved to token.json')
     print(f'✅ Token expires: {credentials.expiry}')
     print(f'✅ Has refresh token: {bool(credentials.refresh_token)}')
-    
+
 except Exception as e:
     print(f'❌ Error: {e}')
     import traceback
