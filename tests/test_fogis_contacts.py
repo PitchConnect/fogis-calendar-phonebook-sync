@@ -477,3 +477,401 @@ def test_test_google_contacts_connection_failure():
 
         result = fogis_contacts.test_google_contacts_connection(mock_service)
         assert result is False
+
+
+@pytest.mark.unit
+def test_authorize_google_people_refresh_success():
+    """Test successful token refresh."""
+    mock_creds = MagicMock()
+    mock_creds.valid = False
+    mock_creds.expired = True
+    mock_creds.refresh_token = "refresh_token"
+
+    with patch("os.path.exists", return_value=True), \
+         patch("google.oauth2.credentials.Credentials.from_authorized_user_file", return_value=mock_creds), \
+         patch("builtins.open", MagicMock()):
+
+        # Mock successful refresh
+        mock_creds.refresh = MagicMock()
+        mock_creds.valid = True  # After refresh
+
+        result = fogis_contacts.authorize_google_people()
+        assert result == mock_creds
+        mock_creds.refresh.assert_called_once()
+
+
+@pytest.mark.unit
+def test_authorize_google_people_file_error():
+    """Test authorization when file loading fails."""
+    with patch("os.path.exists", return_value=True), \
+         patch("google.oauth2.credentials.Credentials.from_authorized_user_file", side_effect=Exception("File error")), \
+         patch("google_auth_oauthlib.flow.InstalledAppFlow.from_client_secrets_file") as mock_flow, \
+         patch("builtins.open", MagicMock()):
+
+        mock_flow_instance = MagicMock()
+        mock_new_creds = MagicMock()
+        mock_new_creds.valid = True
+        mock_flow_instance.run_local_server.return_value = mock_new_creds
+        mock_flow.return_value = mock_flow_instance
+
+        result = fogis_contacts.authorize_google_people()
+        assert result == mock_new_creds
+
+
+@pytest.mark.unit
+def test_find_or_create_referees_group_http_error():
+    """Test find_or_create_referees_group with HTTP error."""
+    from googleapiclient.errors import HttpError
+
+    mock_service = MagicMock()
+    mock_service.contactGroups().list().execute.side_effect = HttpError(
+        resp=MagicMock(status=500), content=b'{"error": {"message": "Server error"}}'
+    )
+
+    with patch.object(fogis_contacts, "logging"), patch("time.sleep"):
+        result = fogis_contacts.find_or_create_referees_group(mock_service)
+        assert result is None
+
+
+@pytest.mark.unit
+def test_find_or_create_referees_group_quota_exceeded():
+    """Test find_or_create_referees_group with quota exceeded."""
+    from googleapiclient.errors import HttpError
+
+    mock_service = MagicMock()
+    mock_service.contactGroups().list().execute.side_effect = HttpError(
+        resp=MagicMock(status=429), content=b'{"error": {"message": "Quota exceeded"}}'
+    )
+
+    with patch.object(fogis_contacts, "logging"), patch("time.sleep"):
+        result = fogis_contacts.find_or_create_referees_group(mock_service)
+        assert result is None
+
+
+@pytest.mark.unit
+def test_find_or_create_referees_group_general_exception():
+    """Test find_or_create_referees_group with general exception."""
+    mock_service = MagicMock()
+    mock_service.contactGroups().list().execute.side_effect = Exception("Network error")
+
+    with patch.object(fogis_contacts, "logging"), patch("time.sleep"):
+        result = fogis_contacts.find_or_create_referees_group(mock_service)
+        assert result is None
+
+
+@pytest.mark.unit
+def test_process_referees_no_credentials():
+    """Test process_referees when authorization fails."""
+    match = {"domaruppdraglista": []}
+
+    with patch.object(fogis_contacts, "authorize_google_people", return_value=None):
+        result = fogis_contacts.process_referees(match)
+        assert result is False
+
+
+@pytest.mark.unit
+def test_process_referees_skip_user_referee():
+    """Test process_referees skipping user's own referee."""
+    match = {
+        "domaruppdraglista": [
+            {
+                "personnamn": "User Referee",
+                "mobiltelefon": "+46701234567",
+                "domarnr": "USER123",
+            }
+        ]
+    }
+
+    with patch.object(fogis_contacts, "authorize_google_people") as mock_auth, \
+         patch("googleapiclient.discovery.build") as mock_build, \
+         patch.dict("os.environ", {"USER_REFEREE_NUMBER": "USER123"}):
+
+        mock_auth.return_value = MagicMock()
+        mock_build.return_value = MagicMock()
+
+        result = fogis_contacts.process_referees(match)
+        assert result is True
+
+
+@pytest.mark.unit
+def test_process_referees_update_existing():
+    """Test process_referees updating existing contact."""
+    match = {
+        "domaruppdraglista": [
+            {
+                "personnamn": "Existing Referee",
+                "mobiltelefon": "+46701234567",
+                "domarnr": "EXIST123",
+            }
+        ]
+    }
+
+    existing_contact = {"resourceName": "people/existing"}
+
+    with patch.object(fogis_contacts, "authorize_google_people") as mock_auth, \
+         patch("googleapiclient.discovery.build") as mock_build, \
+         patch.object(fogis_contacts, "find_contact_by_name_and_phone", return_value=existing_contact), \
+         patch.object(fogis_contacts, "update_google_contact", return_value="people/existing"):
+
+        mock_auth.return_value = MagicMock()
+        mock_build.return_value = MagicMock()
+
+        result = fogis_contacts.process_referees(match)
+        assert result is True
+
+
+@pytest.mark.unit
+def test_process_referees_create_new_no_group():
+    """Test process_referees creating new contact when group creation fails."""
+    match = {
+        "domaruppdraglista": [
+            {
+                "personnamn": "New Referee",
+                "mobiltelefon": "+46701234567",
+                "domarnr": "NEW123",
+            }
+        ]
+    }
+
+    with patch.object(fogis_contacts, "authorize_google_people") as mock_auth, \
+         patch("googleapiclient.discovery.build") as mock_build, \
+         patch.object(fogis_contacts, "find_contact_by_name_and_phone", return_value=None), \
+         patch.object(fogis_contacts, "find_or_create_referees_group", return_value=None):
+
+        mock_auth.return_value = MagicMock()
+        mock_build.return_value = MagicMock()
+
+        result = fogis_contacts.process_referees(match)
+        assert result is True
+
+
+@pytest.mark.unit
+def test_process_referees_contact_exception():
+    """Test process_referees handling contact processing exception."""
+    match = {
+        "domaruppdraglista": [
+            {
+                "personnamn": "Error Referee",
+                "mobiltelefon": "+46701234567",
+                "domarnr": "ERROR123",
+            }
+        ]
+    }
+
+    with patch.object(fogis_contacts, "authorize_google_people") as mock_auth, \
+         patch("googleapiclient.discovery.build") as mock_build, \
+         patch.object(fogis_contacts, "find_contact_by_name_and_phone", side_effect=Exception("Contact error")):
+
+        mock_auth.return_value = MagicMock()
+        mock_build.return_value = MagicMock()
+
+        result = fogis_contacts.process_referees(match)
+        assert result is True  # Should continue processing despite individual errors
+
+
+@pytest.mark.unit
+def test_process_referees_service_build_exception():
+    """Test process_referees when service build fails."""
+    match = {"domaruppdraglista": []}
+
+    with patch.object(fogis_contacts, "authorize_google_people") as mock_auth, \
+         patch("googleapiclient.discovery.build", side_effect=Exception("Service build failed")):
+
+        mock_auth.return_value = MagicMock()
+
+        result = fogis_contacts.process_referees(match)
+        assert result is False
+
+
+@pytest.mark.unit
+def test_find_contact_by_name_and_phone_not_found():
+    """Test find_contact_by_name_and_phone when contact not found."""
+    mock_service = MagicMock()
+    referee = {"domarnr": "NOTFOUND"}
+
+    # Mock empty connections
+    mock_service.people().connections().list().execute.return_value = {"connections": []}
+    mock_service.people().connections().list_next.return_value = None
+
+    with patch.object(fogis_contacts, "logging"), patch("time.sleep"):
+        result = fogis_contacts.find_contact_by_name_and_phone(
+            mock_service, "Not Found", "+46700000000", referee
+        )
+        assert result is None
+
+
+@pytest.mark.unit
+def test_find_contact_by_name_and_phone_http_error():
+    """Test find_contact_by_name_and_phone with HTTP error."""
+    from googleapiclient.errors import HttpError
+
+    mock_service = MagicMock()
+    referee = {"domarnr": "ERROR"}
+
+    mock_service.people().connections().list().execute.side_effect = HttpError(
+        resp=MagicMock(status=500), content=b'{"error": {"message": "Server error"}}'
+    )
+
+    with patch.object(fogis_contacts, "logging"), patch("time.sleep"):
+        result = fogis_contacts.find_contact_by_name_and_phone(
+            mock_service, "Error Contact", "+46700000000", referee
+        )
+        assert result is None
+
+
+@pytest.mark.unit
+def test_find_contact_by_name_and_phone_quota_error():
+    """Test find_contact_by_name_and_phone with quota exceeded."""
+    from googleapiclient.errors import HttpError
+
+    mock_service = MagicMock()
+    referee = {"domarnr": "QUOTA"}
+
+    mock_service.people().connections().list().execute.side_effect = HttpError(
+        resp=MagicMock(status=429), content=b'{"error": {"message": "Quota exceeded"}}'
+    )
+
+    with patch.object(fogis_contacts, "logging"), patch("time.sleep"):
+        result = fogis_contacts.find_contact_by_name_and_phone(
+            mock_service, "Quota Contact", "+46700000000", referee
+        )
+        assert result is None
+
+
+@pytest.mark.unit
+def test_find_contact_by_name_and_phone_general_exception():
+    """Test find_contact_by_name_and_phone with general exception."""
+    mock_service = MagicMock()
+    referee = {"domarnr": "EXCEPTION"}
+
+    mock_service.people().connections().list().execute.side_effect = Exception("Network error")
+
+    with patch.object(fogis_contacts, "logging"), patch("time.sleep"):
+        result = fogis_contacts.find_contact_by_name_and_phone(
+            mock_service, "Exception Contact", "+46700000000", referee
+        )
+        assert result is None
+
+
+@pytest.mark.unit
+def test_update_google_contact_http_error():
+    """Test update_google_contact with HTTP error."""
+    from googleapiclient.errors import HttpError
+
+    mock_service = MagicMock()
+    mock_service.people().get().execute.side_effect = HttpError(
+        resp=MagicMock(status=500), content=b'{"error": {"message": "Server error"}}'
+    )
+
+    referee = {"personnamn": "Test", "mobiltelefon": "+46700000000"}
+
+    with patch.object(fogis_contacts, "logging"), patch("time.sleep"):
+        result = fogis_contacts.update_google_contact(mock_service, "people/123", referee)
+        assert result is None
+
+
+@pytest.mark.unit
+def test_update_google_contact_quota_error():
+    """Test update_google_contact with quota exceeded."""
+    from googleapiclient.errors import HttpError
+
+    mock_service = MagicMock()
+    mock_service.people().get().execute.side_effect = HttpError(
+        resp=MagicMock(status=429), content=b'{"error": {"message": "Quota exceeded"}}'
+    )
+
+    referee = {"personnamn": "Test", "mobiltelefon": "+46700000000"}
+
+    with patch.object(fogis_contacts, "logging"), patch("time.sleep"):
+        result = fogis_contacts.update_google_contact(mock_service, "people/123", referee)
+        assert result is None
+
+
+@pytest.mark.unit
+def test_update_google_contact_notes_error():
+    """Test update_google_contact with notes field error."""
+    from googleapiclient.errors import HttpError
+
+    mock_service = MagicMock()
+    existing_contact = {
+        "etag": "test_etag",
+        "names": [{"displayName": "Test"}],
+        "phoneNumbers": [],
+        "emailAddresses": [],
+        "organizations": [],
+        "addresses": [],
+    }
+
+    mock_service.people().get().execute.return_value = existing_contact
+    mock_service.people().updateContact().execute.side_effect = HttpError(
+        resp=MagicMock(status=400),
+        content=b'{"error": {"message": "Invalid personFields mask path: \\"notes\\""}}'
+    )
+
+    referee = {"personnamn": "Test", "mobiltelefon": "+46700000000"}
+
+    with patch.object(fogis_contacts, "logging"), patch("time.sleep"):
+        result = fogis_contacts.update_google_contact(mock_service, "people/123", referee)
+        assert result == "people/123"  # Should proceed despite notes error
+
+
+@pytest.mark.unit
+def test_update_google_contact_general_exception():
+    """Test update_google_contact with general exception."""
+    mock_service = MagicMock()
+    mock_service.people().get().execute.side_effect = Exception("Network error")
+
+    referee = {"personnamn": "Test", "mobiltelefon": "+46700000000"}
+
+    with patch.object(fogis_contacts, "logging"), patch("time.sleep"):
+        result = fogis_contacts.update_google_contact(mock_service, "people/123", referee)
+        assert result is None
+
+
+@pytest.mark.unit
+def test_find_contact_by_phone_success():
+    """Test find_contact_by_phone finding contact successfully."""
+    mock_service = MagicMock()
+
+    mock_connections = [
+        {
+            "resourceName": "people/123",
+            "names": [{"displayName": "Found Contact"}],
+            "phoneNumbers": [{"value": "+46701234567"}],
+        }
+    ]
+
+    mock_service.people().connections().list().execute.return_value = {
+        "connections": mock_connections
+    }
+
+    with patch.object(fogis_contacts, "logging"), patch("time.sleep"):
+        result = fogis_contacts.find_contact_by_phone(mock_service, "+46701234567")
+        assert result is not None
+        assert result["resourceName"] == "people/123"
+
+
+@pytest.mark.unit
+def test_find_contact_by_phone_not_found():
+    """Test find_contact_by_phone when contact not found."""
+    mock_service = MagicMock()
+    mock_service.people().connections().list().execute.return_value = {"connections": []}
+
+    with patch.object(fogis_contacts, "logging"), patch("time.sleep"):
+        result = fogis_contacts.find_contact_by_phone(mock_service, "+46700000000")
+        assert result is None
+
+
+@pytest.mark.unit
+def test_find_contact_by_phone_quota_error():
+    """Test find_contact_by_phone with quota exceeded."""
+    from googleapiclient.errors import HttpError
+
+    mock_service = MagicMock()
+    mock_service.people().connections().list().execute.side_effect = HttpError(
+        resp=MagicMock(status=429), content=b'{"error": {"message": "Quota exceeded"}}'
+    )
+
+    with patch.object(fogis_contacts, "logging"), patch("time.sleep"):
+        result = fogis_contacts.find_contact_by_phone(mock_service, "+46700000000")
+        assert result is None

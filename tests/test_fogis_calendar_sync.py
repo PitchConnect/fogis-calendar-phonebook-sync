@@ -432,3 +432,334 @@ def test_authorize_google_calendar_function():
         # Test the actual function that exists in the module
         result = fogis_calendar_sync.authorize_google_calendar(headless=False)
         assert result == mock_creds
+
+
+@pytest.mark.unit
+def test_authorize_google_calendar_headless_mode():
+    """Test authorize_google_calendar in headless mode."""
+    mock_creds = MagicMock()
+    mock_creds.valid = True
+
+    # Mock the missing function that's called in the code
+    with patch("fogis_calendar_sync.auth_server") as mock_auth_server, patch(
+        "fogis_calendar_sync.token_manager"
+    ) as mock_token_manager:
+
+        mock_auth_server.check_and_refresh_auth.return_value = True
+        mock_token_manager.load_token.return_value = mock_creds
+
+        result = fogis_calendar_sync.authorize_google_calendar(headless=True)
+        assert result == mock_creds
+
+
+@pytest.mark.unit
+def test_authorize_google_calendar_headless_failure():
+    """Test authorize_google_calendar headless mode failure."""
+    with patch("fogis_calendar_sync.auth_server") as mock_auth_server:
+        mock_auth_server.check_and_refresh_auth.return_value = False
+
+        result = fogis_calendar_sync.authorize_google_calendar(headless=True)
+        assert result is None
+
+
+@pytest.mark.unit
+def test_authorize_google_calendar_no_token_file():
+    """Test authorize_google_calendar when no token file exists."""
+    mock_creds = MagicMock()
+    mock_creds.valid = True
+
+    with patch("os.path.exists", return_value=False), patch(
+        "google_auth_oauthlib.flow.InstalledAppFlow.from_client_secrets_file"
+    ) as mock_flow, patch("fogis_calendar_sync.token_manager"), patch.dict(
+        fogis_calendar_sync.config_dict,
+        {"CREDENTIALS_FILE": "credentials.json", "SCOPES": ["test_scope"]},
+    ):
+
+        mock_flow_instance = MagicMock()
+        mock_flow_instance.run_local_server.return_value = mock_creds
+        mock_flow.return_value = mock_flow_instance
+
+        result = fogis_calendar_sync.authorize_google_calendar(headless=False)
+        assert result == mock_creds
+
+
+@pytest.mark.unit
+def test_authorize_google_calendar_refresh_token():
+    """Test authorize_google_calendar with expired but refreshable credentials."""
+    mock_creds = MagicMock()
+    mock_creds.valid = False
+    mock_creds.expired = True
+    mock_creds.refresh_token = "refresh_token"
+
+    with patch("os.path.exists", return_value=True), patch(
+        "google.oauth2.credentials.Credentials.from_authorized_user_file", return_value=mock_creds
+    ), patch("fogis_calendar_sync.token_manager"), patch.dict(
+        fogis_calendar_sync.config_dict, {"SCOPES": ["test_scope"]}
+    ):
+
+        # Mock successful refresh - set valid to True after creation
+        def mock_refresh(_):
+            mock_creds.valid = True
+
+        mock_creds.refresh = MagicMock(side_effect=mock_refresh)
+
+        result = fogis_calendar_sync.authorize_google_calendar(headless=False)
+        assert result == mock_creds
+
+
+@pytest.mark.unit
+def test_authorize_google_calendar_refresh_error():
+    """Test authorize_google_calendar when refresh fails."""
+    from google.auth.exceptions import RefreshError
+
+    mock_creds = MagicMock()
+    mock_creds.valid = False
+    mock_creds.expired = True
+    mock_creds.refresh_token = "refresh_token"
+    mock_creds.refresh.side_effect = RefreshError("Refresh failed")
+
+    mock_new_creds = MagicMock()
+    mock_new_creds.valid = True
+
+    with patch("os.path.exists", return_value=True), patch(
+        "google.oauth2.credentials.Credentials.from_authorized_user_file", return_value=mock_creds
+    ), patch("fogis_calendar_sync.token_manager"), patch(
+        "google_auth_oauthlib.flow.InstalledAppFlow.from_client_secrets_file"
+    ) as mock_flow, patch.dict(
+        fogis_calendar_sync.config_dict,
+        {"CREDENTIALS_FILE": "credentials.json", "SCOPES": ["test_scope"]},
+    ):
+
+        mock_flow_instance = MagicMock()
+        mock_flow_instance.run_local_server.return_value = mock_new_creds
+        mock_flow.return_value = mock_flow_instance
+
+        result = fogis_calendar_sync.authorize_google_calendar(headless=False)
+        assert result == mock_new_creds
+
+
+@pytest.mark.unit
+def test_authorize_google_calendar_credentials_file_not_found():
+    """Test authorize_google_calendar when credentials file is not found."""
+    mock_creds = MagicMock()
+    mock_creds.valid = False
+
+    with patch("os.path.exists", return_value=True), patch(
+        "google.oauth2.credentials.Credentials.from_authorized_user_file", return_value=mock_creds
+    ), patch(
+        "google_auth_oauthlib.flow.InstalledAppFlow.from_client_secrets_file",
+        side_effect=FileNotFoundError,
+    ), patch.dict(
+        fogis_calendar_sync.config_dict,
+        {"CREDENTIALS_FILE": "missing.json", "SCOPES": ["test_scope"]},
+    ):
+
+        result = fogis_calendar_sync.authorize_google_calendar(headless=False)
+        assert result is None
+
+
+@pytest.mark.unit
+def test_generate_match_hash_with_missing_fields():
+    """Test generate_match_hash with missing optional fields."""
+    match = {
+        "lag1namn": "Team A",
+        "lag2namn": "Team B",
+        "anlaggningnamn": "Stadium",
+        "tid": "/Date(1640995200000)/",
+        "tavlingnamn": "League",
+        # Missing kontaktpersoner and domaruppdraglista
+    }
+
+    hash_result = fogis_calendar_sync.generate_match_hash(match)
+    assert isinstance(hash_result, str)
+    assert len(hash_result) == 64
+
+
+@pytest.mark.unit
+def test_check_calendar_exists_http_error():
+    """Test check_calendar_exists with various HTTP errors."""
+    from googleapiclient.errors import HttpError
+
+    mock_service = MagicMock()
+
+    # Test 500 error (not 404)
+    mock_service.calendars().get().execute.side_effect = HttpError(
+        resp=MagicMock(status=500), content=b'{"error": {"message": "Server error"}}'
+    )
+
+    result = fogis_calendar_sync.check_calendar_exists(mock_service, "calendar_id")
+    assert result is False
+
+
+@pytest.mark.unit
+def test_check_calendar_exists_general_exception():
+    """Test check_calendar_exists with general exception."""
+    mock_service = MagicMock()
+    mock_service.calendars().get().execute.side_effect = Exception("Network error")
+
+    result = fogis_calendar_sync.check_calendar_exists(mock_service, "calendar_id")
+    assert result is None
+
+
+@pytest.mark.unit
+def test_find_event_by_match_id_http_error():
+    """Test find_event_by_match_id with HTTP error."""
+    from googleapiclient.errors import HttpError
+
+    mock_service = MagicMock()
+    mock_service.events().list().execute.side_effect = HttpError(
+        resp=MagicMock(status=500), content=b'{"error": {"message": "Server error"}}'
+    )
+
+    with patch.dict(fogis_calendar_sync.config_dict, {"DAYS_TO_KEEP_PAST_EVENTS": 7}):
+        result = fogis_calendar_sync.find_event_by_match_id(mock_service, "calendar_id", 12345)
+        assert result is None
+
+
+@pytest.mark.unit
+def test_find_event_by_match_id_general_exception():
+    """Test find_event_by_match_id with general exception."""
+    mock_service = MagicMock()
+    mock_service.events().list().execute.side_effect = Exception("Network error")
+
+    with patch.dict(fogis_calendar_sync.config_dict, {"DAYS_TO_KEEP_PAST_EVENTS": 7}):
+        result = fogis_calendar_sync.find_event_by_match_id(mock_service, "calendar_id", 12345)
+        assert result is None
+
+
+@pytest.mark.unit
+def test_sync_calendar_no_changes():
+    """Test sync_calendar when no changes are detected."""
+    mock_service = MagicMock()
+
+    # Create match data
+    match = {
+        "matchid": 12345,
+        "lag1namn": "Team A",
+        "lag2namn": "Team B",
+        "anlaggningnamn": "Stadium",
+        "tid": "/Date(1640995200000)/",
+        "tavlingnamn": "League",
+        "matchnr": "M001",
+        "domaruppdraglista": [],
+        "kontaktpersoner": [],
+    }
+
+    # Generate the expected hash
+    expected_hash = fogis_calendar_sync.generate_match_hash(match)
+
+    # Mock existing event with same hash
+    existing_event = {
+        "id": "event_id",
+        "extendedProperties": {"private": {"matchId": "12345", "matchHash": expected_hash}},
+    }
+
+    mock_service.events().list().execute.return_value = {"items": [existing_event]}
+
+    args = MagicMock()
+    args.delete = False
+
+    with patch.dict(
+        fogis_calendar_sync.config_dict, {"CALENDAR_ID": "calendar_id", "SYNC_TAG": "TEST"}
+    ):
+        fogis_calendar_sync.sync_calendar(match, mock_service, args)
+
+        # Verify no update or insert was called
+        mock_service.events().update.assert_not_called()
+        mock_service.events().insert.assert_not_called()
+
+
+@pytest.mark.unit
+def test_sync_calendar_with_delete_flag():
+    """Test sync_calendar with delete flag set."""
+    mock_service = MagicMock()
+    mock_service.events().list().execute.return_value = {"items": []}
+    mock_service.events().insert().execute.return_value = {
+        "id": "event_id",
+        "summary": "Team A - Team B",
+    }
+
+    match = {
+        "matchid": 12345,
+        "lag1namn": "Team A",
+        "lag2namn": "Team B",
+        "anlaggningnamn": "Stadium",
+        "tid": "/Date(1640995200000)/",
+        "tavlingnamn": "League",
+        "matchnr": "M001",
+        "domaruppdraglista": [],
+        "kontaktpersoner": [],
+    }
+
+    args = MagicMock()
+    args.delete = True  # Delete flag set
+
+    with patch.dict(
+        fogis_calendar_sync.config_dict, {"CALENDAR_ID": "calendar_id", "SYNC_TAG": "TEST"}
+    ):
+        fogis_calendar_sync.sync_calendar(match, mock_service, args)
+
+        # Verify event was created but process_referees was not called
+        # Check that insert was called with the calendar data
+        assert mock_service.events().insert().execute.called
+
+
+@pytest.mark.unit
+def test_sync_calendar_http_error():
+    """Test sync_calendar with HTTP error during event creation."""
+    from googleapiclient.errors import HttpError
+
+    mock_service = MagicMock()
+    mock_service.events().list().execute.return_value = {"items": []}
+    mock_service.events().insert().execute.side_effect = HttpError(
+        resp=MagicMock(status=500), content=b'{"error": {"message": "Server error"}}'
+    )
+
+    match = {
+        "matchid": 12345,
+        "lag1namn": "Team A",
+        "lag2namn": "Team B",
+        "anlaggningnamn": "Stadium",
+        "tid": "/Date(1640995200000)/",
+        "tavlingnamn": "League",
+        "matchnr": "M001",
+        "domaruppdraglista": [],
+        "kontaktpersoner": [],
+    }
+
+    args = MagicMock()
+    args.delete = False
+
+    with patch.dict(
+        fogis_calendar_sync.config_dict, {"CALENDAR_ID": "calendar_id", "SYNC_TAG": "TEST"}
+    ):
+        # Should not raise exception, just log error
+        fogis_calendar_sync.sync_calendar(match, mock_service, args)
+
+
+@pytest.mark.unit
+def test_sync_calendar_general_exception():
+    """Test sync_calendar with general exception."""
+    mock_service = MagicMock()
+    mock_service.events().list().execute.side_effect = Exception("Network error")
+
+    match = {
+        "matchid": 12345,
+        "lag1namn": "Team A",
+        "lag2namn": "Team B",
+        "anlaggningnamn": "Stadium",
+        "tid": "/Date(1640995200000)/",
+        "tavlingnamn": "League",
+        "matchnr": "M001",
+        "domaruppdraglista": [],
+        "kontaktpersoner": [],
+    }
+
+    args = MagicMock()
+    args.delete = False
+
+    with patch.dict(
+        fogis_calendar_sync.config_dict, {"CALENDAR_ID": "calendar_id", "SYNC_TAG": "TEST"}
+    ):
+        # Should not raise exception, just log error
+        fogis_calendar_sync.sync_calendar(match, mock_service, args)
