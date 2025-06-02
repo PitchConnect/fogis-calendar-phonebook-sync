@@ -73,6 +73,17 @@ jobs:
         labels: ${{ steps.meta.outputs.labels }}
         build-args: |
           VERSION=${{ steps.version.outputs.version }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+    - name: Verify image push
+      run: |
+        echo "✅ Docker image successfully built and pushed to GitHub Container Registry"
+        echo "📦 Image tags: ${{ steps.meta.outputs.tags }}"
+        echo "🏷️ Version: ${{ steps.version.outputs.version }}"
+        echo ""
+        echo "To pull this image:"
+        echo "docker pull ghcr.io/${{ github.repository }}:${{ steps.version.outputs.version }}"
 
   # Deployment steps are commented out until the server is ready
   # Uncomment and configure when your deployment server is prepared

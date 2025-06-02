@@ -1,6 +1,13 @@
 # FOGIS Calendar & Contacts Sync
 
-[![Repository Link](https://img.shields.io/badge/GitHub-Repo-blue?logo=github)](https://github.com/timmybird/FogisCalendarPhoneBookSync)
+[![Tests](https://github.com/PitchConnect/fogis-calendar-phonebook-sync/actions/workflows/tests.yml/badge.svg)](https://github.com/PitchConnect/fogis-calendar-phonebook-sync/actions/workflows/tests.yml)
+[![Code Quality](https://github.com/PitchConnect/fogis-calendar-phonebook-sync/actions/workflows/code-quality.yml/badge.svg)](https://github.com/PitchConnect/fogis-calendar-phonebook-sync/actions/workflows/code-quality.yml)
+[![Docker Build](https://github.com/PitchConnect/fogis-calendar-phonebook-sync/actions/workflows/docker-build.yml/badge.svg)](https://github.com/PitchConnect/fogis-calendar-phonebook-sync/actions/workflows/docker-build.yml)
+[![Deploy](https://github.com/PitchConnect/fogis-calendar-phonebook-sync/actions/workflows/deploy.yml/badge.svg)](https://github.com/PitchConnect/fogis-calendar-phonebook-sync/actions/workflows/deploy.yml)
+[![Nightly CI/CD](https://github.com/PitchConnect/fogis-calendar-phonebook-sync/actions/workflows/nightly.yml/badge.svg)](https://github.com/PitchConnect/fogis-calendar-phonebook-sync/actions/workflows/nightly.yml)
+[![codecov](https://codecov.io/gh/PitchConnect/fogis-calendar-phonebook-sync/branch/main/graph/badge.svg)](https://codecov.io/gh/PitchConnect/fogis-calendar-phonebook-sync)
+
+[![Repository Link](https://img.shields.io/badge/GitHub-Repo-blue?logo=github)](https://github.com/PitchConnect/fogis-calendar-phonebook-sync)
 
 This Python script synchronizes match data from the FOGIS API with your Google Calendar and manages referee contacts in Google Contacts. It helps you keep your calendar updated with your referee assignments and maintain an organized contact list of referees.
 
@@ -282,6 +289,10 @@ pre-commit install
 ```
 
 This will set up pre-commit hooks to ensure code quality standards are met. For more information on our code quality standards, see [docs/code_quality.md](docs/code_quality.md).
+
+### CI/CD Pipeline
+
+This project uses a comprehensive CI/CD pipeline with automated testing, code quality checks, and deployment processes. For detailed information about the CI/CD pipeline, see [docs/ci_cd.md](docs/ci_cd.md).
 
 ## License
 
