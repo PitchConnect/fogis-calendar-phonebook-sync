@@ -64,7 +64,7 @@ repos:
         always_run: true
         args: [
             "-xvs",
-            "-k", "not integration and not slow",
+            "-k", "not integration and not performance and not slow",
         ]
     -   id: pytest-check
         name: pytest-check
@@ -74,5 +74,5 @@ repos:
         files: ^tests/.*\.py$
         args: [
             "-xvs",
-            "-k", "not integration and not slow",
+            "-k", "not integration and not performance and not slow",
         ]

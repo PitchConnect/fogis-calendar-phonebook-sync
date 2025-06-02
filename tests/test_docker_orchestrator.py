@@ -19,7 +19,7 @@ def service_config():
     }
 
 
-@pytest.mark.unit
+@pytest.mark.integration
 def test_run_command():
     """Test running a shell command."""
     # Create a real subprocess result for testing
@@ -43,7 +43,7 @@ def test_run_command():
         assert exit_code == 1
 
 
-@pytest.mark.unit
+@pytest.mark.integration
 def test_check_service_health():
     """Test checking service health."""
     # Mock the requests.get method
@@ -77,7 +77,7 @@ def test_check_service_health():
             assert result is False
 
 
-@pytest.mark.unit
+@pytest.mark.integration
 # pylint: disable=redefined-outer-name
 def test_start_service(service_config):
     """Test starting a service."""
