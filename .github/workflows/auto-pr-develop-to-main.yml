@@ -1,0 +1,233 @@
+name: Auto PR Develop to Main
+
+on:
+  push:
+    branches: [develop]
+  workflow_run:
+    workflows: ["Tests", "Code Quality"]
+    branches: [develop]
+    types: [completed]
+
+jobs:
+  check-and-create-pr:
+    name: Create PR from Develop to Main
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' || github.event_name == 'push'
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        token: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Check if tests are passing
+      id: check-tests
+      run: |
+        # Get the latest commit SHA on develop
+        DEVELOP_SHA=$(git rev-parse develop)
+        echo "develop_sha=$DEVELOP_SHA" >> $GITHUB_OUTPUT
+
+        # Check if there are any differences between develop and main
+        if git diff --quiet origin/main..origin/develop; then
+          echo "has_changes=false" >> $GITHUB_OUTPUT
+          echo "No changes between develop and main branches"
+        else
+          echo "has_changes=true" >> $GITHUB_OUTPUT
+          echo "Changes detected between develop and main branches"
+        fi
+
+    - name: Wait for concurrent workflows
+      if: steps.check-tests.outputs.has_changes == 'true'
+      run: |
+        echo "Waiting for any concurrent workflows to complete..."
+        sleep 30
+
+    - name: Check workflow status
+      id: workflow-status
+      if: steps.check-tests.outputs.has_changes == 'true'
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const { data: workflows } = await github.rest.actions.listWorkflowRunsForRepo({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            head_sha: '${{ steps.check-tests.outputs.develop_sha }}',
+            status: 'completed',
+            per_page: 100
+          });
+
+          const requiredWorkflows = ['Tests', 'Code Quality'];
+          const workflowResults = {};
+
+          for (const workflow of workflows.workflow_runs) {
+            if (requiredWorkflows.includes(workflow.name)) {
+              workflowResults[workflow.name] = workflow.conclusion;
+            }
+          }
+
+          console.log('Workflow results:', workflowResults);
+
+          const allPassed = requiredWorkflows.every(name =>
+            workflowResults[name] === 'success'
+          );
+
+          core.setOutput('all_tests_passed', allPassed);
+          core.setOutput('workflow_results', JSON.stringify(workflowResults));
+
+          if (!allPassed) {
+            console.log('Not all required workflows have passed');
+            for (const [name, result] of Object.entries(workflowResults)) {
+              console.log(`${name}: ${result || 'not found'}`);
+            }
+          }
+
+    - name: Check for existing PR
+      id: check-pr
+      if: steps.workflow-status.outputs.all_tests_passed == 'true'
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const { data: prs } = await github.rest.pulls.list({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            head: 'develop',
+            base: 'main',
+            state: 'open'
+          });
+
+          const existingPR = prs.length > 0 ? prs[0] : null;
+          core.setOutput('existing_pr', existingPR ? existingPR.number : '');
+          core.setOutput('has_existing_pr', existingPR ? 'true' : 'false');
+
+          if (existingPR) {
+            console.log(`Found existing PR #${existingPR.number}: ${existingPR.title}`);
+          }
+
+    - name: Get commit details
+      id: commit-details
+      if: steps.workflow-status.outputs.all_tests_passed == 'true' && steps.check-pr.outputs.has_existing_pr == 'false'
+      run: |
+        # Get commits between main and develop
+        COMMITS=$(git log --oneline origin/main..origin/develop --pretty=format:"- %s (%h)" | head -10)
+        echo "recent_commits<<EOF" >> $GITHUB_OUTPUT
+        echo "$COMMITS" >> $GITHUB_OUTPUT
+        echo "EOF" >> $GITHUB_OUTPUT
+
+        # Count total commits
+        COMMIT_COUNT=$(git rev-list --count origin/main..origin/develop)
+        echo "commit_count=$COMMIT_COUNT" >> $GITHUB_OUTPUT
+
+    - name: Create Pull Request
+      id: create-pr
+      if: steps.workflow-status.outputs.all_tests_passed == 'true' && steps.check-pr.outputs.has_existing_pr == 'false'
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const commitCount = '${{ steps.commit-details.outputs.commit_count }}';
+          const recentCommits = `${{ steps.commit-details.outputs.recent_commits }}`;
+
+          const title = `🚀 Auto-merge: Develop to Main (${commitCount} commits)`;
+
+          const body = `## Automated Pull Request: Develop → Main
+
+          This PR was automatically created because all tests passed on the develop branch.
+
+          ### 📊 Status
+          - ✅ All tests passed
+          - ✅ Code quality checks passed
+          - ✅ Ready for review and merge
+
+          ### 📝 Recent Changes (last 10 commits)
+          ${recentCommits}
+
+          ${commitCount > 10 ? `\n_... and ${commitCount - 10} more commits_` : ''}
+
+          ### 🔍 Review Checklist
+          - [ ] Review the changes for any potential issues
+          - [ ] Verify that all tests are passing
+          - [ ] Check for any breaking changes
+          - [ ] Ensure documentation is up to date
+
+          ### 🚀 Next Steps
+          1. Review the changes in this PR
+          2. Approve and merge when ready
+          3. The deployment workflow will automatically trigger
+
+          ---
+
+          **Workflow Results:**
+          \`\`\`json
+          ${{ steps.workflow-status.outputs.workflow_results }}
+          \`\`\`
+
+          _This PR was automatically created by the Auto PR workflow._`;
+
+          const { data: pr } = await github.rest.pulls.create({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            title: title,
+            body: body,
+            head: 'develop',
+            base: 'main'
+          });
+
+          console.log(`Created PR #${pr.number}: ${pr.title}`);
+          core.setOutput('pr_number', pr.number);
+          core.setOutput('pr_url', pr.html_url);
+
+    - name: Add labels to PR
+      if: steps.create-pr.outputs.pr_number
+      uses: actions/github-script@v6
+      with:
+        script: |
+          await github.rest.issues.addLabels({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issue_number: ${{ steps.create-pr.outputs.pr_number }},
+            labels: ['automated-pr', 'develop-to-main', 'ready-for-review']
+          });
+
+    - name: Update existing PR
+      if: steps.workflow-status.outputs.all_tests_passed == 'true' && steps.check-pr.outputs.has_existing_pr == 'true'
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const prNumber = ${{ steps.check-pr.outputs.existing_pr }};
+
+          await github.rest.issues.createComment({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issue_number: prNumber,
+            body: `## 🔄 Update: New commits available
+
+            New commits have been pushed to the develop branch and all tests are passing.
+
+            **Latest commit:** ${{ steps.check-tests.outputs.develop_sha }}
+            **Workflow status:** All required workflows passed ✅
+
+            This PR is ready for review and merge.
+
+            _Updated automatically by the Auto PR workflow._`
+          });
+
+          console.log(`Updated existing PR #${prNumber} with new commit information`);
+
+    - name: Notify on failure
+      if: steps.workflow-status.outputs.all_tests_passed == 'false' && steps.check-tests.outputs.has_changes == 'true'
+      run: |
+        echo "❌ Cannot create PR: Not all required workflows have passed"
+        echo "Workflow results: ${{ steps.workflow-status.outputs.workflow_results }}"
+        echo "A PR will be created automatically once all tests pass on the develop branch."
+
+    - name: Summary
+      if: always()
+      run: |
+        echo "## Auto PR Summary"
+        echo "- Has changes: ${{ steps.check-tests.outputs.has_changes }}"
+        echo "- All tests passed: ${{ steps.workflow-status.outputs.all_tests_passed }}"
+        echo "- Existing PR: ${{ steps.check-pr.outputs.has_existing_pr }}"
+        if [ "${{ steps.create-pr.outputs.pr_number }}" != "" ]; then
+          echo "- Created PR: #${{ steps.create-pr.outputs.pr_number }}"
+          echo "- PR URL: ${{ steps.create-pr.outputs.pr_url }}"
+        fi
