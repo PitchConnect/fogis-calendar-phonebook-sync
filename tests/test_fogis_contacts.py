@@ -487,13 +487,15 @@ def test_authorize_google_people_refresh_success():
     mock_creds.expired = True
     mock_creds.refresh_token = "refresh_token"
 
-    with patch("os.path.exists", return_value=True), \
-         patch("google.oauth2.credentials.Credentials.from_authorized_user_file", return_value=mock_creds), \
-         patch("builtins.open", MagicMock()):
+    with patch("os.path.exists", return_value=True), patch(
+        "google.oauth2.credentials.Credentials.from_authorized_user_file", return_value=mock_creds
+    ), patch("builtins.open", MagicMock()):
 
-        # Mock successful refresh
-        mock_creds.refresh = MagicMock()
-        mock_creds.valid = True  # After refresh
+        # Mock successful refresh - the function checks valid first, so set it False initially
+        def mock_refresh(_):
+            mock_creds.valid = True
+
+        mock_creds.refresh = MagicMock(side_effect=mock_refresh)
 
         result = fogis_contacts.authorize_google_people()
         assert result == mock_creds
@@ -503,10 +505,14 @@ def test_authorize_google_people_refresh_success():
 @pytest.mark.unit
 def test_authorize_google_people_file_error():
     """Test authorization when file loading fails."""
-    with patch("os.path.exists", return_value=True), \
-         patch("google.oauth2.credentials.Credentials.from_authorized_user_file", side_effect=Exception("File error")), \
-         patch("google_auth_oauthlib.flow.InstalledAppFlow.from_client_secrets_file") as mock_flow, \
-         patch("builtins.open", MagicMock()):
+    with patch("os.path.exists", return_value=True), patch(
+        "google.oauth2.credentials.Credentials.from_authorized_user_file",
+        side_effect=Exception("File error"),
+    ), patch(
+        "google_auth_oauthlib.flow.InstalledAppFlow.from_client_secrets_file"
+    ) as mock_flow, patch(
+        "builtins.open", MagicMock()
+    ):
 
         mock_flow_instance = MagicMock()
         mock_new_creds = MagicMock()
@@ -582,9 +588,9 @@ def test_process_referees_skip_user_referee():
         ]
     }
 
-    with patch.object(fogis_contacts, "authorize_google_people") as mock_auth, \
-         patch("googleapiclient.discovery.build") as mock_build, \
-         patch.dict("os.environ", {"USER_REFEREE_NUMBER": "USER123"}):
+    with patch.object(fogis_contacts, "authorize_google_people") as mock_auth, patch(
+        "googleapiclient.discovery.build"
+    ) as mock_build, patch.dict("os.environ", {"USER_REFEREE_NUMBER": "USER123"}):
 
         mock_auth.return_value = MagicMock()
         mock_build.return_value = MagicMock()
@@ -608,10 +614,13 @@ def test_process_referees_update_existing():
 
     existing_contact = {"resourceName": "people/existing"}
 
-    with patch.object(fogis_contacts, "authorize_google_people") as mock_auth, \
-         patch("googleapiclient.discovery.build") as mock_build, \
-         patch.object(fogis_contacts, "find_contact_by_name_and_phone", return_value=existing_contact), \
-         patch.object(fogis_contacts, "update_google_contact", return_value="people/existing"):
+    with patch.object(fogis_contacts, "authorize_google_people") as mock_auth, patch(
+        "googleapiclient.discovery.build"
+    ) as mock_build, patch.object(
+        fogis_contacts, "find_contact_by_name_and_phone", return_value=existing_contact
+    ), patch.object(
+        fogis_contacts, "update_google_contact", return_value="people/existing"
+    ):
 
         mock_auth.return_value = MagicMock()
         mock_build.return_value = MagicMock()
@@ -633,10 +642,13 @@ def test_process_referees_create_new_no_group():
         ]
     }
 
-    with patch.object(fogis_contacts, "authorize_google_people") as mock_auth, \
-         patch("googleapiclient.discovery.build") as mock_build, \
-         patch.object(fogis_contacts, "find_contact_by_name_and_phone", return_value=None), \
-         patch.object(fogis_contacts, "find_or_create_referees_group", return_value=None):
+    with patch.object(fogis_contacts, "authorize_google_people") as mock_auth, patch(
+        "googleapiclient.discovery.build"
+    ) as mock_build, patch.object(
+        fogis_contacts, "find_contact_by_name_and_phone", return_value=None
+    ), patch.object(
+        fogis_contacts, "find_or_create_referees_group", return_value=None
+    ):
 
         mock_auth.return_value = MagicMock()
         mock_build.return_value = MagicMock()
@@ -658,9 +670,11 @@ def test_process_referees_contact_exception():
         ]
     }
 
-    with patch.object(fogis_contacts, "authorize_google_people") as mock_auth, \
-         patch("googleapiclient.discovery.build") as mock_build, \
-         patch.object(fogis_contacts, "find_contact_by_name_and_phone", side_effect=Exception("Contact error")):
+    with patch.object(fogis_contacts, "authorize_google_people") as mock_auth, patch(
+        "googleapiclient.discovery.build"
+    ) as mock_build, patch.object(
+        fogis_contacts, "find_contact_by_name_and_phone", side_effect=Exception("Contact error")
+    ):
 
         mock_auth.return_value = MagicMock()
         mock_build.return_value = MagicMock()
@@ -674,8 +688,9 @@ def test_process_referees_service_build_exception():
     """Test process_referees when service build fails."""
     match = {"domaruppdraglista": []}
 
-    with patch.object(fogis_contacts, "authorize_google_people") as mock_auth, \
-         patch("googleapiclient.discovery.build", side_effect=Exception("Service build failed")):
+    with patch.object(fogis_contacts, "authorize_google_people") as mock_auth, patch(
+        "googleapiclient.discovery.build", side_effect=Exception("Service build failed")
+    ):
 
         mock_auth.return_value = MagicMock()
 
@@ -805,7 +820,7 @@ def test_update_google_contact_notes_error():
     mock_service.people().get().execute.return_value = existing_contact
     mock_service.people().updateContact().execute.side_effect = HttpError(
         resp=MagicMock(status=400),
-        content=b'{"error": {"message": "Invalid personFields mask path: \\"notes\\""}}'
+        content=b'{"error": {"message": "Invalid personFields mask path: \\"notes\\""}}',
     )
 
     referee = {"personnamn": "Test", "mobiltelefon": "+46700000000"}

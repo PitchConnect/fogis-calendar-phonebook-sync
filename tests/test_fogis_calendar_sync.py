@@ -661,7 +661,8 @@ def test_sync_calendar_no_changes():
 
     with patch.dict(
         fogis_calendar_sync.config_dict, {"CALENDAR_ID": "calendar_id", "SYNC_TAG": "TEST"}
-    ):
+    ), patch("fogis_contacts.process_referees", return_value=True), \
+       patch("fogis_contacts.authorize_google_people", return_value=MagicMock()):
         fogis_calendar_sync.sync_calendar(match, mock_service, args)
 
         # Verify no update or insert was called
@@ -696,7 +697,8 @@ def test_sync_calendar_with_delete_flag():
 
     with patch.dict(
         fogis_calendar_sync.config_dict, {"CALENDAR_ID": "calendar_id", "SYNC_TAG": "TEST"}
-    ):
+    ), patch("fogis_contacts.process_referees", return_value=True), \
+       patch("fogis_contacts.authorize_google_people", return_value=MagicMock()):
         fogis_calendar_sync.sync_calendar(match, mock_service, args)
 
         # Verify event was created but process_referees was not called
@@ -732,7 +734,8 @@ def test_sync_calendar_http_error():
 
     with patch.dict(
         fogis_calendar_sync.config_dict, {"CALENDAR_ID": "calendar_id", "SYNC_TAG": "TEST"}
-    ):
+    ), patch("fogis_contacts.process_referees", return_value=True), \
+       patch("fogis_contacts.authorize_google_people", return_value=MagicMock()):
         # Should not raise exception, just log error
         fogis_calendar_sync.sync_calendar(match, mock_service, args)
 
@@ -760,6 +763,7 @@ def test_sync_calendar_general_exception():
 
     with patch.dict(
         fogis_calendar_sync.config_dict, {"CALENDAR_ID": "calendar_id", "SYNC_TAG": "TEST"}
-    ):
+    ), patch("fogis_contacts.process_referees", return_value=True), \
+       patch("fogis_contacts.authorize_google_people", return_value=MagicMock()):
         # Should not raise exception, just log error
         fogis_calendar_sync.sync_calendar(match, mock_service, args)
