@@ -143,7 +143,7 @@ class TestTokenManagerClass:
         mock_flow = MagicMock()
         mock_flow.authorization_url.return_value = ("http://auth.url", "state123")
 
-        with patch(
+        with patch("os.path.exists", return_value=True), patch(
             "google_auth_oauthlib.flow.InstalledAppFlow.from_client_secrets_file",
             return_value=mock_flow,
         ):
@@ -244,7 +244,7 @@ class TestTokenManagerFunctions:
         tm = token_manager.TokenManager(mock_config)
 
         # Test with invalid credentials file
-        with patch(
+        with patch("os.path.exists", return_value=True), patch(
             "google_auth_oauthlib.flow.InstalledAppFlow.from_client_secrets_file",
             side_effect=Exception("Invalid credentials"),
         ):
