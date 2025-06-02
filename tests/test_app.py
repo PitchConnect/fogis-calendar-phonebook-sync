@@ -136,11 +136,9 @@ def test_sync_endpoint_with_credentials(client):
         mock_process.stderr = ""
         mock_run.return_value = mock_process
 
-        response = client.post("/sync", json={
-            "username": "test_user",
-            "password": "test_pass",
-            "delete": False
-        })
+        response = client.post(
+            "/sync", json={"username": "test_user", "password": "test_pass", "delete": False}
+        )
 
         assert response.status_code == 200
         data = json.loads(response.data)

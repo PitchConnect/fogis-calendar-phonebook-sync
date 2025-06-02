@@ -109,8 +109,9 @@ def test_auth_server_start_stop():
     config = {"AUTH_SERVER_HOST": "localhost", "AUTH_SERVER_PORT": 8080}
     server = auth_server.AuthServer(config, mock_token_manager)
 
-    with mock.patch("auth_server.make_server") as mock_make_server, \
-         mock.patch("threading.Thread") as mock_thread:
+    with mock.patch("auth_server.make_server") as mock_make_server, mock.patch(
+        "threading.Thread"
+    ) as mock_thread:
 
         mock_server_instance = mock.Mock()
         mock_make_server.return_value = mock_server_instance
@@ -326,6 +327,7 @@ def test_auth_server_get_auth_url_with_server():
     auth_url = server.get_auth_url()
     assert auth_url is not None
     assert "localhost:8080/callback" in auth_url
+
 
 # @pytest.mark.fast
 # def test_initialize_oauth_flow(mock_config_file):
