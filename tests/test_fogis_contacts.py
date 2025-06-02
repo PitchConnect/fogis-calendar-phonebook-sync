@@ -686,10 +686,18 @@ def test_process_referees_contact_exception():
 @pytest.mark.unit
 def test_process_referees_service_build_exception():
     """Test process_referees when service build fails."""
-    match = {"domaruppdraglista": []}
+    match = {
+        "domaruppdraglista": [
+            {
+                "personnamn": "Test Referee",
+                "mobiltelefon": "+46701234567",
+                "domarnr": "TEST123",
+            }
+        ]
+    }
 
     with patch.object(fogis_contacts, "authorize_google_people") as mock_auth, patch(
-        "googleapiclient.discovery.build", side_effect=Exception("Service build failed")
+        "fogis_contacts.build", side_effect=Exception("Service build failed")
     ):
 
         mock_auth.return_value = MagicMock()
@@ -818,9 +826,19 @@ def test_update_google_contact_notes_error():
     }
 
     mock_service.people().get().execute.return_value = existing_contact
+
+    # Create a proper mock response object
+    mock_resp = MagicMock()
+    mock_resp.status = 400
+
+    # The function looks for: 'Invalid personFields mask path: "notes"'
+    # So we need the JSON to decode to that exact string
+    error_message = 'Invalid personFields mask path: "notes"'
+    content = f'{{"error": {{"message": "{error_message}"}}}}'.encode()
+
     mock_service.people().updateContact().execute.side_effect = HttpError(
-        resp=MagicMock(status=400),
-        content=b'{"error": {"message": "Invalid personFields mask path: \\"notes\\""}}',
+        resp=mock_resp,
+        content=content,
     )
 
     referee = {"personnamn": "Test", "mobiltelefon": "+46700000000"}
