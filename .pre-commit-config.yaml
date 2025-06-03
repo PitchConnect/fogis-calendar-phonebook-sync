@@ -58,21 +58,23 @@ repos:
     hooks:
     -   id: pytest
         name: pytest
-        entry: pytest
+        entry: python3 -m pytest
         language: system
         pass_filenames: false
         always_run: true
         args: [
             "-xvs",
             "-k", "not integration and not performance and not slow",
+            "--ignore=tests/integration",
         ]
     -   id: pytest-check
         name: pytest-check
-        entry: pytest
+        entry: python3 -m pytest
         language: system
         types: [python]
         files: ^tests/.*\.py$
         args: [
             "-xvs",
             "-k", "not integration and not performance and not slow",
+            "--ignore=tests/integration",
         ]

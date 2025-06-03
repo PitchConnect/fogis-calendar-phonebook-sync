@@ -12,7 +12,7 @@ import clean_auth
 class TestCleanAuthMain:
     """Test cases for the main function in clean_auth."""
 
-    @patch("clean_auth.InstalledAppFlow")
+    @patch("google_auth_oauthlib.flow.InstalledAppFlow")
     @patch("builtins.open")
     @patch("builtins.print")
     def test_main_success(self, mock_print, mock_file_open, mock_flow_class):
@@ -64,7 +64,7 @@ class TestCleanAuthMain:
         mock_print.assert_any_call("✅ Authentication successful!")
         mock_print.assert_any_call("✅ Token saved to token.json")
 
-    @patch("clean_auth.InstalledAppFlow")
+    @patch("google_auth_oauthlib.flow.InstalledAppFlow")
     @patch("builtins.open")
     @patch("builtins.print")
     def test_main_success_with_default_scopes(self, mock_print, mock_file_open, mock_flow_class):
@@ -107,11 +107,24 @@ class TestCleanAuthMain:
     @patch("builtins.print")
     def test_main_import_error(self, mock_print):
         """Test main function when google_auth_oauthlib is not available."""
-        # Mock ImportError when trying to import InstalledAppFlow
-        with patch(
-            "clean_auth.InstalledAppFlow",
-            side_effect=ImportError("No module named 'google_auth_oauthlib'"),
-        ):
+        # Mock ImportError by patching the import at the module level
+        import sys
+
+        original_modules = sys.modules.copy()
+
+        # Remove the module if it exists to force ImportError
+        if "google_auth_oauthlib.flow" in sys.modules:
+            del sys.modules["google_auth_oauthlib.flow"]
+        if "google_auth_oauthlib" in sys.modules:
+            del sys.modules["google_auth_oauthlib"]
+
+        # Mock the import to raise ImportError
+        def mock_import(name, *args, **kwargs):
+            if name == "google_auth_oauthlib.flow":
+                raise ImportError("No module named 'google_auth_oauthlib'")
+            return original_modules.get(name)
+
+        with patch("builtins.__import__", side_effect=mock_import):
             result = clean_auth.main()
 
             # Verify error return code
@@ -123,7 +136,10 @@ class TestCleanAuthMain:
             )
             mock_print.assert_any_call("💡 Try: pip install google-auth-oauthlib")
 
-    @patch("clean_auth.InstalledAppFlow")
+        # Restore original modules
+        sys.modules.update(original_modules)
+
+    @patch("google_auth_oauthlib.flow.InstalledAppFlow")
     @patch("builtins.open")
     @patch("builtins.print")
     def test_main_config_file_not_found(self, mock_print, mock_file_open, mock_flow_class):
@@ -140,7 +156,7 @@ class TestCleanAuthMain:
         mock_print.assert_any_call("❌ File not found: config.json not found")
         mock_print.assert_any_call("💡 Make sure credentials.json and config.json exist")
 
-    @patch("clean_auth.InstalledAppFlow")
+    @patch("google_auth_oauthlib.flow.InstalledAppFlow")
     @patch("builtins.open")
     @patch("builtins.print")
     def test_main_credentials_file_not_found(self, mock_print, mock_file_open, mock_flow_class):
@@ -164,7 +180,7 @@ class TestCleanAuthMain:
         mock_print.assert_any_call("❌ File not found: credentials.json not found")
         mock_print.assert_any_call("💡 Make sure credentials.json and config.json exist")
 
-    @patch("clean_auth.InstalledAppFlow")
+    @patch("google_auth_oauthlib.flow.InstalledAppFlow")
     @patch("builtins.open")
     @patch("builtins.print")
     def test_main_authentication_failure(self, mock_print, mock_file_open, mock_flow_class):
@@ -188,7 +204,7 @@ class TestCleanAuthMain:
         mock_print.assert_any_call("❌ Authentication failed: Authentication failed")
         mock_print.assert_any_call("💡 Check your internet connection and try again")
 
-    @patch("clean_auth.InstalledAppFlow")
+    @patch("google_auth_oauthlib.flow.InstalledAppFlow")
     @patch("builtins.open")
     @patch("builtins.print")
     def test_main_token_save_failure(self, mock_print, mock_file_open, mock_flow_class):
@@ -220,7 +236,7 @@ class TestCleanAuthMain:
         mock_print.assert_any_call("❌ Authentication failed: Permission denied")
         mock_print.assert_any_call("💡 Check your internet connection and try again")
 
-    @patch("clean_auth.InstalledAppFlow")
+    @patch("google_auth_oauthlib.flow.InstalledAppFlow")
     @patch("builtins.open")
     @patch("builtins.print")
     def test_main_credentials_without_refresh_token(
