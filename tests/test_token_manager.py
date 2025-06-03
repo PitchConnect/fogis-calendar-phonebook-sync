@@ -271,3 +271,138 @@ class TestTokenManagerFunctions:
             # This should trigger a refresh
             tm.get_credentials()
             # The refresh logic is internal to the class
+
+    @pytest.mark.unit
+    def test_get_credentials_cached_valid(self, mock_config, mock_credentials):
+        """Test getting cached valid credentials (line 60)."""
+        tm = token_manager.TokenManager(mock_config)
+        tm._credentials = mock_credentials
+        mock_credentials.valid = True
+
+        result = tm.get_credentials()
+
+        assert result == mock_credentials
+
+    @pytest.mark.unit
+    def test_get_credentials_refresh_expired_token(self, mock_config, mock_credentials):
+        """Test refreshing expired token (lines 75-83)."""
+        tm = token_manager.TokenManager(mock_config)
+
+        # Set up expired but refreshable credentials
+        mock_credentials.valid = False
+        mock_credentials.expired = True
+        mock_credentials.refresh_token = "refresh_token"
+
+        with patch("os.path.exists", return_value=True), patch(
+            "google.oauth2.credentials.Credentials.from_authorized_user_file",
+            return_value=mock_credentials,
+        ), patch("google.auth.transport.requests.Request"), patch.object(
+            tm, "_save_token"
+        ) as mock_save, patch(
+            "token_manager.logger"
+        ) as mock_logger:
+
+            # Mock successful refresh
+            mock_credentials.refresh.return_value = None
+            mock_credentials.valid = True  # After refresh
+
+            result = tm.get_credentials()
+
+            assert result == mock_credentials
+            mock_credentials.refresh.assert_called_once()
+            mock_save.assert_called_once()
+            mock_logger.info.assert_any_call("Successfully refreshed expired token")
+
+    @pytest.mark.unit
+    def test_get_credentials_refresh_failure(self, mock_config, mock_credentials):
+        """Test token refresh failure (lines 81-83)."""
+        tm = token_manager.TokenManager(mock_config)
+
+        # Set up expired but refreshable credentials
+        mock_credentials.valid = False
+        mock_credentials.expired = True
+        mock_credentials.refresh_token = "refresh_token"
+
+        with patch("os.path.exists", return_value=True), patch(
+            "google.oauth2.credentials.Credentials.from_authorized_user_file",
+            return_value=mock_credentials,
+        ), patch("google.auth.transport.requests.Request"), patch(
+            "token_manager.logger"
+        ) as mock_logger:
+
+            # Mock refresh failure
+            mock_credentials.refresh.side_effect = Exception("Refresh failed")
+
+            result = tm.get_credentials()
+
+            assert result is None
+            assert tm._credentials is None
+            mock_logger.error.assert_any_call("Failed to refresh token: Refresh failed")
+
+    @pytest.mark.unit
+    def test_check_token_expiration_no_expiry(self, mock_config, mock_credentials):
+        """Test token expiration check with no expiry info (line 104)."""
+        tm = token_manager.TokenManager(mock_config)
+        mock_credentials.expiry = None
+
+        with patch.object(tm, "get_credentials", return_value=mock_credentials):
+            needs_refresh, expiry = tm.check_token_expiration()
+
+            assert needs_refresh is False
+            assert expiry is None
+
+    @pytest.mark.unit
+    def test_initiate_auth_flow_missing_credentials_file(self, mock_config):
+        """Test initiating auth flow with missing credentials file (line 120)."""
+        tm = token_manager.TokenManager(mock_config)
+
+        with patch("os.path.exists", return_value=False):
+            with pytest.raises(FileNotFoundError) as exc_info:
+                tm.initiate_auth_flow()
+
+            assert "Credentials file not found" in str(exc_info.value)
+
+    @pytest.mark.unit
+    def test_complete_auth_flow_exception_handling(self, mock_config):
+        """Test complete auth flow exception handling (lines 160-162)."""
+        tm = token_manager.TokenManager(mock_config)
+
+        # Set up mock flow that will raise an exception
+        mock_flow = MagicMock()
+        mock_flow.fetch_token.side_effect = Exception("Auth flow error")
+        tm._flow = mock_flow
+
+        with patch("token_manager.logger") as mock_logger:
+            result = tm.complete_auth_flow("http://callback.url?code=auth_code")
+
+            assert result is False
+            mock_logger.error.assert_any_call("Failed to complete auth flow: Auth flow error")
+
+    @pytest.mark.unit
+    def test_save_token_success(self, mock_config, mock_credentials):
+        """Test successful token saving (line 169)."""
+        tm = token_manager.TokenManager(mock_config)
+        tm._credentials = mock_credentials
+
+        with patch("builtins.open", mock_open()) as mock_file, patch(
+            "token_manager.logger"
+        ) as mock_logger:
+
+            tm._save_token()
+
+            mock_file.assert_called_once_with("token.json", "w")
+            mock_logger.info.assert_called_with("Token saved to token.json")
+
+    @pytest.mark.unit
+    def test_save_token_failure(self, mock_config, mock_credentials):
+        """Test token saving failure."""
+        tm = token_manager.TokenManager(mock_config)
+        tm._credentials = mock_credentials
+
+        with patch("builtins.open", side_effect=Exception("Save failed")), patch(
+            "token_manager.logger"
+        ) as mock_logger:
+
+            tm._save_token()
+
+            mock_logger.error.assert_called_with("Failed to save token: Save failed")
