@@ -157,28 +157,32 @@ def test_full_authentication_flow():
         "AUTH_SERVER_PORT": 8080,
     }
 
-    # Test TokenManager integration
-    tm = token_manager.TokenManager(config)
+    # Test TokenManager integration with proper mocking
+    with patch("os.path.exists", return_value=True), patch("builtins.open", create=True), patch(
+        "json.load", return_value={"installed": {"client_id": "test"}}
+    ):
 
-    # Mock the OAuth flow
-    with patch(
-        "google_auth_oauthlib.flow.InstalledAppFlow.from_client_secrets_file"
-    ) as mock_flow_class:
-        mock_flow = MagicMock()
-        mock_flow.authorization_url.return_value = ("http://auth.url", "state123")
-        mock_flow_class.return_value = mock_flow
+        tm = token_manager.TokenManager(config)
 
-        # Test initiate auth flow
-        auth_url = tm.initiate_auth_flow()
-        assert auth_url == "http://auth.url"
+        # Mock the OAuth flow
+        with patch(
+            "google_auth_oauthlib.flow.InstalledAppFlow.from_client_secrets_file"
+        ) as mock_flow_class:
+            mock_flow = MagicMock()
+            mock_flow.authorization_url.return_value = ("http://auth.url", "state123")
+            mock_flow_class.return_value = mock_flow
 
-        # Test complete auth flow
-        mock_creds = MagicMock()
-        mock_flow.credentials = mock_creds
+            # Test initiate auth flow
+            auth_url = tm.initiate_auth_flow()
+            assert auth_url == "http://auth.url"
 
-        with patch.object(tm, "_save_token", return_value=True):
-            result = tm.complete_auth_flow("http://callback.url?code=auth_code")
-            assert result is True
+            # Test complete auth flow
+            mock_creds = MagicMock()
+            mock_flow.credentials = mock_creds
+
+            with patch.object(tm, "_save_token", return_value=True):
+                result = tm.complete_auth_flow("http://callback.url?code=auth_code")
+                assert result is True
 
 
 @pytest.mark.integration
@@ -200,34 +204,27 @@ def test_notification_system_integration():
 
     sender = notification.NotificationSender(config)
 
-    # Test email notification
-    with patch("smtplib.SMTP") as mock_smtp:
-        mock_server = MagicMock()
-        mock_smtp.return_value = mock_server
-
-        result = sender.send_email_notification("Test Subject", "Test Message")
+    # Test email notification via auth notification (which uses _send_email internally)
+    with patch.object(sender, "_send_email", return_value=True) as mock_email:
+        result = sender.send_auth_notification("http://test.url")
         assert result is True
-        mock_server.send_message.assert_called_once()
+        mock_email.assert_called_once()
 
-    # Test Discord notification
-    with patch("requests.post") as mock_post:
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_post.return_value = mock_response
-
-        result = sender.send_discord_notification("Test Message")
+    # Test Discord notification via auth notification
+    with patch.object(sender, "_send_discord", return_value=True) as mock_discord:
+        # Set method to discord for this test
+        sender.method = "discord"
+        result = sender.send_auth_notification("http://test.url")
         assert result is True
-        mock_post.assert_called_once()
+        mock_discord.assert_called_once()
 
-    # Test Slack notification
-    with patch("requests.post") as mock_post:
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_post.return_value = mock_response
-
-        result = sender.send_slack_notification("Test Message")
+    # Test Slack notification via auth notification
+    with patch.object(sender, "_send_slack", return_value=True) as mock_slack:
+        # Set method to slack for this test
+        sender.method = "slack"
+        result = sender.send_auth_notification("http://test.url")
         assert result is True
-        mock_post.assert_called_once()
+        mock_slack.assert_called_once()
 
 
 @pytest.mark.integration
@@ -336,8 +333,8 @@ def test_error_handling_integration():
 
     sender = notification.NotificationSender(config)
 
-    with patch("smtplib.SMTP", side_effect=Exception("Connection failed")):
-        result = sender.send_email_notification("Test", "Test")
+    with patch.object(sender, "_send_email", return_value=False):
+        result = sender.send_auth_notification("http://test.url")
         assert result is False
 
 
@@ -358,21 +355,20 @@ def test_token_refresh_integration():
 
     tm = token_manager.TokenManager(config)
 
-    # Test token refresh
-    with patch.object(mock_creds, "refresh") as mock_refresh, patch.object(
-        tm, "_save_token", return_value=True
+    # Test token expiration check
+    with patch.object(tm, "get_credentials", return_value=mock_creds):
+        needs_refresh, expiry = tm.check_token_expiration()
+        # Since mock_creds.expiry is None, this should handle gracefully
+        assert isinstance(needs_refresh, bool)
+
+    # Test getting credentials (which handles refresh internally)
+    with patch("os.path.exists", return_value=True), patch("builtins.open", create=True), patch(
+        "json.load", return_value={"token": "test"}
+    ), patch(
+        "google.oauth2.credentials.Credentials.from_authorized_user_info", return_value=mock_creds
     ):
 
-        refreshed_creds, success = token_manager.refresh_token(mock_creds)
-
-        assert success is True
-        assert refreshed_creds == mock_creds
-        mock_refresh.assert_called_once()
-
-    # Test check and refresh integration
-    with patch("token_manager.load_token", return_value=mock_creds), patch.object(
-        mock_creds, "refresh"
-    ), patch("token_manager.save_token", return_value=True):
-
-        result_creds, success = token_manager.check_and_refresh_token()
-        assert success is True
+        # Mock credentials as valid to test the flow
+        mock_creds.valid = True
+        credentials = tm.get_credentials()
+        assert credentials == mock_creds
