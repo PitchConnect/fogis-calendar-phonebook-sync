@@ -10,6 +10,8 @@ import pytest
 import app
 import fogis_calendar_sync
 import fogis_contacts
+import notification
+import token_manager
 
 
 @pytest.fixture
@@ -143,3 +145,234 @@ def test_end_to_end_sync(setup_test_environment):
                 # Verify that the people service was called
                 mock_people_service.contactGroups().create.assert_called_once()
                 mock_people_service.people().createContact.assert_called_once()
+
+
+@pytest.mark.integration
+def test_full_authentication_flow():
+    """Test the complete authentication flow integration."""
+    config = {
+        "SCOPES": ["https://www.googleapis.com/auth/calendar"],
+        "TOKEN_REFRESH_BUFFER_DAYS": 6,
+        "AUTH_SERVER_HOST": "localhost",
+        "AUTH_SERVER_PORT": 8080,
+    }
+
+    # Test TokenManager integration
+    tm = token_manager.TokenManager(config)
+
+    # Mock the OAuth flow
+    with patch(
+        "google_auth_oauthlib.flow.InstalledAppFlow.from_client_secrets_file"
+    ) as mock_flow_class:
+        mock_flow = MagicMock()
+        mock_flow.authorization_url.return_value = ("http://auth.url", "state123")
+        mock_flow_class.return_value = mock_flow
+
+        # Test initiate auth flow
+        auth_url = tm.initiate_auth_flow()
+        assert auth_url == "http://auth.url"
+
+        # Test complete auth flow
+        mock_creds = MagicMock()
+        mock_flow.credentials = mock_creds
+
+        with patch.object(tm, "_save_token", return_value=True):
+            result = tm.complete_auth_flow("http://callback.url?code=auth_code")
+            assert result is True
+
+
+@pytest.mark.integration
+def test_notification_system_integration():
+    """Test the notification system integration."""
+    config = {
+        "NOTIFICATION_EMAIL_ENABLED": True,
+        "NOTIFICATION_EMAIL_SMTP_SERVER": "smtp.gmail.com",
+        "NOTIFICATION_EMAIL_SMTP_PORT": 587,
+        "NOTIFICATION_EMAIL_FROM": "test@example.com",
+        "NOTIFICATION_EMAIL_TO": "recipient@example.com",
+        "NOTIFICATION_EMAIL_USERNAME": "test@example.com",
+        "NOTIFICATION_EMAIL_PASSWORD": "password",
+        "NOTIFICATION_DISCORD_ENABLED": True,
+        "NOTIFICATION_DISCORD_WEBHOOK_URL": "https://discord.com/api/webhooks/test",
+        "NOTIFICATION_SLACK_ENABLED": True,
+        "NOTIFICATION_SLACK_WEBHOOK_URL": "https://hooks.slack.com/services/test",
+    }
+
+    sender = notification.NotificationSender(config)
+
+    # Test email notification
+    with patch("smtplib.SMTP") as mock_smtp:
+        mock_server = MagicMock()
+        mock_smtp.return_value = mock_server
+
+        result = sender.send_email_notification("Test Subject", "Test Message")
+        assert result is True
+        mock_server.send_message.assert_called_once()
+
+    # Test Discord notification
+    with patch("requests.post") as mock_post:
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_post.return_value = mock_response
+
+        result = sender.send_discord_notification("Test Message")
+        assert result is True
+        mock_post.assert_called_once()
+
+    # Test Slack notification
+    with patch("requests.post") as mock_post:
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_post.return_value = mock_response
+
+        result = sender.send_slack_notification("Test Message")
+        assert result is True
+        mock_post.assert_called_once()
+
+
+@pytest.mark.integration
+def test_calendar_and_contacts_sync_integration():
+    """Test the integration between calendar and contacts synchronization."""
+    # Sample match data with referees
+    match_data = {
+        "matchid": 12345,
+        "lag1namn": "Home Team",
+        "lag2namn": "Away Team",
+        "anlaggningnamn": "Test Arena",
+        "tid": "/Date(1684177200000)/",
+        "tavlingnamn": "Test League",
+        "domaruppdraglista": [
+            {
+                "personnamn": "John Referee",
+                "mobiltelefon": "+46701234567",
+                "epostadress": "john@example.com",
+                "domarnr": "REF123",
+                "adress": "123 Main St",
+                "postnr": "12345",
+                "postort": "Stockholm",
+                "land": "Sweden",
+            }
+        ],
+        "kontaktpersoner": [],
+    }
+
+    # Mock Google services
+    mock_calendar_service = MagicMock()
+    mock_people_service = MagicMock()
+
+    # Mock calendar operations
+    mock_calendar_service.events().list().execute.return_value = {"items": []}
+    mock_calendar_service.events().insert().execute.return_value = {
+        "id": "event123",
+        "summary": "Home Team - Away Team",
+    }
+
+    # Mock contacts operations
+    mock_people_service.people().connections().list().execute.return_value = {"connections": []}
+    mock_people_service.people().connections().list_next.return_value = None
+    mock_people_service.contactGroups().list().execute.return_value = {
+        "contactGroups": [{"resourceName": "contactGroups/123", "name": "Referees"}]
+    }
+    mock_people_service.people().createContact().execute.return_value = {
+        "resourceName": "people/456"
+    }
+
+    # Mock args
+    args = MagicMock()
+    args.delete = False
+
+    # Test calendar sync
+    with patch.dict(
+        fogis_calendar_sync.config_dict, {"CALENDAR_ID": "test_calendar", "SYNC_TAG": "TEST"}
+    ), patch("fogis_calendar_sync.process_referees", return_value=True):
+
+        fogis_calendar_sync.sync_calendar(match_data, mock_calendar_service, args)
+
+        # Verify calendar event was created
+        mock_calendar_service.events().insert.assert_called_once()
+
+    # Test contacts sync
+    with patch.object(fogis_contacts, "authorize_google_people", return_value=MagicMock()), patch(
+        "googleapiclient.discovery.build", return_value=mock_people_service
+    ), patch("time.sleep"):
+
+        result = fogis_contacts.process_referees(match_data)
+        assert result is True
+
+
+@pytest.mark.integration
+def test_error_handling_integration():
+    """Test error handling across integrated components."""
+    from googleapiclient.errors import HttpError
+
+    # Test calendar API error handling
+    mock_service = MagicMock()
+    mock_service.calendars().get().execute.side_effect = HttpError(
+        resp=MagicMock(status=404), content=b'{"error": {"message": "Not found"}}'
+    )
+
+    result = fogis_calendar_sync.check_calendar_exists(mock_service, "nonexistent_calendar")
+    assert result is False
+
+    # Test contacts API error handling
+    mock_service.people().connections().list().execute.side_effect = HttpError(
+        resp=MagicMock(status=403), content=b'{"error": {"message": "Forbidden"}}'
+    )
+
+    with patch("time.sleep"):
+        result = fogis_contacts.test_google_contacts_connection(mock_service)
+        assert result is False
+
+    # Test notification error handling
+    config = {
+        "NOTIFICATION_EMAIL_ENABLED": True,
+        "NOTIFICATION_EMAIL_SMTP_SERVER": "invalid.server.com",
+        "NOTIFICATION_EMAIL_SMTP_PORT": 587,
+        "NOTIFICATION_EMAIL_FROM": "test@example.com",
+        "NOTIFICATION_EMAIL_TO": "recipient@example.com",
+        "NOTIFICATION_EMAIL_USERNAME": "test@example.com",
+        "NOTIFICATION_EMAIL_PASSWORD": "password",
+    }
+
+    sender = notification.NotificationSender(config)
+
+    with patch("smtplib.SMTP", side_effect=Exception("Connection failed")):
+        result = sender.send_email_notification("Test", "Test")
+        assert result is False
+
+
+@pytest.mark.integration
+def test_token_refresh_integration():
+    """Test token refresh integration across components."""
+    config = {
+        "SCOPES": ["https://www.googleapis.com/auth/calendar"],
+        "TOKEN_REFRESH_BUFFER_DAYS": 1,
+    }
+
+    # Create expired credentials
+    mock_creds = MagicMock()
+    mock_creds.valid = False
+    mock_creds.expired = True
+    mock_creds.refresh_token = "refresh_token"
+    mock_creds.expiry = None
+
+    tm = token_manager.TokenManager(config)
+
+    # Test token refresh
+    with patch.object(mock_creds, "refresh") as mock_refresh, patch.object(
+        tm, "_save_token", return_value=True
+    ):
+
+        refreshed_creds, success = token_manager.refresh_token(mock_creds)
+
+        assert success is True
+        assert refreshed_creds == mock_creds
+        mock_refresh.assert_called_once()
+
+    # Test check and refresh integration
+    with patch("token_manager.load_token", return_value=mock_creds), patch.object(
+        mock_creds, "refresh"
+    ), patch("token_manager.save_token", return_value=True):
+
+        result_creds, success = token_manager.check_and_refresh_token()
+        assert success is True
