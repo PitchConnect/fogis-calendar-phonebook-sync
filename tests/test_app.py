@@ -184,3 +184,126 @@ def test_sync_endpoint_exception(client):
         data = json.loads(response.data)
         assert data["status"] == "error"
         assert "Error during FOGIS sync" in data["message"]
+
+
+@pytest.mark.unit
+# pylint: disable=redefined-outer-name
+def test_health_endpoint_exception(client):
+    """Test health check when an exception occurs."""
+    with patch("os.path.exists", side_effect=Exception("File system error")):
+        response = client.get("/health")
+        assert response.status_code == 500
+        data = json.loads(response.data)
+        assert data["status"] == "error"
+        assert "File system error" in data["message"]
+
+
+@pytest.mark.unit
+# pylint: disable=redefined-outer-name
+def test_sync_endpoint_with_empty_json(client):
+    """Test sync endpoint with empty JSON payload."""
+    with patch("subprocess.run") as mock_run:
+        mock_process = MagicMock()
+        mock_process.returncode = 0
+        mock_process.stdout = "Sync completed"
+        mock_process.stderr = ""
+        mock_run.return_value = mock_process
+
+        response = client.post("/sync", json={})
+
+        assert response.status_code == 200
+        data = json.loads(response.data)
+        assert data["status"] == "success"
+
+        # Verify subprocess was called without delete flag
+        mock_run.assert_called_once()
+        call_args = mock_run.call_args
+        assert "--delete" not in call_args[0][0]
+
+
+@pytest.mark.unit
+# pylint: disable=redefined-outer-name
+def test_sync_endpoint_no_json(client):
+    """Test sync endpoint with no JSON payload."""
+    with patch("subprocess.run") as mock_run:
+        mock_process = MagicMock()
+        mock_process.returncode = 0
+        mock_process.stdout = "Sync completed"
+        mock_process.stderr = ""
+        mock_run.return_value = mock_process
+
+        response = client.post("/sync")
+
+        assert response.status_code == 200
+        data = json.loads(response.data)
+        assert data["status"] == "success"
+
+
+@pytest.mark.unit
+def test_main_function():
+    """Test the main function execution."""
+    with patch("app.app.run") as mock_run, \
+         patch.dict("os.environ", {"FLASK_HOST": "127.0.0.1", "FLASK_PORT": "8080"}):
+
+        app.main()
+
+        # Verify app.run was called with environment variables
+        mock_run.assert_called_once_with(host="127.0.0.1", port=8080)
+
+
+@pytest.mark.unit
+def test_main_function_default_values():
+    """Test the main function with default host and port."""
+    with patch("app.app.run") as mock_run, \
+         patch.dict("os.environ", {}, clear=True):
+
+        app.main()
+
+        # Verify app.run was called with defaults
+        mock_run.assert_called_once_with(host="0.0.0.0", port=5003)
+
+
+@pytest.mark.unit
+# pylint: disable=redefined-outer-name
+def test_sync_endpoint_partial_credentials(client):
+    """Test sync endpoint with only username provided."""
+    with patch("subprocess.run") as mock_run:
+        mock_process = MagicMock()
+        mock_process.returncode = 0
+        mock_process.stdout = "Sync completed"
+        mock_process.stderr = ""
+        mock_run.return_value = mock_process
+
+        response = client.post("/sync", json={"username": "test_user"})
+
+        assert response.status_code == 200
+        data = json.loads(response.data)
+        assert data["status"] == "success"
+
+        # Verify subprocess was called but only username was set in env
+        mock_run.assert_called_once()
+        call_args = mock_run.call_args
+        assert "FOGIS_USERNAME" in call_args.kwargs["env"]
+        assert "FOGIS_PASSWORD" not in call_args.kwargs["env"]
+
+
+@pytest.mark.unit
+def test_main_execution_block():
+    """Test the main execution block when script is run directly."""
+    # This test ensures the if __name__ == "__main__" block is covered
+    with patch("app.app.run") as mock_run:
+        # Simulate running the script directly
+        import sys
+        original_argv = sys.argv
+        sys.argv = ["app.py"]
+
+        try:
+            # Import and execute the main block
+            exec(compile(open("app.py").read(), "app.py", "exec"))
+        except SystemExit:
+            pass  # Expected when running as script
+        finally:
+            sys.argv = original_argv
+
+        # The main function should have been called
+        mock_run.assert_called()
