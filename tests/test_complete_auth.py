@@ -37,10 +37,8 @@ class TestCompleteAuthScript:
         mock_flow_instance.credentials = mock_credentials
         mock_flow_from_file.return_value = mock_flow_instance
 
-        # Execute the script by importing it (this runs the main code)
-        import importlib
-
-        importlib.reload(complete_auth)
+        # Execute the main function
+        complete_auth.main()
 
         # Verify flow was created with default scopes
         expected_default_scopes = [
@@ -99,10 +97,8 @@ class TestCompleteAuthScript:
         mock_flow_instance.credentials = mock_credentials
         mock_flow_from_file.return_value = mock_flow_instance
 
-        # Execute the script
-        import importlib
-
-        importlib.reload(complete_auth)
+        # Execute the main function
+        complete_auth.main()
 
         # Verify flow was created with custom scopes
         expected_custom_scopes = [
@@ -121,9 +117,7 @@ class TestCompleteAuthScript:
         """Test complete_auth script when config.json is not found."""
         # The config loading is not in a try-catch, so exception should be raised
         with pytest.raises(FileNotFoundError, match="config.json not found"):
-            import importlib
-
-            importlib.reload(complete_auth)
+            complete_auth.main()
 
     @patch("builtins.open", new_callable=mock_open, read_data='{"invalid": json}')
     @patch("builtins.print")
@@ -131,9 +125,7 @@ class TestCompleteAuthScript:
         """Test complete_auth script when config.json contains invalid JSON."""
         # JSON parsing is not in a try-catch, so exception should be raised
         with pytest.raises(json.JSONDecodeError):
-            import importlib
-
-            importlib.reload(complete_auth)
+            complete_auth.main()
 
     @patch("builtins.open", new_callable=mock_open)
     @patch("google_auth_oauthlib.flow.InstalledAppFlow.from_client_secrets_file")
@@ -151,9 +143,7 @@ class TestCompleteAuthScript:
         mock_flow_from_file.side_effect = FileNotFoundError("credentials.json not found")
 
         with pytest.raises(FileNotFoundError, match="credentials.json not found"):
-            import importlib
-
-            importlib.reload(complete_auth)
+            complete_auth.main()
 
     @patch("builtins.open", new_callable=mock_open)
     @patch("google_auth_oauthlib.flow.InstalledAppFlow.from_client_secrets_file")
@@ -173,10 +163,8 @@ class TestCompleteAuthScript:
         mock_flow_instance.fetch_token.side_effect = Exception("Invalid authorization response")
         mock_flow_from_file.return_value = mock_flow_instance
 
-        # Execute the script
-        import importlib
-
-        importlib.reload(complete_auth)
+        # Execute the main function
+        complete_auth.main()
 
         # Verify error was printed
         mock_print.assert_any_call("❌ Error: Invalid authorization response")
@@ -207,10 +195,8 @@ class TestCompleteAuthScript:
         mock_flow_instance.credentials = mock_credentials
         mock_flow_from_file.return_value = mock_flow_instance
 
-        # Execute the script
-        import importlib
-
-        importlib.reload(complete_auth)
+        # Execute the main function
+        complete_auth.main()
 
         # Verify error was printed
         mock_print.assert_any_call("❌ Error: Permission denied")
@@ -241,10 +227,8 @@ class TestCompleteAuthScript:
         mock_flow_instance.credentials = mock_credentials
         mock_flow_from_file.return_value = mock_flow_instance
 
-        # Execute the script
-        import importlib
-
-        importlib.reload(complete_auth)
+        # Execute the main function
+        complete_auth.main()
 
         # Verify expiry was printed as None
         mock_print.assert_any_call("✅ Token expires: None")
@@ -274,10 +258,8 @@ class TestCompleteAuthScript:
         mock_flow_instance.credentials = mock_credentials
         mock_flow_from_file.return_value = mock_flow_instance
 
-        # Execute the script
-        import importlib
-
-        importlib.reload(complete_auth)
+        # Execute the main function
+        complete_auth.main()
 
         # Verify the exact hardcoded authorization response was used
         expected_auth_response = "http://localhost:8080/callback?state=CdJuw0chqZcjvJuuXkWBpi5stuRbIt&code=4/0AUJR-x5MEnNaC-qrNTtXNccEiNgW88oyFXgehj4T8Ba8Vah14kewUQiK_stP6XaX9ZE4mQ&scope=https://www.googleapis.com/auth/contacts%20https://www.googleapis.com/auth/calendar"
@@ -313,10 +295,8 @@ class TestCompleteAuthEdgeCases:
         mock_flow_instance.credentials = mock_credentials
         mock_flow_from_file.return_value = mock_flow_instance
 
-        # Execute the script
-        import importlib
-
-        importlib.reload(complete_auth)
+        # Execute the main function
+        complete_auth.main()
 
         # Verify flow was created with default scopes (empty config should use defaults)
         expected_default_scopes = [
@@ -347,10 +327,8 @@ class TestCompleteAuthEdgeCases:
         mock_flow_instance.credentials = mock_credentials
         mock_flow_from_file.return_value = mock_flow_instance
 
-        # Execute the script
-        import importlib
-
-        importlib.reload(complete_auth)
+        # Execute the main function
+        complete_auth.main()
 
         # Verify flow was created with empty scopes list (as specified in config)
         mock_flow_from_file.assert_called_once_with("credentials.json", [])
