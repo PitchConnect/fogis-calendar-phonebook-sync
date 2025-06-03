@@ -3,6 +3,7 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
+from googleapiclient.errors import HttpError
 
 import fogis_contacts
 
@@ -907,4 +908,285 @@ def test_find_contact_by_phone_quota_error():
 
     with patch.object(fogis_contacts, "logging"), patch("time.sleep"):
         result = fogis_contacts.find_contact_by_phone(mock_service, "+46700000000")
+        assert result is None
+
+
+class TestCreateGoogleContact:
+    """Test cases for creating Google contacts."""
+
+    @patch("time.sleep")
+    @patch("fogis_contacts.create_contact_data")
+    def test_create_google_contact_success(self, mock_create_data, mock_sleep):
+        """Test successful contact creation."""
+        mock_service = MagicMock()
+        mock_contact_data = {"names": [{"displayName": "John Doe"}]}
+        mock_create_data.return_value = mock_contact_data
+
+        # Mock successful contact creation
+        mock_service.people().createContact().execute.return_value = {
+            "resourceName": "people/contact123"
+        }
+
+        # Mock successful group addition
+        mock_service.contactGroups().members().modify().execute.return_value = {}
+
+        referee = {"personnamn": "John Doe", "mobiltelefon": "123456789", "domarnr": "REF001"}
+        group_id = "contactGroups/referees123"
+
+        result = fogis_contacts.create_google_contact(mock_service, referee, group_id)
+
+        assert result == "people/contact123"
+        mock_create_data.assert_called_once_with(referee)
+        mock_service.people().createContact().execute.assert_called_once()
+        # Check that modify was called with correct parameters (ignoring the chaining calls)
+        modify_calls = mock_service.contactGroups().members().modify.call_args_list
+        expected_call = (
+            (),
+            {"resourceName": group_id, "body": {"resourceNamesToAdd": ["people/contact123"]}},
+        )
+        assert expected_call in modify_calls
+
+    @patch("time.sleep")
+    @patch("fogis_contacts.create_contact_data")
+    def test_create_google_contact_no_group(self, mock_create_data, mock_sleep):
+        """Test contact creation without group assignment."""
+        mock_service = MagicMock()
+        mock_contact_data = {"names": [{"displayName": "Jane Smith"}]}
+        mock_create_data.return_value = mock_contact_data
+
+        # Mock successful contact creation
+        mock_service.people().createContact().execute.return_value = {
+            "resourceName": "people/contact456"
+        }
+
+        referee = {"personnamn": "Jane Smith", "mobiltelefon": "987654321", "domarnr": "REF002"}
+
+        result = fogis_contacts.create_google_contact(mock_service, referee, None)
+
+        assert result == "people/contact456"
+        # Should not call group modification when group_id is None
+        mock_service.contactGroups().members().modify.assert_not_called()
+
+    @patch("time.sleep")
+    @patch("fogis_contacts.create_contact_data")
+    def test_create_google_contact_group_add_error_400(self, mock_create_data, mock_sleep):
+        """Test contact creation with group addition error 400."""
+        mock_service = MagicMock()
+        mock_contact_data = {"names": [{"displayName": "Bob Wilson"}]}
+        mock_create_data.return_value = mock_contact_data
+
+        # Mock successful contact creation
+        mock_service.people().createContact().execute.return_value = {
+            "resourceName": "people/contact789"
+        }
+
+        # Mock group addition error 400 (already in group)
+        group_error = HttpError(
+            resp=MagicMock(status=400),
+            content=b'{"error": {"code": 400, "message": "Already in group"}}',
+        )
+        mock_service.contactGroups().members().modify().execute.side_effect = group_error
+
+        referee = {"personnamn": "Bob Wilson", "mobiltelefon": "555123456", "domarnr": "REF003"}
+        group_id = "contactGroups/referees123"
+
+        result = fogis_contacts.create_google_contact(mock_service, referee, group_id)
+
+        assert result == "people/contact789"  # Should still return contact ID
+
+    @patch("time.sleep")
+    @patch("fogis_contacts.create_contact_data")
+    def test_create_google_contact_group_add_other_error(self, mock_create_data, mock_sleep):
+        """Test contact creation with group addition other error."""
+        mock_service = MagicMock()
+        mock_contact_data = {"names": [{"displayName": "Carol White"}]}
+        mock_create_data.return_value = mock_contact_data
+
+        # Mock successful contact creation
+        mock_service.people().createContact().execute.return_value = {
+            "resourceName": "people/contact999"
+        }
+
+        # Mock group addition error 500 (other error that should be raised)
+        group_error = HttpError(
+            resp=MagicMock(status=500),
+            content=b'{"error": {"code": 500, "message": "Internal server error"}}',
+        )
+        mock_service.contactGroups().members().modify().execute.side_effect = group_error
+
+        referee = {"personnamn": "Carol White", "mobiltelefon": "555999888", "domarnr": "REF010"}
+        group_id = "contactGroups/referees123"
+
+        # The error should be caught by outer exception handler and return None
+        result = fogis_contacts.create_google_contact(mock_service, referee, group_id)
+
+        assert result is None
+
+    @patch("time.sleep")
+    @patch("fogis_contacts.create_contact_data")
+    def test_create_google_contact_group_add_general_exception(self, mock_create_data, mock_sleep):
+        """Test contact creation with group addition general exception."""
+        mock_service = MagicMock()
+        mock_contact_data = {"names": [{"displayName": "Dan Black"}]}
+        mock_create_data.return_value = mock_contact_data
+
+        # Mock successful contact creation
+        mock_service.people().createContact().execute.return_value = {
+            "resourceName": "people/contact888"
+        }
+
+        # Mock group addition general exception
+        mock_service.contactGroups().members().modify().execute.side_effect = Exception(
+            "Network error"
+        )
+
+        referee = {"personnamn": "Dan Black", "mobiltelefon": "777666555", "domarnr": "REF011"}
+        group_id = "contactGroups/referees123"
+
+        result = fogis_contacts.create_google_contact(mock_service, referee, group_id)
+
+        assert result == "people/contact888"  # Should still return contact ID despite group error
+
+    @patch("time.sleep")
+    @patch("fogis_contacts.create_contact_data")
+    def test_create_google_contact_quota_exceeded_retry(self, mock_create_data, mock_sleep):
+        """Test contact creation with quota exceeded and retry."""
+        mock_service = MagicMock()
+        mock_contact_data = {"names": [{"displayName": "Alice Brown"}]}
+        mock_create_data.return_value = mock_contact_data
+
+        # Mock quota exceeded error first, then success
+        quota_error = HttpError(
+            resp=MagicMock(status=429),
+            content=b'{"error": {"code": 429, "message": "Quota exceeded"}}',
+        )
+        mock_service.people().createContact().execute.side_effect = [
+            quota_error,
+            {"resourceName": "people/contact999"},
+        ]
+
+        referee = {"personnamn": "Alice Brown", "mobiltelefon": "777888999", "domarnr": "REF004"}
+
+        result = fogis_contacts.create_google_contact(mock_service, referee, None)
+
+        assert result == "people/contact999"
+        assert mock_service.people().createContact().execute.call_count == 2
+        mock_sleep.assert_called()
+
+    @patch("time.sleep")
+    @patch("fogis_contacts.create_contact_data")
+    def test_create_google_contact_quota_exceeded_max_retries(self, mock_create_data, mock_sleep):
+        """Test contact creation with quota exceeded reaching max retries."""
+        mock_service = MagicMock()
+        mock_contact_data = {"names": [{"displayName": "Charlie Davis"}]}
+        mock_create_data.return_value = mock_contact_data
+
+        # Mock quota exceeded error for all attempts
+        quota_error = HttpError(
+            resp=MagicMock(status=429),
+            content=b'{"error": {"code": 429, "message": "Quota exceeded"}}',
+        )
+        mock_service.people().createContact().execute.side_effect = quota_error
+
+        referee = {"personnamn": "Charlie Davis", "mobiltelefon": "111222333", "domarnr": "REF005"}
+
+        result = fogis_contacts.create_google_contact(mock_service, referee, None)
+
+        assert result is None
+        assert (
+            mock_service.people().createContact().execute.call_count
+            == fogis_contacts.MAX_RETRIES_GOOGLE_API
+        )
+
+    @patch("time.sleep")
+    @patch("fogis_contacts.create_contact_data")
+    @patch("fogis_contacts.find_contact_by_phone")
+    def test_create_google_contact_conflict_error_409_find_existing(
+        self, mock_find_phone, mock_create_data, mock_sleep
+    ):
+        """Test contact creation with conflict error 409 and finding existing contact."""
+        mock_service = MagicMock()
+        mock_contact_data = {"names": [{"displayName": "David Evans"}]}
+        mock_create_data.return_value = mock_contact_data
+
+        # Mock conflict error 409
+        conflict_error = HttpError(
+            resp=MagicMock(status=409),
+            content=b'{"error": {"code": 409, "message": "Contact already exists"}}',
+        )
+        mock_service.people().createContact().execute.side_effect = conflict_error
+
+        # Mock finding existing contact
+        mock_find_phone.return_value = {"resourceName": "people/existing123"}
+
+        referee = {"personnamn": "David Evans", "mobiltelefon": "444555666", "domarnr": "REF006"}
+
+        result = fogis_contacts.create_google_contact(mock_service, referee, None)
+
+        assert result == "people/existing123"
+        mock_find_phone.assert_called_once_with(mock_service, "444555666")
+
+    @patch("time.sleep")
+    @patch("fogis_contacts.create_contact_data")
+    @patch("fogis_contacts.find_contact_by_phone")
+    def test_create_google_contact_conflict_error_409_not_found(
+        self, mock_find_phone, mock_create_data, mock_sleep
+    ):
+        """Test contact creation with conflict error 409 but existing contact not found."""
+        mock_service = MagicMock()
+        mock_contact_data = {"names": [{"displayName": "Eva Foster"}]}
+        mock_create_data.return_value = mock_contact_data
+
+        # Mock conflict error 409
+        conflict_error = HttpError(
+            resp=MagicMock(status=409),
+            content=b'{"error": {"code": 409, "message": "Contact already exists"}}',
+        )
+        mock_service.people().createContact().execute.side_effect = conflict_error
+
+        # Mock not finding existing contact
+        mock_find_phone.return_value = None
+
+        referee = {"personnamn": "Eva Foster", "mobiltelefon": "888999000", "domarnr": "REF007"}
+
+        result = fogis_contacts.create_google_contact(mock_service, referee, None)
+
+        assert result is None
+        mock_find_phone.assert_called_once_with(mock_service, "888999000")
+
+    @patch("time.sleep")
+    @patch("fogis_contacts.create_contact_data")
+    def test_create_google_contact_http_error_other(self, mock_create_data, mock_sleep):
+        """Test contact creation with other HTTP error."""
+        mock_service = MagicMock()
+        mock_contact_data = {"names": [{"displayName": "Frank Green"}]}
+        mock_create_data.return_value = mock_contact_data
+
+        # Mock other HTTP error
+        http_error = HttpError(
+            resp=MagicMock(status=403), content=b'{"error": {"code": 403, "message": "Forbidden"}}'
+        )
+        mock_service.people().createContact().execute.side_effect = http_error
+
+        referee = {"personnamn": "Frank Green", "mobiltelefon": "123123123", "domarnr": "REF008"}
+
+        result = fogis_contacts.create_google_contact(mock_service, referee, None)
+
+        assert result is None
+
+    @patch("time.sleep")
+    @patch("fogis_contacts.create_contact_data")
+    def test_create_google_contact_general_exception(self, mock_create_data, mock_sleep):
+        """Test contact creation with general exception."""
+        mock_service = MagicMock()
+        mock_contact_data = {"names": [{"displayName": "Grace Hill"}]}
+        mock_create_data.return_value = mock_contact_data
+
+        # Mock general exception
+        mock_service.people().createContact().execute.side_effect = Exception("Network error")
+
+        referee = {"personnamn": "Grace Hill", "mobiltelefon": "456456456", "domarnr": "REF009"}
+
+        result = fogis_contacts.create_google_contact(mock_service, referee, None)
+
         assert result is None
