@@ -242,8 +242,9 @@ def test_sync_endpoint_no_json(client):
 @pytest.mark.unit
 def test_main_function():
     """Test the main function execution."""
-    with patch("app.app.run") as mock_run, \
-         patch.dict("os.environ", {"FLASK_HOST": "127.0.0.1", "FLASK_PORT": "8080"}):
+    with patch("app.app.run") as mock_run, patch.dict(
+        "os.environ", {"FLASK_HOST": "127.0.0.1", "FLASK_PORT": "8080"}
+    ):
 
         app.main()
 
@@ -254,8 +255,7 @@ def test_main_function():
 @pytest.mark.unit
 def test_main_function_default_values():
     """Test the main function with default host and port."""
-    with patch("app.app.run") as mock_run, \
-         patch.dict("os.environ", {}, clear=True):
+    with patch("app.app.run") as mock_run, patch.dict("os.environ", {}, clear=True):
 
         app.main()
 
@@ -294,6 +294,7 @@ def test_main_execution_block():
     with patch("app.app.run") as mock_run:
         # Simulate running the script directly
         import sys
+
         original_argv = sys.argv
         sys.argv = ["app.py"]
 
