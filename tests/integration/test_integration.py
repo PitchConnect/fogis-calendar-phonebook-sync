@@ -362,10 +362,8 @@ def test_token_refresh_integration():
         assert isinstance(needs_refresh, bool)
 
     # Test getting credentials (which handles refresh internally)
-    with patch("os.path.exists", return_value=True), patch("builtins.open", create=True), patch(
-        "json.load", return_value={"token": "test"}
-    ), patch(
-        "google.oauth2.credentials.Credentials.from_authorized_user_info", return_value=mock_creds
+    with patch("os.path.exists", return_value=True), patch(
+        "google.oauth2.credentials.Credentials.from_authorized_user_file", return_value=mock_creds
     ):
 
         # Mock credentials as valid to test the flow
