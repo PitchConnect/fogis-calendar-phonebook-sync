@@ -21,11 +21,18 @@ jobs:
         fetch-depth: 0
         token: ${{ secrets.GITHUB_TOKEN }}
 
+    - name: Fetch all branches
+      run: |
+        # Ensure we have all remote branches available locally
+        git fetch origin
+        echo "Available remote branches:"
+        git branch -r
+
     - name: Check if tests are passing
       id: check-tests
       run: |
         # Get the latest commit SHA on develop
-        DEVELOP_SHA=$(git rev-parse develop)
+        DEVELOP_SHA=$(git rev-parse origin/develop)
         echo "develop_sha=$DEVELOP_SHA" >> $GITHUB_OUTPUT
 
         # Check if there are any differences between develop and main
