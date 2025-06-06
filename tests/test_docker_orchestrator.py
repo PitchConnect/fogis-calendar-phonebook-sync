@@ -46,8 +46,8 @@ def test_run_command():
 @pytest.mark.unit
 def test_check_service_health():
     """Test checking service health."""
-    # Mock the requests.get method
-    with patch("requests.get") as mock_get:
+    # Mock the requests.get method and time.sleep to avoid delays
+    with patch("requests.get") as mock_get, patch("time.sleep") as mock_sleep:
         # Configure the mock for success
         mock_response = MagicMock()
         mock_response.status_code = 200
@@ -61,20 +61,34 @@ def test_check_service_health():
 
             # Verify the result
             assert result is True
+            # Should not sleep on success
+            mock_sleep.assert_not_called()
 
-            # Test with a failed health check
+            # Reset mocks for next test
+            mock_sleep.reset_mock()
+
+            # Test with a failed health check - use minimal retries for speed
             mock_response.status_code = 500
             result = docker_orchestrator.check_service_health(
-                "test-service", "http://localhost:5000/health"
+                "test-service", "http://localhost:5000/health", max_retries=2, retry_delay=0.1
             )
             assert result is False
+            # Should have slept once (between first and second attempt)
+            assert mock_sleep.call_count == 1
+            mock_sleep.assert_called_with(0.1)
 
-            # Test with a connection error
+            # Reset mocks for next test
+            mock_sleep.reset_mock()
+
+            # Test with a connection error - use minimal retries for speed
             mock_get.side_effect = requests.exceptions.ConnectionError()
             result = docker_orchestrator.check_service_health(
-                "test-service", "http://localhost:5000/health"
+                "test-service", "http://localhost:5000/health", max_retries=2, retry_delay=0.1
             )
             assert result is False
+            # Should have slept once (between first and second attempt)
+            assert mock_sleep.call_count == 1
+            mock_sleep.assert_called_with(0.1)
 
 
 @pytest.mark.unit
