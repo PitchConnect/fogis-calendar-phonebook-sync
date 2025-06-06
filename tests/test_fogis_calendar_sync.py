@@ -421,9 +421,9 @@ def test_date_parsing_in_sync_calendar():
 class TestMainFunction:
     """Test cases for the main function."""
 
-    @patch('fogis_calendar_sync.argparse.ArgumentParser')
-    @patch('fogis_calendar_sync.os.environ.get')
-    @patch('fogis_calendar_sync.FogisApiClient')
+    @patch("fogis_calendar_sync.argparse.ArgumentParser")
+    @patch("fogis_calendar_sync.os.environ.get")
+    @patch("fogis_calendar_sync.FogisApiClient")
     def test_main_missing_credentials(self, mock_fogis_client, mock_env_get, mock_parser):
         """Test main function with missing FOGIS credentials."""
         # Setup argument parser mock
@@ -441,7 +441,7 @@ class TestMainFunction:
         # Mock environment variables returning None
         mock_env_get.return_value = None
 
-        with patch('builtins.print') as mock_print:
+        with patch("builtins.print") as mock_print:
             fogis_calendar_sync.main()
 
             # Verify error message was printed
@@ -449,9 +449,9 @@ class TestMainFunction:
                 "Error: FOGIS_USERNAME and FOGIS_PASSWORD environment variables must be set."
             )
 
-    @patch('fogis_calendar_sync.argparse.ArgumentParser')
-    @patch('fogis_calendar_sync.os.environ.get')
-    @patch('fogis_calendar_sync.FogisApiClient')
+    @patch("fogis_calendar_sync.argparse.ArgumentParser")
+    @patch("fogis_calendar_sync.os.environ.get")
+    @patch("fogis_calendar_sync.FogisApiClient")
     def test_main_login_failure(self, mock_fogis_client, mock_env_get, mock_parser):
         """Test main function with FOGIS login failure."""
         # Setup argument parser mock
@@ -468,8 +468,8 @@ class TestMainFunction:
 
         # Mock environment variables
         mock_env_get.side_effect = lambda key: {
-            'FOGIS_USERNAME': 'test_user',
-            'FOGIS_PASSWORD': 'test_pass'
+            "FOGIS_USERNAME": "test_user",
+            "FOGIS_PASSWORD": "test_pass",
         }.get(key)
 
         # Mock FOGIS client login failure
@@ -477,17 +477,17 @@ class TestMainFunction:
         mock_client_instance.login.return_value = None
         mock_fogis_client.return_value = mock_client_instance
 
-        with patch('fogis_calendar_sync.logging') as mock_logging:
+        with patch("fogis_calendar_sync.logging") as mock_logging:
             fogis_calendar_sync.main()
 
             # Verify login was attempted and error was logged
             mock_client_instance.login.assert_called_once()
             mock_logging.error.assert_called_with("Login failed.")
 
-    @patch('fogis_calendar_sync.argparse.ArgumentParser')
-    @patch('fogis_calendar_sync.os.environ.get')
-    @patch('fogis_calendar_sync.FogisApiClient')
-    @patch('fogis_calendar_sync.MatchListFilter')
+    @patch("fogis_calendar_sync.argparse.ArgumentParser")
+    @patch("fogis_calendar_sync.os.environ.get")
+    @patch("fogis_calendar_sync.FogisApiClient")
+    @patch("fogis_calendar_sync.MatchListFilter")
     def test_main_empty_match_list(self, mock_filter, mock_fogis_client, mock_env_get, mock_parser):
         """Test main function with empty match list."""
         # Setup argument parser mock
@@ -504,8 +504,8 @@ class TestMainFunction:
 
         # Mock environment variables
         mock_env_get.side_effect = lambda key: {
-            'FOGIS_USERNAME': 'test_user',
-            'FOGIS_PASSWORD': 'test_pass'
+            "FOGIS_USERNAME": "test_user",
+            "FOGIS_PASSWORD": "test_pass",
         }.get(key)
 
         # Mock FOGIS client successful login
@@ -519,18 +519,20 @@ class TestMainFunction:
         mock_filter_instance.fetch_filtered_matches.return_value = []
         mock_filter.return_value = mock_filter_instance
 
-        with patch('fogis_calendar_sync.logging') as mock_logging:
+        with patch("fogis_calendar_sync.logging") as mock_logging:
             fogis_calendar_sync.main()
 
             # Verify warning was logged for empty match list
             mock_logging.warning.assert_called_with("Failed to fetch match list.")
 
-    @patch('fogis_calendar_sync.argparse.ArgumentParser')
-    @patch('fogis_calendar_sync.os.environ.get')
-    @patch('fogis_calendar_sync.FogisApiClient')
-    @patch('fogis_calendar_sync.MatchListFilter')
-    @patch('fogis_calendar_sync.authorize_google_calendar')
-    def test_main_auth_failure(self, mock_auth, mock_filter, mock_fogis_client, mock_env_get, mock_parser):
+    @patch("fogis_calendar_sync.argparse.ArgumentParser")
+    @patch("fogis_calendar_sync.os.environ.get")
+    @patch("fogis_calendar_sync.FogisApiClient")
+    @patch("fogis_calendar_sync.MatchListFilter")
+    @patch("fogis_calendar_sync.authorize_google_calendar")
+    def test_main_auth_failure(
+        self, mock_auth, mock_filter, mock_fogis_client, mock_env_get, mock_parser
+    ):
         """Test main function with Google Calendar auth failure."""
         # Setup argument parser mock
         mock_args = MagicMock()
@@ -546,8 +548,8 @@ class TestMainFunction:
 
         # Mock environment variables
         mock_env_get.side_effect = lambda key: {
-            'FOGIS_USERNAME': 'test_user',
-            'FOGIS_PASSWORD': 'test_pass'
+            "FOGIS_USERNAME": "test_user",
+            "FOGIS_PASSWORD": "test_pass",
         }.get(key)
 
         # Mock FOGIS client successful login
@@ -565,7 +567,7 @@ class TestMainFunction:
                 "lag1namn": "Home Team",
                 "lag2namn": "Away Team",
                 "tid": "/Date(1684177200000)/",
-                "anlaggningnamn": "Test Arena"
+                "anlaggningnamn": "Test Arena",
             }
         ]
         mock_filter.return_value = mock_filter_instance
@@ -573,24 +575,32 @@ class TestMainFunction:
         # Mock auth failure
         mock_auth.return_value = None
 
-        with patch('fogis_calendar_sync.logging') as mock_logging, \
-             patch('builtins.print'), \
-             patch('fogis_calendar_sync.tabulate'):
+        with patch("fogis_calendar_sync.logging") as mock_logging, patch("builtins.print"), patch(
+            "fogis_calendar_sync.tabulate"
+        ):
 
             fogis_calendar_sync.main()
 
             # Verify auth failure was logged
             mock_logging.error.assert_called_with("Failed to obtain Google Calendar Credentials")
 
-    @patch('fogis_calendar_sync.argparse.ArgumentParser')
-    @patch('fogis_calendar_sync.os.environ.get')
-    @patch('fogis_calendar_sync.FogisApiClient')
-    @patch('fogis_calendar_sync.MatchListFilter')
-    @patch('fogis_calendar_sync.authorize_google_calendar')
-    @patch('fogis_calendar_sync.build')
-    @patch('fogis_calendar_sync.check_calendar_exists')
-    def test_main_calendar_not_found(self, mock_check_cal, mock_build, mock_auth, mock_filter,
-                                   mock_fogis_client, mock_env_get, mock_parser):
+    @patch("fogis_calendar_sync.argparse.ArgumentParser")
+    @patch("fogis_calendar_sync.os.environ.get")
+    @patch("fogis_calendar_sync.FogisApiClient")
+    @patch("fogis_calendar_sync.MatchListFilter")
+    @patch("fogis_calendar_sync.authorize_google_calendar")
+    @patch("fogis_calendar_sync.build")
+    @patch("fogis_calendar_sync.check_calendar_exists")
+    def test_main_calendar_not_found(
+        self,
+        mock_check_cal,
+        mock_build,
+        mock_auth,
+        mock_filter,
+        mock_fogis_client,
+        mock_env_get,
+        mock_parser,
+    ):
         """Test main function with calendar not found."""
         # Setup argument parser mock
         mock_args = MagicMock()
@@ -606,8 +616,8 @@ class TestMainFunction:
 
         # Mock environment variables
         mock_env_get.side_effect = lambda key: {
-            'FOGIS_USERNAME': 'test_user',
-            'FOGIS_PASSWORD': 'test_pass'
+            "FOGIS_USERNAME": "test_user",
+            "FOGIS_PASSWORD": "test_pass",
         }.get(key)
 
         # Mock FOGIS client successful login
@@ -625,7 +635,7 @@ class TestMainFunction:
                 "lag1namn": "Home Team",
                 "lag2namn": "Away Team",
                 "tid": "/Date(1684177200000)/",
-                "anlaggningnamn": "Test Arena"
+                "anlaggningnamn": "Test Arena",
             }
         ]
         mock_filter.return_value = mock_filter_instance
@@ -642,10 +652,9 @@ class TestMainFunction:
         # Mock calendar not found
         mock_check_cal.return_value = False
 
-        with patch('fogis_calendar_sync.logging') as mock_logging, \
-             patch('builtins.print'), \
-             patch('fogis_calendar_sync.tabulate'), \
-             patch.dict(fogis_calendar_sync.config_dict, {"CALENDAR_ID": "test_calendar"}):
+        with patch("fogis_calendar_sync.logging") as mock_logging, patch("builtins.print"), patch(
+            "fogis_calendar_sync.tabulate"
+        ), patch.dict(fogis_calendar_sync.config_dict, {"CALENDAR_ID": "test_calendar"}):
 
             fogis_calendar_sync.main()
 
@@ -655,23 +664,35 @@ class TestMainFunction:
                 "Please verify the ID and permissions. Exiting."
             )
 
-    @patch('fogis_calendar_sync.argparse.ArgumentParser')
-    @patch('fogis_calendar_sync.os.environ.get')
-    @patch('fogis_calendar_sync.FogisApiClient')
-    @patch('fogis_calendar_sync.MatchListFilter')
-    @patch('fogis_calendar_sync.authorize_google_calendar')
-    @patch('fogis_calendar_sync.build')
-    @patch('fogis_calendar_sync.check_calendar_exists')
-    @patch('fogis_calendar_sync.test_google_contacts_connection')
-    @patch('fogis_calendar_sync.delete_orphaned_events')
-    @patch('fogis_calendar_sync.delete_calendar_events')
-    @patch('fogis_calendar_sync.sync_calendar')
-    @patch('fogis_calendar_sync.generate_match_hash')
-    @patch('builtins.open')
-    def test_main_successful_execution(self, mock_open, mock_hash, mock_sync, mock_delete_events,
-                                     mock_delete_orphaned, mock_test_contacts, mock_check_cal,
-                                     mock_build, mock_auth, mock_filter, mock_fogis_client,
-                                     mock_env_get, mock_parser):
+    @patch("fogis_calendar_sync.argparse.ArgumentParser")
+    @patch("fogis_calendar_sync.os.environ.get")
+    @patch("fogis_calendar_sync.FogisApiClient")
+    @patch("fogis_calendar_sync.MatchListFilter")
+    @patch("fogis_calendar_sync.authorize_google_calendar")
+    @patch("fogis_calendar_sync.build")
+    @patch("fogis_calendar_sync.check_calendar_exists")
+    @patch("fogis_calendar_sync.test_google_contacts_connection")
+    @patch("fogis_calendar_sync.delete_orphaned_events")
+    @patch("fogis_calendar_sync.delete_calendar_events")
+    @patch("fogis_calendar_sync.sync_calendar")
+    @patch("fogis_calendar_sync.generate_match_hash")
+    @patch("builtins.open")
+    def test_main_successful_execution(
+        self,
+        mock_open,
+        mock_hash,
+        mock_sync,
+        mock_delete_events,
+        mock_delete_orphaned,
+        mock_test_contacts,
+        mock_check_cal,
+        mock_build,
+        mock_auth,
+        mock_filter,
+        mock_fogis_client,
+        mock_env_get,
+        mock_parser,
+    ):
         """Test main function successful execution."""
         # Setup argument parser mock
         mock_args = MagicMock()
@@ -687,8 +708,8 @@ class TestMainFunction:
 
         # Mock environment variables
         mock_env_get.side_effect = lambda key: {
-            'FOGIS_USERNAME': 'test_user',
-            'FOGIS_PASSWORD': 'test_pass'
+            "FOGIS_USERNAME": "test_user",
+            "FOGIS_PASSWORD": "test_pass",
         }.get(key)
 
         # Mock FOGIS client successful login
@@ -704,7 +725,7 @@ class TestMainFunction:
                 "lag1namn": "Home Team",
                 "lag2namn": "Away Team",
                 "tid": "/Date(1684177200000)/",
-                "anlaggningnamn": "Test Arena"
+                "anlaggningnamn": "Test Arena",
             },
             {
                 "matchid": 67890,
@@ -712,8 +733,8 @@ class TestMainFunction:
                 "lag1namn": "Team A",
                 "lag2namn": "Team B",
                 "tid": "/Date(1684180800000)/",
-                "anlaggningnamn": "Another Arena"
-            }
+                "anlaggningnamn": "Another Arena",
+            },
         ]
         mock_filter_instance = MagicMock()
         mock_filter_instance.exclude_statuses.return_value = mock_filter_instance
@@ -740,15 +761,16 @@ class TestMainFunction:
         mock_file = MagicMock()
         mock_open.return_value.__enter__.return_value = mock_file
 
-        with patch('fogis_calendar_sync.logging') as mock_logging, \
-             patch('builtins.print'), \
-             patch('fogis_calendar_sync.tabulate'), \
-             patch('fogis_calendar_sync.json.dumps') as mock_json_dumps, \
-             patch.dict(fogis_calendar_sync.config_dict, {
-                 "CALENDAR_ID": "test_calendar",
-                 "MATCH_FILE": "test_matches.json",
-                 "DAYS_TO_KEEP_PAST_EVENTS": 7
-             }):
+        with patch("fogis_calendar_sync.logging") as mock_logging, patch("builtins.print"), patch(
+            "fogis_calendar_sync.tabulate"
+        ), patch("fogis_calendar_sync.json.dumps") as mock_json_dumps, patch.dict(
+            fogis_calendar_sync.config_dict,
+            {
+                "CALENDAR_ID": "test_calendar",
+                "MATCH_FILE": "test_matches.json",
+                "DAYS_TO_KEEP_PAST_EVENTS": 7,
+            },
+        ):
 
             fogis_calendar_sync.main()
 
@@ -762,16 +784,25 @@ class TestMainFunction:
             mock_logging.info.assert_any_call("Fetching matches, filtering out cancelled games.")
             mock_logging.info.assert_any_call("Storing hashes for %d matches", 2)
 
-    @patch('fogis_calendar_sync.argparse.ArgumentParser')
-    @patch('fogis_calendar_sync.os.environ.get')
-    @patch('fogis_calendar_sync.FogisApiClient')
-    @patch('fogis_calendar_sync.MatchListFilter')
-    @patch('fogis_calendar_sync.authorize_google_calendar')
-    @patch('fogis_calendar_sync.build')
-    @patch('fogis_calendar_sync.check_calendar_exists')
-    @patch('fogis_calendar_sync.test_google_contacts_connection')
-    def test_main_contacts_failure(self, mock_test_contacts, mock_check_cal, mock_build,
-                                 mock_auth, mock_filter, mock_fogis_client, mock_env_get, mock_parser):
+    @patch("fogis_calendar_sync.argparse.ArgumentParser")
+    @patch("fogis_calendar_sync.os.environ.get")
+    @patch("fogis_calendar_sync.FogisApiClient")
+    @patch("fogis_calendar_sync.MatchListFilter")
+    @patch("fogis_calendar_sync.authorize_google_calendar")
+    @patch("fogis_calendar_sync.build")
+    @patch("fogis_calendar_sync.check_calendar_exists")
+    @patch("fogis_calendar_sync.test_google_contacts_connection")
+    def test_main_contacts_failure(
+        self,
+        mock_test_contacts,
+        mock_check_cal,
+        mock_build,
+        mock_auth,
+        mock_filter,
+        mock_fogis_client,
+        mock_env_get,
+        mock_parser,
+    ):
         """Test main function with Google Contacts API failure."""
         # Setup argument parser mock
         mock_args = MagicMock()
@@ -787,8 +818,8 @@ class TestMainFunction:
 
         # Mock environment variables
         mock_env_get.side_effect = lambda key: {
-            'FOGIS_USERNAME': 'test_user',
-            'FOGIS_PASSWORD': 'test_pass'
+            "FOGIS_USERNAME": "test_user",
+            "FOGIS_PASSWORD": "test_pass",
         }.get(key)
 
         # Mock FOGIS client successful login
@@ -806,7 +837,7 @@ class TestMainFunction:
                 "lag1namn": "Home Team",
                 "lag2namn": "Away Team",
                 "tid": "/Date(1684177200000)/",
-                "anlaggningnamn": "Test Arena"
+                "anlaggningnamn": "Test Arena",
             }
         ]
         mock_filter.return_value = mock_filter_instance
@@ -824,10 +855,9 @@ class TestMainFunction:
         mock_check_cal.return_value = True
         mock_test_contacts.return_value = False
 
-        with patch('fogis_calendar_sync.logging') as mock_logging, \
-             patch('builtins.print'), \
-             patch('fogis_calendar_sync.tabulate'), \
-             patch.dict(fogis_calendar_sync.config_dict, {"CALENDAR_ID": "test_calendar"}):
+        with patch("fogis_calendar_sync.logging") as mock_logging, patch("builtins.print"), patch(
+            "fogis_calendar_sync.tabulate"
+        ), patch.dict(fogis_calendar_sync.config_dict, {"CALENDAR_ID": "test_calendar"}):
 
             fogis_calendar_sync.main()
 
@@ -836,16 +866,25 @@ class TestMainFunction:
                 "Google People API is not set up correctly or wrong credentials for People API. Exiting."
             )
 
-    @patch('fogis_calendar_sync.argparse.ArgumentParser')
-    @patch('fogis_calendar_sync.os.environ.get')
-    @patch('fogis_calendar_sync.FogisApiClient')
-    @patch('fogis_calendar_sync.MatchListFilter')
-    @patch('fogis_calendar_sync.authorize_google_calendar')
-    @patch('fogis_calendar_sync.build')
-    @patch('fogis_calendar_sync.check_calendar_exists')
-    @patch('fogis_calendar_sync.test_google_contacts_connection')
-    def test_main_http_error(self, mock_test_contacts, mock_check_cal, mock_build,
-                           mock_auth, mock_filter, mock_fogis_client, mock_env_get, mock_parser):
+    @patch("fogis_calendar_sync.argparse.ArgumentParser")
+    @patch("fogis_calendar_sync.os.environ.get")
+    @patch("fogis_calendar_sync.FogisApiClient")
+    @patch("fogis_calendar_sync.MatchListFilter")
+    @patch("fogis_calendar_sync.authorize_google_calendar")
+    @patch("fogis_calendar_sync.build")
+    @patch("fogis_calendar_sync.check_calendar_exists")
+    @patch("fogis_calendar_sync.test_google_contacts_connection")
+    def test_main_http_error(
+        self,
+        mock_test_contacts,
+        mock_check_cal,
+        mock_build,
+        mock_auth,
+        mock_filter,
+        mock_fogis_client,
+        mock_env_get,
+        mock_parser,
+    ):
         """Test main function with HTTP error during execution."""
         from googleapiclient.errors import HttpError
 
@@ -863,8 +902,8 @@ class TestMainFunction:
 
         # Mock environment variables
         mock_env_get.side_effect = lambda key: {
-            'FOGIS_USERNAME': 'test_user',
-            'FOGIS_PASSWORD': 'test_pass'
+            "FOGIS_USERNAME": "test_user",
+            "FOGIS_PASSWORD": "test_pass",
         }.get(key)
 
         # Mock FOGIS client successful login
@@ -882,7 +921,7 @@ class TestMainFunction:
                 "lag1namn": "Home Team",
                 "lag2namn": "Away Team",
                 "tid": "/Date(1684177200000)/",
-                "anlaggningnamn": "Test Arena"
+                "anlaggningnamn": "Test Arena",
             }
         ]
         mock_filter.return_value = mock_filter_instance
@@ -893,13 +932,12 @@ class TestMainFunction:
 
         # Mock service building with HTTP error
         mock_build.side_effect = HttpError(
-            resp=MagicMock(status=403),
-            content=b'{"error": {"message": "Forbidden"}}'
+            resp=MagicMock(status=403), content=b'{"error": {"message": "Forbidden"}}'
         )
 
-        with patch('fogis_calendar_sync.logging') as mock_logging, \
-             patch('builtins.print'), \
-             patch('fogis_calendar_sync.tabulate'):
+        with patch("fogis_calendar_sync.logging") as mock_logging, patch("builtins.print"), patch(
+            "fogis_calendar_sync.tabulate"
+        ):
 
             fogis_calendar_sync.main()
 
