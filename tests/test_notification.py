@@ -150,8 +150,9 @@ def test_notification_fallback_logging(mock_config):
     auth_url = "https://example.com/auth"
 
     # Mock _send_email to return False (failure)
-    with mock.patch.object(sender, "_send_email", return_value=False), \
-         mock.patch("notification.logger") as mock_logger:
+    with mock.patch.object(sender, "_send_email", return_value=False), mock.patch(
+        "notification.logger"
+    ) as mock_logger:
         result = sender.send_auth_notification(auth_url)
 
     assert result is False
@@ -180,14 +181,15 @@ def test_email_smtp_exception(mock_config):
     sender = notification.NotificationSender(mock_config)
 
     # Mock SMTP to raise an exception
-    with mock.patch("smtplib.SMTP") as mock_smtp, \
-         mock.patch("notification.logger") as mock_logger:
+    with mock.patch("smtplib.SMTP") as mock_smtp, mock.patch("notification.logger") as mock_logger:
         mock_smtp.side_effect = Exception("SMTP connection failed")
 
         result = sender._send_email("Test Subject", "Test Message")
 
     assert result is False
-    mock_logger.error.assert_called_with("Failed to send email notification: SMTP connection failed")
+    mock_logger.error.assert_called_with(
+        "Failed to send email notification: SMTP connection failed"
+    )
 
 
 @pytest.mark.fast
@@ -209,8 +211,9 @@ def test_discord_webhook_error_status(mock_config):
     """Test Discord notification with error status from webhook."""
     sender = notification.NotificationSender(mock_config)
 
-    with mock.patch("notification.urlopen") as mock_urlopen, \
-         mock.patch("notification.logger") as mock_logger:
+    with mock.patch("notification.urlopen") as mock_urlopen, mock.patch(
+        "notification.logger"
+    ) as mock_logger:
         mock_response = mock_urlopen.return_value.__enter__.return_value
         mock_response.status = 400  # Error status
 
@@ -225,8 +228,9 @@ def test_discord_webhook_exception(mock_config):
     """Test Discord notification with webhook exception."""
     sender = notification.NotificationSender(mock_config)
 
-    with mock.patch("notification.urlopen") as mock_urlopen, \
-         mock.patch("notification.logger") as mock_logger:
+    with mock.patch("notification.urlopen") as mock_urlopen, mock.patch(
+        "notification.logger"
+    ) as mock_logger:
         mock_urlopen.side_effect = Exception("Network error")
 
         result = sender._send_discord("Test Subject", "Test Message", "https://example.com/auth")
@@ -254,8 +258,9 @@ def test_slack_webhook_error_status(mock_config):
     """Test Slack notification with error status from webhook."""
     sender = notification.NotificationSender(mock_config)
 
-    with mock.patch("notification.urlopen") as mock_urlopen, \
-         mock.patch("notification.logger") as mock_logger:
+    with mock.patch("notification.urlopen") as mock_urlopen, mock.patch(
+        "notification.logger"
+    ) as mock_logger:
         mock_response = mock_urlopen.return_value.__enter__.return_value
         mock_response.status = 500  # Error status
 
@@ -270,8 +275,9 @@ def test_slack_webhook_exception(mock_config):
     """Test Slack notification with webhook exception."""
     sender = notification.NotificationSender(mock_config)
 
-    with mock.patch("notification.urlopen") as mock_urlopen, \
-         mock.patch("notification.logger") as mock_logger:
+    with mock.patch("notification.urlopen") as mock_urlopen, mock.patch(
+        "notification.logger"
+    ) as mock_logger:
         mock_urlopen.side_effect = Exception("Connection timeout")
 
         result = sender._send_slack("Test Subject", "Test Message", "https://example.com/auth")
@@ -308,7 +314,7 @@ def test_send_success_notification_discord(mock_config):
     assert result is True
     mock_discord.assert_called_once_with(
         "✅ Authentication Successful",
-        "FOGIS Calendar Sync re-authentication completed successfully."
+        "FOGIS Calendar Sync re-authentication completed successfully.",
     )
 
 
@@ -324,7 +330,7 @@ def test_send_success_notification_slack(mock_config):
     assert result is True
     mock_slack.assert_called_once_with(
         "✅ Authentication Successful",
-        "FOGIS Calendar Sync re-authentication completed successfully."
+        "FOGIS Calendar Sync re-authentication completed successfully.",
     )
 
 
@@ -450,8 +456,9 @@ def test_notification_logging(mock_config):
     sender = notification.NotificationSender(mock_config)
     auth_url = "https://example.com/auth"
 
-    with mock.patch.object(sender, "_send_email", return_value=True), \
-         mock.patch("notification.logger") as mock_logger:
+    with mock.patch.object(sender, "_send_email", return_value=True), mock.patch(
+        "notification.logger"
+    ) as mock_logger:
         sender.send_auth_notification(auth_url)
 
     # Verify the auth URL is logged
