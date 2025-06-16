@@ -6,7 +6,7 @@ This bypasses the duplicate state parameter issue.
 
 import json
 
-from google_auth_oauthlib.flow import InstalledAppFlow
+from google_auth_oauthlib.flow import Flow
 
 
 def main():
@@ -32,9 +32,10 @@ def main():
         print(f"  - {scope}")
     print()
 
-    # Create flow
-    flow = InstalledAppFlow.from_client_secrets_file("credentials.json", scopes)
-    flow.redirect_uri = "http://localhost:8080/callback"
+    # Create flow with explicit redirect URI
+    flow = Flow.from_client_secrets_file(
+        "credentials.json", scopes, redirect_uri="http://localhost:8080/callback"
+    )
 
     # Generate clean auth URL
     auth_url, state = flow.authorization_url(access_type="offline", prompt="consent")

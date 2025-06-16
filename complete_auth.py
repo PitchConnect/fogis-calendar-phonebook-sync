@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import json
 
-from google_auth_oauthlib.flow import InstalledAppFlow
+from google_auth_oauthlib.flow import Flow
 
 
 def main():
@@ -15,9 +15,10 @@ def main():
         ["https://www.googleapis.com/auth/calendar", "https://www.googleapis.com/auth/contacts"],
     )
 
-    # Create flow
-    flow = InstalledAppFlow.from_client_secrets_file("credentials.json", scopes)
-    flow.redirect_uri = "http://localhost:8080/callback"
+    # Create flow with explicit redirect URI
+    flow = Flow.from_client_secrets_file(
+        "credentials.json", scopes, redirect_uri="http://localhost:8080/callback"
+    )
 
     # Complete the flow with authorization response
     authorization_response = "http://localhost:8080/callback?state=CdJuw0chqZcjvJuuXkWBpi5stuRbIt&code=4/0AUJR-x5MEnNaC-qrNTtXNccEiNgW88oyFXgehj4T8Ba8Vah14kewUQiK_stP6XaX9ZE4mQ&scope=https://www.googleapis.com/auth/contacts%20https://www.googleapis.com/auth/calendar"

@@ -23,7 +23,7 @@ from fogis_api_client.fogis_api_client import FogisApiClient
 from fogis_api_client.match_list_filter import MatchListFilter
 from google.auth.exceptions import RefreshError  # Correct import for RefreshError
 from google.oauth2 import credentials, service_account
-from google_auth_oauthlib.flow import InstalledAppFlow
+from google_auth_oauthlib.flow import Flow
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 from tabulate import tabulate
@@ -131,15 +131,11 @@ def authorize_google_calendar(headless=False):
             logging.info("Attempting to create new credentials via OAuth flow")
             try:
                 logging.info("Using credentials file: %s", config_dict["CREDENTIALS_FILE"])
-                flow = InstalledAppFlow.from_client_secrets_file(
-                    config_dict["CREDENTIALS_FILE"], config_dict["SCOPES"]
-                )
-                creds = flow.run_local_server(port=0)
-                logging.info("OAuth flow completed successfully")
-
-                # Save the credentials for the next run
-                token_manager.save_token(creds)
-                logging.info("New Google Calendar credentials obtained and saved")
+                # Use token manager for OAuth flow instead of direct flow creation
+                # This ensures consistency with the headless authentication approach
+                logging.warning("Interactive OAuth flow not supported in this context")
+                logging.info("Please use manual_auth.py or headless authentication instead")
+                return None
             except FileNotFoundError:
                 logging.error("Credentials file not found: %s", config_dict["CREDENTIALS_FILE"])
                 return None

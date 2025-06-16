@@ -12,7 +12,7 @@ class TestCompleteAuthScript:
     """Test cases for the complete_auth script."""
 
     @patch("builtins.open", new_callable=mock_open)
-    @patch("google_auth_oauthlib.flow.InstalledAppFlow.from_client_secrets_file")
+    @patch("google_auth_oauthlib.flow.Flow.from_client_secrets_file")
     @patch("builtins.print")
     def test_complete_auth_success_with_default_scopes(
         self, mock_print, mock_flow_from_file, mock_file
@@ -40,15 +40,16 @@ class TestCompleteAuthScript:
         # Execute the main function
         complete_auth.main()
 
-        # Verify flow was created with default scopes
+        # Verify flow was created with default scopes and redirect URI
         expected_default_scopes = [
             "https://www.googleapis.com/auth/calendar",
             "https://www.googleapis.com/auth/contacts",
         ]
-        mock_flow_from_file.assert_called_once_with("credentials.json", expected_default_scopes)
-
-        # Verify redirect URI was set
-        assert mock_flow_instance.redirect_uri == "http://localhost:8080/callback"
+        mock_flow_from_file.assert_called_once_with(
+            "credentials.json",
+            expected_default_scopes,
+            redirect_uri="http://localhost:8080/callback",
+        )
 
         # Verify token fetch was called with hardcoded authorization response
         expected_auth_response = "http://localhost:8080/callback?state=CdJuw0chqZcjvJuuXkWBpi5stuRbIt&code=4/0AUJR-x5MEnNaC-qrNTtXNccEiNgW88oyFXgehj4T8Ba8Vah14kewUQiK_stP6XaX9ZE4mQ&scope=https://www.googleapis.com/auth/contacts%20https://www.googleapis.com/auth/calendar"
@@ -68,7 +69,7 @@ class TestCompleteAuthScript:
         mock_print.assert_any_call("✅ Has refresh token: True")
 
     @patch("builtins.open", new_callable=mock_open)
-    @patch("google_auth_oauthlib.flow.InstalledAppFlow.from_client_secrets_file")
+    @patch("google_auth_oauthlib.flow.Flow.from_client_secrets_file")
     @patch("builtins.print")
     def test_complete_auth_success_with_custom_scopes(
         self, mock_print, mock_flow_from_file, mock_file
@@ -100,13 +101,17 @@ class TestCompleteAuthScript:
         # Execute the main function
         complete_auth.main()
 
-        # Verify flow was created with custom scopes
+        # Verify flow was created with custom scopes and redirect URI
         expected_custom_scopes = [
             "https://www.googleapis.com/auth/calendar",
             "https://www.googleapis.com/auth/contacts.readonly",
             "https://www.googleapis.com/auth/drive",
         ]
-        mock_flow_from_file.assert_called_once_with("credentials.json", expected_custom_scopes)
+        mock_flow_from_file.assert_called_once_with(
+            "credentials.json",
+            expected_custom_scopes,
+            redirect_uri="http://localhost:8080/callback",
+        )
 
         # Verify refresh token status (False for None)
         mock_print.assert_any_call("✅ Has refresh token: False")
@@ -128,7 +133,7 @@ class TestCompleteAuthScript:
             complete_auth.main()
 
     @patch("builtins.open", new_callable=mock_open)
-    @patch("google_auth_oauthlib.flow.InstalledAppFlow.from_client_secrets_file")
+    @patch("google_auth_oauthlib.flow.Flow.from_client_secrets_file")
     @patch("builtins.print")
     def test_complete_auth_credentials_file_not_found(
         self, mock_print, mock_flow_from_file, mock_file
@@ -146,7 +151,7 @@ class TestCompleteAuthScript:
             complete_auth.main()
 
     @patch("builtins.open", new_callable=mock_open)
-    @patch("google_auth_oauthlib.flow.InstalledAppFlow.from_client_secrets_file")
+    @patch("google_auth_oauthlib.flow.Flow.from_client_secrets_file")
     @patch("builtins.print")
     @patch("traceback.print_exc")
     def test_complete_auth_fetch_token_failure(
@@ -172,7 +177,7 @@ class TestCompleteAuthScript:
         mock_traceback.assert_called_once()
 
     @patch("builtins.open", new_callable=mock_open)
-    @patch("google_auth_oauthlib.flow.InstalledAppFlow.from_client_secrets_file")
+    @patch("google_auth_oauthlib.flow.Flow.from_client_secrets_file")
     @patch("builtins.print")
     @patch("traceback.print_exc")
     def test_complete_auth_token_save_failure(
@@ -204,7 +209,7 @@ class TestCompleteAuthScript:
         mock_traceback.assert_called_once()
 
     @patch("builtins.open", new_callable=mock_open)
-    @patch("google_auth_oauthlib.flow.InstalledAppFlow.from_client_secrets_file")
+    @patch("google_auth_oauthlib.flow.Flow.from_client_secrets_file")
     @patch("builtins.print")
     def test_complete_auth_credentials_without_expiry(
         self, mock_print, mock_flow_from_file, mock_file
@@ -235,7 +240,7 @@ class TestCompleteAuthScript:
         mock_print.assert_any_call("✅ Has refresh token: True")
 
     @patch("builtins.open", new_callable=mock_open)
-    @patch("google_auth_oauthlib.flow.InstalledAppFlow.from_client_secrets_file")
+    @patch("google_auth_oauthlib.flow.Flow.from_client_secrets_file")
     @patch("builtins.print")
     def test_complete_auth_hardcoded_authorization_response(
         self, mock_print, mock_flow_from_file, mock_file
@@ -267,15 +272,15 @@ class TestCompleteAuthScript:
             authorization_response=expected_auth_response
         )
 
-        # Verify redirect URI was set correctly
-        assert mock_flow_instance.redirect_uri == "http://localhost:8080/callback"
+        # Verify flow was created with correct redirect URI (passed as parameter)
+        # This is verified in the assert_called_once_with above
 
 
 class TestCompleteAuthEdgeCases:
     """Test edge cases and boundary conditions for complete_auth script."""
 
     @patch("builtins.open", new_callable=mock_open)
-    @patch("google_auth_oauthlib.flow.InstalledAppFlow.from_client_secrets_file")
+    @patch("google_auth_oauthlib.flow.Flow.from_client_secrets_file")
     @patch("builtins.print")
     def test_complete_auth_empty_config(self, mock_print, mock_flow_from_file, mock_file):
         """Test complete_auth script with empty config file."""
@@ -298,15 +303,19 @@ class TestCompleteAuthEdgeCases:
         # Execute the main function
         complete_auth.main()
 
-        # Verify flow was created with default scopes (empty config should use defaults)
+        # Verify flow was created with default scopes and redirect URI (empty config should use defaults)
         expected_default_scopes = [
             "https://www.googleapis.com/auth/calendar",
             "https://www.googleapis.com/auth/contacts",
         ]
-        mock_flow_from_file.assert_called_once_with("credentials.json", expected_default_scopes)
+        mock_flow_from_file.assert_called_once_with(
+            "credentials.json",
+            expected_default_scopes,
+            redirect_uri="http://localhost:8080/callback",
+        )
 
     @patch("builtins.open", new_callable=mock_open)
-    @patch("google_auth_oauthlib.flow.InstalledAppFlow.from_client_secrets_file")
+    @patch("google_auth_oauthlib.flow.Flow.from_client_secrets_file")
     @patch("builtins.print")
     def test_complete_auth_empty_scopes_list(self, mock_print, mock_flow_from_file, mock_file):
         """Test complete_auth script with empty SCOPES list in config."""
@@ -330,5 +339,7 @@ class TestCompleteAuthEdgeCases:
         # Execute the main function
         complete_auth.main()
 
-        # Verify flow was created with empty scopes list (as specified in config)
-        mock_flow_from_file.assert_called_once_with("credentials.json", [])
+        # Verify flow was created with empty scopes list and redirect URI (as specified in config)
+        mock_flow_from_file.assert_called_once_with(
+            "credentials.json", [], redirect_uri="http://localhost:8080/callback"
+        )
