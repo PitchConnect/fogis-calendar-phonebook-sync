@@ -992,22 +992,18 @@ def test_authorize_google_calendar_headless_failure():
 @pytest.mark.unit
 def test_authorize_google_calendar_no_token_file():
     """Test authorize_google_calendar when no token file exists."""
-    mock_creds = MagicMock()
-    mock_creds.valid = True
-
+    # With the new Flow implementation, interactive OAuth is not supported
+    # when no token file exists in non-headless mode
     with patch("os.path.exists", return_value=False), patch(
-        "google_auth_oauthlib.flow.InstalledAppFlow.from_client_secrets_file"
-    ) as mock_flow, patch("fogis_calendar_sync.token_manager"), patch.dict(
+        "fogis_calendar_sync.token_manager"
+    ), patch.dict(
         fogis_calendar_sync.config_dict,
         {"CREDENTIALS_FILE": "credentials.json", "SCOPES": ["test_scope"]},
     ):
 
-        mock_flow_instance = MagicMock()
-        mock_flow_instance.run_local_server.return_value = mock_creds
-        mock_flow.return_value = mock_flow_instance
-
         result = fogis_calendar_sync.authorize_google_calendar(headless=False)
-        assert result == mock_creds
+        # Should return None as interactive OAuth flow is not supported
+        assert result is None
 
 
 @pytest.mark.unit
@@ -1045,24 +1041,17 @@ def test_authorize_google_calendar_refresh_error():
     mock_creds.refresh_token = "refresh_token"
     mock_creds.refresh.side_effect = RefreshError("Refresh failed")
 
-    mock_new_creds = MagicMock()
-    mock_new_creds.valid = True
-
     with patch("os.path.exists", return_value=True), patch(
         "google.oauth2.credentials.Credentials.from_authorized_user_file", return_value=mock_creds
-    ), patch("fogis_calendar_sync.token_manager"), patch(
-        "google_auth_oauthlib.flow.InstalledAppFlow.from_client_secrets_file"
-    ) as mock_flow, patch.dict(
+    ), patch("fogis_calendar_sync.token_manager"), patch.dict(
         fogis_calendar_sync.config_dict,
         {"CREDENTIALS_FILE": "credentials.json", "SCOPES": ["test_scope"]},
     ):
 
-        mock_flow_instance = MagicMock()
-        mock_flow_instance.run_local_server.return_value = mock_new_creds
-        mock_flow.return_value = mock_flow_instance
-
+        # With the new Flow implementation, refresh failure returns None
+        # instead of attempting interactive OAuth flow
         result = fogis_calendar_sync.authorize_google_calendar(headless=False)
-        assert result == mock_new_creds
+        assert result is None
 
 
 @pytest.mark.unit
@@ -1073,14 +1062,13 @@ def test_authorize_google_calendar_credentials_file_not_found():
 
     with patch("os.path.exists", return_value=True), patch(
         "google.oauth2.credentials.Credentials.from_authorized_user_file", return_value=mock_creds
-    ), patch(
-        "google_auth_oauthlib.flow.InstalledAppFlow.from_client_secrets_file",
-        side_effect=FileNotFoundError,
     ), patch.dict(
         fogis_calendar_sync.config_dict,
         {"CREDENTIALS_FILE": "missing.json", "SCOPES": ["test_scope"]},
     ):
 
+        # With the new Flow implementation, invalid credentials return None
+        # instead of attempting to create a new flow
         result = fogis_calendar_sync.authorize_google_calendar(headless=False)
         assert result is None
 

@@ -14,7 +14,7 @@ class TestMainFunction:
 
     @patch("builtins.input")
     @patch("builtins.open", new_callable=mock_open)
-    @patch("google_auth_oauthlib.flow.InstalledAppFlow.from_client_secrets_file")
+    @patch("google_auth_oauthlib.flow.Flow.from_client_secrets_file")
     @patch("builtins.print")
     def test_main_success_with_default_scopes(
         self, mock_print, mock_flow_from_file, mock_file, mock_input
@@ -46,16 +46,17 @@ class TestMainFunction:
         # Verify return value
         assert result == 0
 
-        # Verify flow was created with default scopes
+        # Verify flow was created with default scopes and redirect URI
         expected_default_scopes = [
             "https://www.googleapis.com/auth/calendar",
             "https://www.googleapis.com/auth/contacts",
             "https://www.googleapis.com/auth/drive",
         ]
-        mock_flow_from_file.assert_called_once_with("credentials.json", expected_default_scopes)
-
-        # Verify redirect URI was set
-        assert mock_flow_instance.redirect_uri == "http://localhost:8080/callback"
+        mock_flow_from_file.assert_called_once_with(
+            "credentials.json",
+            expected_default_scopes,
+            redirect_uri="http://localhost:8080/callback",
+        )
 
         # Verify auth URL was generated
         mock_flow_instance.authorization_url.assert_called_once_with(
@@ -78,7 +79,7 @@ class TestMainFunction:
 
     @patch("builtins.input")
     @patch("builtins.open", new_callable=mock_open)
-    @patch("google_auth_oauthlib.flow.InstalledAppFlow.from_client_secrets_file")
+    @patch("google_auth_oauthlib.flow.Flow.from_client_secrets_file")
     @patch("builtins.print")
     def test_main_success_with_custom_scopes(
         self, mock_print, mock_flow_from_file, mock_file, mock_input
@@ -118,12 +119,16 @@ class TestMainFunction:
         # Verify return value
         assert result == 0
 
-        # Verify flow was created with custom scopes
+        # Verify flow was created with custom scopes and redirect URI
         expected_custom_scopes = [
             "https://www.googleapis.com/auth/calendar",
             "https://www.googleapis.com/auth/contacts.readonly",
         ]
-        mock_flow_from_file.assert_called_once_with("credentials.json", expected_custom_scopes)
+        mock_flow_from_file.assert_called_once_with(
+            "credentials.json",
+            expected_custom_scopes,
+            redirect_uri="http://localhost:8080/callback",
+        )
 
         # Verify custom scopes were printed
         mock_print.assert_any_call("  - https://www.googleapis.com/auth/calendar")
@@ -150,7 +155,7 @@ class TestMainFunction:
 
     @patch("builtins.input")
     @patch("builtins.open", new_callable=mock_open)
-    @patch("google_auth_oauthlib.flow.InstalledAppFlow.from_client_secrets_file")
+    @patch("google_auth_oauthlib.flow.Flow.from_client_secrets_file")
     @patch("builtins.print")
     def test_main_credentials_file_not_found(
         self, mock_print, mock_flow_from_file, mock_file, mock_input
@@ -169,7 +174,7 @@ class TestMainFunction:
 
     @patch("builtins.input")
     @patch("builtins.open", new_callable=mock_open)
-    @patch("google_auth_oauthlib.flow.InstalledAppFlow.from_client_secrets_file")
+    @patch("google_auth_oauthlib.flow.Flow.from_client_secrets_file")
     @patch("builtins.print")
     def test_main_authorization_url_failure(
         self, mock_print, mock_flow_from_file, mock_file, mock_input
@@ -190,7 +195,7 @@ class TestMainFunction:
 
     @patch("builtins.input")
     @patch("builtins.open", new_callable=mock_open)
-    @patch("google_auth_oauthlib.flow.InstalledAppFlow.from_client_secrets_file")
+    @patch("google_auth_oauthlib.flow.Flow.from_client_secrets_file")
     @patch("builtins.print")
     def test_main_fetch_token_failure(self, mock_print, mock_flow_from_file, mock_file, mock_input):
         """Test main function when token fetching fails."""
@@ -218,7 +223,7 @@ class TestMainFunction:
 
     @patch("builtins.input")
     @patch("builtins.open", new_callable=mock_open)
-    @patch("google_auth_oauthlib.flow.InstalledAppFlow.from_client_secrets_file")
+    @patch("google_auth_oauthlib.flow.Flow.from_client_secrets_file")
     @patch("builtins.print")
     def test_main_token_save_failure(self, mock_print, mock_flow_from_file, mock_file, mock_input):
         """Test main function when token saving fails."""
@@ -252,7 +257,7 @@ class TestMainFunction:
 
     @patch("builtins.input")
     @patch("builtins.open", new_callable=mock_open)
-    @patch("google_auth_oauthlib.flow.InstalledAppFlow.from_client_secrets_file")
+    @patch("google_auth_oauthlib.flow.Flow.from_client_secrets_file")
     @patch("builtins.print")
     def test_main_instructions_printed(
         self, mock_print, mock_flow_from_file, mock_file, mock_input

@@ -14,7 +14,8 @@
   "USER_REFEREE_NUMBER": 61318,
   "SCOPES": [
         "https://www.googleapis.com/auth/calendar",
-        "https://www.googleapis.com/auth/contacts"
+        "https://www.googleapis.com/auth/contacts",
+        "https://www.googleapis.com/auth/drive"
     ],
   "NOTIFICATION_METHOD": "email",
   "NOTIFICATION_EMAIL_SENDER": "bartek.svaberg@gmail.com",
