@@ -159,15 +159,22 @@ def test_full_authentication_flow():
 
     # Test TokenManager integration with proper mocking
     with patch("os.path.exists", return_value=True), patch("builtins.open", create=True), patch(
-        "json.load", return_value={"installed": {"client_id": "test"}}
+        "json.load",
+        return_value={
+            "installed": {
+                "client_id": "test_client_id",
+                "client_secret": "test_client_secret",
+                "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+                "token_uri": "https://oauth2.googleapis.com/token",
+                "redirect_uris": ["http://localhost:8080/callback"],
+            }
+        },
     ):
 
         tm = token_manager.TokenManager(config)
 
         # Mock the OAuth flow
-        with patch(
-            "google_auth_oauthlib.flow.InstalledAppFlow.from_client_secrets_file"
-        ) as mock_flow_class:
+        with patch("google_auth_oauthlib.flow.Flow.from_client_secrets_file") as mock_flow_class:
             mock_flow = MagicMock()
             mock_flow.authorization_url.return_value = ("http://auth.url", "state123")
             mock_flow_class.return_value = mock_flow
