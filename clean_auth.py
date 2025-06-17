@@ -18,7 +18,7 @@ def main():
     print("=" * 40)
 
     try:
-        from google_auth_oauthlib.flow import InstalledAppFlow
+        from google_auth_oauthlib.flow import Flow
 
         # Load config
         with open("config.json", "r") as f:
@@ -38,17 +38,33 @@ def main():
             print(f"  - {scope}")
         print()
 
-        # Create flow with minimal parameters
-        flow = InstalledAppFlow.from_client_secrets_file("credentials.json", scopes)
+        # Create flow with explicit redirect URI for web application flow
+        redirect_uri = "http://localhost:8080/callback"
+        flow = Flow.from_client_secrets_file("credentials.json", scopes, redirect_uri=redirect_uri)
 
-        # Use the built-in run_local_server method which handles everything
-        print("🚀 Starting local server for authentication...")
-        print("📱 Your browser will open automatically")
+        # Generate authorization URL
+        print("🚀 Starting OAuth flow...")
         print("🔐 Complete the authentication in your browser")
         print()
 
-        # This method handles everything automatically
-        credentials = flow.run_local_server(port=8080, prompt="consent", access_type="offline")
+        # Generate authorization URL
+        auth_url, state = flow.authorization_url(
+            access_type="offline", prompt="consent", include_granted_scopes="true"
+        )
+
+        print("🔗 Please visit this URL to authorize the application:")
+        print(auth_url)
+        print()
+        print("📋 After authorization, copy the full callback URL from your browser")
+        print("   (it should start with http://localhost:8080/callback?...)")
+        print()
+
+        # Get authorization response from user
+        callback_url = input("📥 Paste the full callback URL here: ").strip()
+
+        # Exchange authorization code for credentials
+        flow.fetch_token(authorization_response=callback_url)
+        credentials = flow.credentials
 
         # Save the token
         with open("token.json", "w") as token_file:

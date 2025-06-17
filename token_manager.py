@@ -14,7 +14,7 @@ from typing import Dict, Optional, Tuple
 
 import google.auth.transport.requests
 from google.oauth2.credentials import Credentials
-from google_auth_oauthlib.flow import InstalledAppFlow
+from google_auth_oauthlib.flow import Flow
 
 logger = logging.getLogger(__name__)
 
@@ -119,10 +119,11 @@ class TokenManager:
         if not os.path.exists(self.credentials_file):
             raise FileNotFoundError(f"Credentials file not found: {self.credentials_file}")
 
-        flow = InstalledAppFlow.from_client_secrets_file(self.credentials_file, self.scopes)
-
-        # Configure for headless mode
-        flow.redirect_uri = f"http://{self.config.get('AUTH_SERVER_HOST', 'localhost')}:{self.config.get('AUTH_SERVER_PORT', 8080)}/callback"
+        # Configure redirect URI for headless mode
+        redirect_uri = f"http://{self.config.get('AUTH_SERVER_HOST', 'localhost')}:{self.config.get('AUTH_SERVER_PORT', 8080)}/callback"
+        flow = Flow.from_client_secrets_file(
+            self.credentials_file, self.scopes, redirect_uri=redirect_uri
+        )
 
         auth_url, _ = flow.authorization_url(
             access_type="offline",

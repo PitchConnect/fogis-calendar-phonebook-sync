@@ -12,10 +12,11 @@ import clean_auth
 class TestCleanAuthMain:
     """Test cases for the main function in clean_auth."""
 
-    @patch("google_auth_oauthlib.flow.InstalledAppFlow")
+    @patch("google_auth_oauthlib.flow.Flow")
+    @patch("builtins.input")
     @patch("builtins.open")
     @patch("builtins.print")
-    def test_main_success(self, mock_print, mock_file_open, mock_flow_class):
+    def test_main_success(self, mock_print, mock_file_open, mock_input, mock_flow_class):
         """Test successful authentication flow."""
         # Mock config file content
         mock_config = {
@@ -30,6 +31,9 @@ class TestCleanAuthMain:
         token_file = mock_open()
         mock_file_open.side_effect = [config_file.return_value, token_file.return_value]
 
+        # Mock user input for callback URL
+        mock_input.return_value = "http://localhost:8080/callback?code=test_code&state=test_state"
+
         # Mock credentials
         mock_credentials = MagicMock()
         mock_credentials.expiry = "2024-12-31T23:59:59Z"
@@ -38,7 +42,8 @@ class TestCleanAuthMain:
 
         # Mock flow
         mock_flow_instance = MagicMock()
-        mock_flow_instance.run_local_server.return_value = mock_credentials
+        mock_flow_instance.authorization_url.return_value = ("https://auth.url", "state")
+        mock_flow_instance.credentials = mock_credentials
         mock_flow_class.from_client_secrets_file.return_value = mock_flow_instance
 
         # Execute main function
@@ -47,14 +52,19 @@ class TestCleanAuthMain:
         # Verify success
         assert result == 0
 
-        # Verify flow was created correctly
+        # Verify flow was created correctly with redirect URI
         mock_flow_class.from_client_secrets_file.assert_called_once_with(
-            "credentials.json", mock_config["SCOPES"]
+            "credentials.json", mock_config["SCOPES"], redirect_uri="http://localhost:8080/callback"
         )
 
-        # Verify authentication was called
-        mock_flow_instance.run_local_server.assert_called_once_with(
-            port=8080, prompt="consent", access_type="offline"
+        # Verify authorization URL was generated
+        mock_flow_instance.authorization_url.assert_called_once_with(
+            access_type="offline", prompt="consent", include_granted_scopes="true"
+        )
+
+        # Verify token exchange was called
+        mock_flow_instance.fetch_token.assert_called_once_with(
+            authorization_response="http://localhost:8080/callback?code=test_code&state=test_state"
         )
 
         # Verify token was saved
@@ -64,10 +74,13 @@ class TestCleanAuthMain:
         mock_print.assert_any_call("✅ Authentication successful!")
         mock_print.assert_any_call("✅ Token saved to token.json")
 
-    @patch("google_auth_oauthlib.flow.InstalledAppFlow")
+    @patch("google_auth_oauthlib.flow.Flow")
+    @patch("builtins.input")
     @patch("builtins.open")
     @patch("builtins.print")
-    def test_main_success_with_default_scopes(self, mock_print, mock_file_open, mock_flow_class):
+    def test_main_success_with_default_scopes(
+        self, mock_print, mock_file_open, mock_input, mock_flow_class
+    ):
         """Test successful authentication with default scopes when config has no SCOPES."""
         # Mock config file content without SCOPES
         mock_config = {"OTHER_CONFIG": "value"}
@@ -77,6 +90,9 @@ class TestCleanAuthMain:
         token_file = mock_open()
         mock_file_open.side_effect = [config_file.return_value, token_file.return_value]
 
+        # Mock user input for callback URL
+        mock_input.return_value = "http://localhost:8080/callback?code=test_code&state=test_state"
+
         # Mock credentials
         mock_credentials = MagicMock()
         mock_credentials.expiry = "2024-12-31T23:59:59Z"
@@ -85,7 +101,8 @@ class TestCleanAuthMain:
 
         # Mock flow
         mock_flow_instance = MagicMock()
-        mock_flow_instance.run_local_server.return_value = mock_credentials
+        mock_flow_instance.authorization_url.return_value = ("https://auth.url", "state")
+        mock_flow_instance.credentials = mock_credentials
         mock_flow_class.from_client_secrets_file.return_value = mock_flow_instance
 
         # Execute main function
@@ -101,7 +118,9 @@ class TestCleanAuthMain:
             "https://www.googleapis.com/auth/drive",
         ]
         mock_flow_class.from_client_secrets_file.assert_called_once_with(
-            "credentials.json", expected_default_scopes
+            "credentials.json",
+            expected_default_scopes,
+            redirect_uri="http://localhost:8080/callback",
         )
 
     @patch("builtins.print")
@@ -139,7 +158,7 @@ class TestCleanAuthMain:
         # Restore original modules
         sys.modules.update(original_modules)
 
-    @patch("google_auth_oauthlib.flow.InstalledAppFlow")
+    @patch("google_auth_oauthlib.flow.Flow")
     @patch("builtins.open")
     @patch("builtins.print")
     def test_main_config_file_not_found(self, mock_print, mock_file_open, mock_flow_class):
@@ -156,7 +175,7 @@ class TestCleanAuthMain:
         mock_print.assert_any_call("❌ File not found: config.json not found")
         mock_print.assert_any_call("💡 Make sure credentials.json and config.json exist")
 
-    @patch("google_auth_oauthlib.flow.InstalledAppFlow")
+    @patch("google_auth_oauthlib.flow.Flow")
     @patch("builtins.open")
     @patch("builtins.print")
     def test_main_credentials_file_not_found(self, mock_print, mock_file_open, mock_flow_class):
@@ -180,19 +199,26 @@ class TestCleanAuthMain:
         mock_print.assert_any_call("❌ File not found: credentials.json not found")
         mock_print.assert_any_call("💡 Make sure credentials.json and config.json exist")
 
-    @patch("google_auth_oauthlib.flow.InstalledAppFlow")
+    @patch("google_auth_oauthlib.flow.Flow")
+    @patch("builtins.input")
     @patch("builtins.open")
     @patch("builtins.print")
-    def test_main_authentication_failure(self, mock_print, mock_file_open, mock_flow_class):
+    def test_main_authentication_failure(
+        self, mock_print, mock_file_open, mock_input, mock_flow_class
+    ):
         """Test main function when authentication fails."""
         # Mock config file content
         mock_config = {"SCOPES": ["https://www.googleapis.com/auth/calendar"]}
         config_file = mock_open(read_data=json.dumps(mock_config))
         mock_file_open.return_value = config_file.return_value
 
+        # Mock user input for callback URL
+        mock_input.return_value = "http://localhost:8080/callback?code=test_code&state=test_state"
+
         # Mock flow that raises exception during authentication
         mock_flow_instance = MagicMock()
-        mock_flow_instance.run_local_server.side_effect = Exception("Authentication failed")
+        mock_flow_instance.authorization_url.return_value = ("https://auth.url", "state")
+        mock_flow_instance.fetch_token.side_effect = Exception("Authentication failed")
         mock_flow_class.from_client_secrets_file.return_value = mock_flow_instance
 
         result = clean_auth.main()
@@ -204,10 +230,11 @@ class TestCleanAuthMain:
         mock_print.assert_any_call("❌ Authentication failed: Authentication failed")
         mock_print.assert_any_call("💡 Check your internet connection and try again")
 
-    @patch("google_auth_oauthlib.flow.InstalledAppFlow")
+    @patch("google_auth_oauthlib.flow.Flow")
+    @patch("builtins.input")
     @patch("builtins.open")
     @patch("builtins.print")
-    def test_main_token_save_failure(self, mock_print, mock_file_open, mock_flow_class):
+    def test_main_token_save_failure(self, mock_print, mock_file_open, mock_input, mock_flow_class):
         """Test main function when token saving fails."""
         # Mock config file content
         mock_config = {"SCOPES": ["https://www.googleapis.com/auth/calendar"]}
@@ -218,13 +245,17 @@ class TestCleanAuthMain:
         token_file.return_value.write.side_effect = Exception("Permission denied")
         mock_file_open.side_effect = [config_file.return_value, token_file.return_value]
 
+        # Mock user input for callback URL
+        mock_input.return_value = "http://localhost:8080/callback?code=test_code&state=test_state"
+
         # Mock credentials
         mock_credentials = MagicMock()
         mock_credentials.to_json.return_value = '{"token": "test_token"}'
 
         # Mock flow
         mock_flow_instance = MagicMock()
-        mock_flow_instance.run_local_server.return_value = mock_credentials
+        mock_flow_instance.authorization_url.return_value = ("https://auth.url", "state")
+        mock_flow_instance.credentials = mock_credentials
         mock_flow_class.from_client_secrets_file.return_value = mock_flow_instance
 
         result = clean_auth.main()
@@ -236,11 +267,12 @@ class TestCleanAuthMain:
         mock_print.assert_any_call("❌ Authentication failed: Permission denied")
         mock_print.assert_any_call("💡 Check your internet connection and try again")
 
-    @patch("google_auth_oauthlib.flow.InstalledAppFlow")
+    @patch("google_auth_oauthlib.flow.Flow")
+    @patch("builtins.input")
     @patch("builtins.open")
     @patch("builtins.print")
     def test_main_credentials_without_refresh_token(
-        self, mock_print, mock_file_open, mock_flow_class
+        self, mock_print, mock_file_open, mock_input, mock_flow_class
     ):
         """Test main function when credentials don't have refresh token."""
         # Mock config file content
@@ -251,6 +283,9 @@ class TestCleanAuthMain:
         token_file = mock_open()
         mock_file_open.side_effect = [config_file.return_value, token_file.return_value]
 
+        # Mock user input for callback URL
+        mock_input.return_value = "http://localhost:8080/callback?code=test_code&state=test_state"
+
         # Mock credentials without refresh token
         mock_credentials = MagicMock()
         mock_credentials.expiry = "2024-12-31T23:59:59Z"
@@ -259,7 +294,8 @@ class TestCleanAuthMain:
 
         # Mock flow
         mock_flow_instance = MagicMock()
-        mock_flow_instance.run_local_server.return_value = mock_credentials
+        mock_flow_instance.authorization_url.return_value = ("https://auth.url", "state")
+        mock_flow_instance.credentials = mock_credentials
         mock_flow_class.from_client_secrets_file.return_value = mock_flow_instance
 
         # Execute main function
