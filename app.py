@@ -27,7 +27,7 @@ def health_check():
             return jsonify({"status": "error", "message": "Data directory not accessible"}), 500
 
         # Check if token.json exists and is readable
-        if not os.path.exists("token.json"):
+        if not os.path.exists("/app/data/token.json"):
             return (
                 jsonify(
                     {
