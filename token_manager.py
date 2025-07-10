@@ -191,3 +191,73 @@ class TokenManager:
             "needs_refresh": needs_refresh,
             "has_refresh_token": bool(credentials.refresh_token),
         }
+
+
+# Module-level functions for backward compatibility
+_global_token_manager = None
+
+
+def _get_global_token_manager():
+    """Get or create global token manager instance."""
+    global _global_token_manager
+    if _global_token_manager is None:
+        # Load config from config.json or use environment variables
+        config = {}
+
+        # Try to load from config.json first
+        try:
+            with open(os.environ.get("CONFIG_PATH", "config.json"), "r") as f:
+                config = json.load(f)
+        except Exception:
+            # Fallback to environment variables and defaults
+            config = {
+                "SCOPES": [
+                    "https://www.googleapis.com/auth/calendar",
+                    "https://www.googleapis.com/auth/contacts",
+                    "https://www.googleapis.com/auth/drive",
+                ]
+            }
+
+        # Use configurable token path
+        token_path = os.environ.get("TOKEN_PATH", "token.json")
+        credentials_path = os.environ.get("GOOGLE_CREDENTIALS_PATH", "credentials.json")
+
+        _global_token_manager = TokenManager(
+            config=config, credentials_file=credentials_path, token_file=token_path
+        )
+    return _global_token_manager
+
+
+def load_token():
+    """Load token using global token manager."""
+    try:
+        tm = _get_global_token_manager()
+        return tm.get_credentials()
+    except Exception as e:
+        logger.error(f"Failed to load token: {e}")
+        return None
+
+
+def save_token(credentials):
+    """Save token using global token manager."""
+    try:
+        tm = _get_global_token_manager()
+        tm._credentials = credentials
+        tm._save_token()
+        logger.info("Token saved successfully")
+    except Exception as e:
+        logger.error(f"Failed to save token: {e}")
+
+
+def delete_token():
+    """Delete token file."""
+    try:
+        tm = _get_global_token_manager()
+        token_file = tm.token_file
+        if os.path.exists(token_file):
+            os.remove(token_file)
+            logger.info(f"Deleted token file: {token_file}")
+        else:
+            logger.warning(f"Token file not found: {token_file}")
+    except Exception as e:
+        logger.error(f"Failed to delete token: {e}")

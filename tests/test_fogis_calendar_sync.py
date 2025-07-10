@@ -1065,12 +1065,17 @@ def test_authorize_google_calendar_credentials_file_not_found():
     ), patch.dict(
         fogis_calendar_sync.config_dict,
         {"CREDENTIALS_FILE": "missing.json", "SCOPES": ["test_scope"]},
-    ):
+    ), patch(
+        "token_manager.save_token"
+    ) as mock_save_token:
 
-        # With the new Flow implementation, invalid credentials return None
-        # instead of attempting to create a new flow
+        # With the new module-level functions, invalid credentials are still returned
+        # but save_token is called (and may fail)
         result = fogis_calendar_sync.authorize_google_calendar(headless=False)
-        assert result is None
+        # The function now returns the mock credentials even if they're invalid
+        assert result == mock_creds
+        # Verify that save_token was called
+        mock_save_token.assert_called_once_with(mock_creds)
 
 
 @pytest.mark.unit

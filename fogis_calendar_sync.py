@@ -88,15 +88,18 @@ def authorize_google_calendar(headless=False):
     creds = None
     logging.info("Starting Google Calendar authorization process")
 
-    if os.path.exists("token.json"):
+    # Use configurable token path
+    token_path = os.environ.get("TOKEN_PATH", "token.json")
+
+    if os.path.exists(token_path):
         try:
             logging.info("Token file exists, attempting to load. Scopes: %s", config_dict["SCOPES"])
             creds = google.oauth2.credentials.Credentials.from_authorized_user_file(
-                "token.json", scopes=config_dict["SCOPES"]
+                token_path, scopes=config_dict["SCOPES"]
             )
-            logging.info("Successfully loaded Google Calendar credentials from token.json.")
+            logging.info("Successfully loaded Google Calendar credentials from %s.", token_path)
         except Exception as e:
-            logging.error("Error loading credentials from token.json: %s", e)
+            logging.error("Error loading credentials from %s: %s", token_path, e)
             logging.info("Will attempt to create new credentials")
             creds = None  # Ensure creds is None if loading fails
 
@@ -114,13 +117,13 @@ def authorize_google_calendar(headless=False):
                 logging.info("Google Calendar credentials successfully refreshed")
                 # Save the refreshed credentials
                 token_manager.save_token(creds)
-                logging.info("Refreshed credentials saved to token.json")
+                logging.info("Refreshed credentials saved to %s", token_path)
             except google.auth.exceptions.RefreshError as e:  # Catch refresh-specific errors
                 logging.error(
-                    f"Error refreshing Google Calendar credentials: {e}. Deleting token.json."
+                    f"Error refreshing Google Calendar credentials: {e}. Deleting {token_path}."
                 )
                 token_manager.delete_token()
-                logging.info("Deleted invalid token.json file")
+                logging.info("Deleted invalid token file: %s", token_path)
                 creds = None  # Force re-authentication
             except Exception as e:
                 logging.error("Error refreshing Google Calendar credentials: %s", e)
