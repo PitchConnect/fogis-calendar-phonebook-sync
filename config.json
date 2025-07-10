@@ -1,4 +1,5 @@
 {
+  "_comment": "TOKEN_PATH environment variable can be used to specify custom token file location (default: token.json)",
   "COOKIE_FILE": "fogis_cookies.json",
   "CREDENTIALS_FILE": "credentials.json",
   "CALENDAR_ID": "e8835809c7a887d4b3138f8b1f3ebc196bd3916dcf0b689b7f8b4a399ffc12df@group.calendar.google.com",

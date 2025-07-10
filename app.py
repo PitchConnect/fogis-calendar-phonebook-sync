@@ -83,14 +83,26 @@ def sync_fogis():
 
         # Check if the process was successful
         if process.returncode == 0:
-            logging.info("FOGIS sync completed successfully")
-            return jsonify(
-                {
-                    "status": "success",
-                    "message": "FOGIS sync completed successfully",
-                    "output": process.stdout,
-                }
-            )
+            # Check for errors in stderr even with success return code
+            if process.stderr and ("ERROR" in process.stderr or "FAILED" in process.stderr.upper()):
+                logging.warning("FOGIS sync completed with warnings/errors: %s", process.stderr)
+                return jsonify(
+                    {
+                        "status": "warning",
+                        "message": "FOGIS sync completed with warnings",
+                        "output": process.stdout,
+                        "warnings": process.stderr,
+                    }
+                )
+            else:
+                logging.info("FOGIS sync completed successfully")
+                return jsonify(
+                    {
+                        "status": "success",
+                        "message": "FOGIS sync completed successfully",
+                        "output": process.stdout,
+                    }
+                )
 
         logging.error("FOGIS sync failed with error: %s", process.stderr)
         return (
