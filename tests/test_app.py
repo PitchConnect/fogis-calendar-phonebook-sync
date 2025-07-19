@@ -101,17 +101,18 @@ def test_health_endpoint_no_data_directory(client):
 @pytest.mark.unit
 # pylint: disable=redefined-outer-name
 def test_health_endpoint_no_token_file(client):
-    """Test health check when token.json doesn't exist."""
+    """Test health check when OAuth token doesn't exist in any location."""
     with patch("os.path.exists") as mock_exists:
-        # First call (data directory) returns True, second call (token.json) returns False
-        mock_exists.side_effect = [True, False]
+        # First call (data directory) returns True, then all token locations return False
+        mock_exists.side_effect = [True, False, False, False]
 
         with patch("app.get_version", return_value="test-version"):
             response = client.get("/health")
             assert response.status_code == 200
             data = json.loads(response.data)
             assert data["status"] == "warning"
-            assert "token.json not found" in data["message"]
+            assert "OAuth token not found" in data["message"]
+            assert "checked_locations" in data
 
 
 @pytest.mark.unit

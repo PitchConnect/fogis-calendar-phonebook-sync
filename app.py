@@ -26,13 +26,38 @@ def health_check():
         if not os.path.exists("data"):
             return jsonify({"status": "error", "message": "Data directory not accessible"}), 500
 
-        # Check if token.json exists and is readable
-        if not os.path.exists("/app/data/token.json"):
+        # Check if OAuth token exists and is readable
+        # Use environment variable path if available, otherwise check multiple locations
+        token_path = os.environ.get(
+            "GOOGLE_CALENDAR_TOKEN_FILE", "/app/credentials/tokens/calendar/token.json"
+        )
+        legacy_token_path = "/app/data/token.json"
+        working_dir_token = "/app/token.json"
+
+        token_found = False
+        token_location = None
+
+        # Check preferred location first (environment variable)
+        if os.path.exists(token_path):
+            token_found = True
+            token_location = token_path
+        # Check legacy data directory
+        elif os.path.exists(legacy_token_path):
+            token_found = True
+            token_location = legacy_token_path
+        # Check working directory (backward compatibility)
+        elif os.path.exists(working_dir_token):
+            token_found = True
+            token_location = working_dir_token
+
+        if not token_found:
             return (
                 jsonify(
                     {
                         "status": "warning",
-                        "message": "token.json not found, may need authentication",
+                        "message": "OAuth token not found, may need authentication",
+                        "checked_locations": [token_path, legacy_token_path, working_dir_token],
+                        "auth_url": "http://localhost:9083/authorize",
                     }
                 ),
                 200,
@@ -49,6 +74,8 @@ def health_check():
                     "status": "healthy",
                     "version": version,
                     "environment": os.environ.get("ENVIRONMENT", "development"),
+                    "auth_status": "authenticated",
+                    "token_location": token_location,
                 }
             ),
             200,
