@@ -31,7 +31,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 RUN pip install --no-cache-dir fogis-api-client-timmyBird==0.0.5 || echo "Could not install fogis-api-client-timmyBird from PyPI"
 
 # Expose the port the app runs on
-EXPOSE 5000
+EXPOSE 5003
 
 # Command to run the application
 CMD ["python", "app.py"]
