@@ -113,17 +113,96 @@ def test_health_endpoint_no_token_file(client):
             assert data["status"] == "warning"
             assert "OAuth token not found" in data["message"]
             assert "checked_locations" in data
+            assert "auth_url" in data
+            assert data["auth_url"] == "http://localhost:9083/authorize"
+
+
+@pytest.mark.unit
+# pylint: disable=redefined-outer-name
+def test_health_endpoint_token_in_environment_path(client):
+    """Test health check when token exists in environment variable path (preferred location)."""
+    with patch("os.path.exists") as mock_exists:
+        # First call (data directory) returns True, second call (env var path) returns True
+        mock_exists.side_effect = [True, True]
+
+        with patch("app.get_version", return_value="test-version"):
+            response = client.get("/health")
+            assert response.status_code == 200
+            data = json.loads(response.data)
+            assert data["status"] == "healthy"
+            assert data["auth_status"] == "authenticated"
+            assert data["token_location"] == "/app/credentials/tokens/calendar/token.json"
+            assert data["version"] == "test-version"
+            assert "environment" in data
+
+
+@pytest.mark.unit
+# pylint: disable=redefined-outer-name
+def test_health_endpoint_token_in_legacy_path(client):
+    """Test health check when token exists in legacy data directory."""
+    with patch("os.path.exists") as mock_exists:
+        # First call (data directory) returns True, env var path False, legacy path True
+        mock_exists.side_effect = [True, False, True]
+
+        with patch("app.get_version", return_value="test-version"):
+            response = client.get("/health")
+            assert response.status_code == 200
+            data = json.loads(response.data)
+            assert data["status"] == "healthy"
+            assert data["auth_status"] == "authenticated"
+            assert data["token_location"] == "/app/data/token.json"
+            assert data["version"] == "test-version"
+
+
+@pytest.mark.unit
+# pylint: disable=redefined-outer-name
+def test_health_endpoint_token_in_working_directory(client):
+    """Test health check when token exists in working directory (backward compatibility)."""
+    with patch("os.path.exists") as mock_exists:
+        # First call (data directory) returns True, env var and legacy paths False, working dir True
+        mock_exists.side_effect = [True, False, False, True]
+
+        with patch("app.get_version", return_value="test-version"):
+            response = client.get("/health")
+            assert response.status_code == 200
+            data = json.loads(response.data)
+            assert data["status"] == "healthy"
+            assert data["auth_status"] == "authenticated"
+            assert data["token_location"] == "/app/token.json"
+            assert data["version"] == "test-version"
+
+
+@pytest.mark.unit
+# pylint: disable=redefined-outer-name
+def test_health_endpoint_with_custom_environment_variable(client):
+    """Test health check with custom GOOGLE_CALENDAR_TOKEN_FILE environment variable."""
+    custom_token_path = "/custom/path/to/token.json"
+
+    with patch.dict("os.environ", {"GOOGLE_CALENDAR_TOKEN_FILE": custom_token_path}):
+        with patch("os.path.exists") as mock_exists:
+            # First call (data directory) returns True, custom env var path returns True
+            mock_exists.side_effect = [True, True]
+
+            with patch("app.get_version", return_value="test-version"):
+                response = client.get("/health")
+                assert response.status_code == 200
+                data = json.loads(response.data)
+                assert data["status"] == "healthy"
+                assert data["auth_status"] == "authenticated"
+                assert data["token_location"] == custom_token_path
+                assert data["version"] == "test-version"
 
 
 @pytest.mark.unit
 # pylint: disable=redefined-outer-name
 def test_health_endpoint_exception(client):
     """Test health check when an exception occurs."""
-    with patch("app.get_version", side_effect=Exception("Version error")):
+    with patch("os.path.exists", side_effect=Exception("Test exception")):
         response = client.get("/health")
         assert response.status_code == 500
         data = json.loads(response.data)
         assert data["status"] == "error"
+        assert "Test exception" in data["message"]
 
 
 @pytest.mark.unit
