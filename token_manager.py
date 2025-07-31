@@ -62,30 +62,34 @@ class TokenManager:
         # Try to load existing token
         if os.path.exists(self.token_file):
             try:
+                logger.info("🔐 OAuth authentication in progress...")
                 self._credentials = Credentials.from_authorized_user_file(
                     self.token_file, self.scopes
                 )
-                logger.info("Loaded existing credentials from token file")
+                logger.info("✅ Loaded existing OAuth credentials from token file")
             except Exception as e:
-                logger.warning(f"Failed to load existing token: {e}")
+                logger.warning(f"⚠️ Failed to load existing token: {e}")
                 self._credentials = None
 
         # Refresh if expired but refreshable
         if self._credentials and self._credentials.expired and self._credentials.refresh_token:
             try:
+                logger.info("🔄 Refreshing expired Google OAuth token...")
                 request = google.auth.transport.requests.Request()
                 self._credentials.refresh(request)
                 self._save_token()
-                logger.info("Successfully refreshed expired token")
+                logger.info("✅ OAuth token successfully refreshed and saved")
                 return self._credentials
             except Exception as e:
-                logger.error(f"Failed to refresh token: {e}")
+                logger.error(f"❌ Failed to refresh OAuth token: {e}")
                 self._credentials = None
 
         # Return valid credentials or None
         if self._credentials and self._credentials.valid:
+            logger.info("✅ OAuth authentication established")
             return self._credentials
 
+        logger.warning("⚠️ OAuth authentication required - no valid credentials available")
         return None
 
     def check_token_expiration(self) -> Tuple[bool, Optional[datetime]]:

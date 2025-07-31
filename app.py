@@ -54,10 +54,12 @@ def health_check():
             return (
                 jsonify(
                     {
-                        "status": "warning",
-                        "message": "OAuth token not found, may need authentication",
+                        "status": "initializing",
+                        "auth_status": "initializing",
+                        "message": "OAuth token not found - service may be starting up",
                         "checked_locations": [token_path, legacy_token_path, working_dir_token],
                         "auth_url": "http://localhost:9083/authorize",
+                        "note": "If this persists after 60 seconds, authentication may be required",
                     }
                 ),
                 200,
@@ -68,14 +70,38 @@ def health_check():
         # Get version information
         version = get_version()
 
+        # Get OAuth token expiry information if available
+        oauth_info = {"status": "authenticated", "location": token_location}
+        try:
+            import json
+            from datetime import datetime
+
+            if os.path.exists(token_location):
+                with open(token_location, 'r') as f:
+                    token_data = json.load(f)
+
+                if 'expiry' in token_data:
+                    expiry_str = token_data['expiry']
+                    # Parse ISO format datetime
+                    expiry_dt = datetime.fromisoformat(expiry_str.replace('Z', '+00:00'))
+                    oauth_info["token_expiry"] = expiry_str
+                    oauth_info["expires_in_hours"] = round((expiry_dt - datetime.now(expiry_dt.tzinfo)).total_seconds() / 3600, 1)
+
+                if 'refresh_token' in token_data:
+                    oauth_info["has_refresh_token"] = bool(token_data['refresh_token'])
+
+        except Exception as e:
+            logging.debug(f"Could not parse OAuth token info: {e}")
+
         return (
             jsonify(
                 {
                     "status": "healthy",
                     "version": version,
                     "environment": os.environ.get("ENVIRONMENT", "development"),
-                    "auth_status": "authenticated",
-                    "token_location": token_location,
+                    "auth_status": oauth_info["status"],
+                    "token_location": oauth_info["location"],
+                    "oauth_info": oauth_info,
                 }
             ),
             200,

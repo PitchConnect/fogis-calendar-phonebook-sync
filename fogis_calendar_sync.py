@@ -69,38 +69,38 @@ def authorize_google_calendar(headless=False):
         google.oauth2.credentials.Credentials: The authorized credentials
     """
     if headless:
-        logging.info("Using headless authentication mode")
+        logging.info("🔐 OAuth authentication in progress (headless mode)...")
         # Check if token needs refreshing and refresh if needed
         if auth_server.check_and_refresh_auth():
             # Load the refreshed token
             creds = token_manager.load_token()
             if creds and creds.valid:
-                logging.info("Successfully authenticated in headless mode")
+                logging.info("✅ OAuth authentication established (headless mode)")
                 return creds
             else:
-                logging.error("Headless authentication failed")
+                logging.error("❌ Headless OAuth authentication failed")
                 return None
         else:
-            logging.error("Headless authentication failed")
+            logging.error("❌ Headless OAuth authentication failed")
             return None
 
     # Non-headless (interactive) authentication
     creds = None
-    logging.info("Starting Google Calendar authorization process")
+    logging.info("🔐 OAuth authentication in progress...")
 
     # Use configurable token path
     token_path = os.environ.get("TOKEN_PATH", "token.json")
 
     if os.path.exists(token_path):
         try:
-            logging.info("Token file exists, attempting to load. Scopes: %s", config_dict["SCOPES"])
+            logging.info("📁 Token file found, attempting to load OAuth credentials...")
             creds = google.oauth2.credentials.Credentials.from_authorized_user_file(
                 token_path, scopes=config_dict["SCOPES"]
             )
-            logging.info("Successfully loaded Google Calendar credentials from %s.", token_path)
+            logging.info("✅ Successfully loaded Google Calendar OAuth credentials from %s", token_path)
         except Exception as e:
-            logging.error("Error loading credentials from %s: %s", token_path, e)
-            logging.info("Will attempt to create new credentials")
+            logging.error("❌ Error loading OAuth credentials from %s: %s", token_path, e)
+            logging.info("🔄 Will attempt to create new OAuth credentials")
             creds = None  # Ensure creds is None if loading fails
 
     # If there are no (valid) credentials available, let the user log in.
@@ -111,16 +111,16 @@ def authorize_google_calendar(headless=False):
 
     if not creds or not creds.valid:
         if creds and creds.expired and creds.refresh_token:
-            logging.info("Credentials expired but have refresh token, attempting to refresh")
+            logging.info("🔄 OAuth token expired but refresh token available, refreshing...")
             try:
                 creds.refresh(google.auth.transport.requests.Request())
-                logging.info("Google Calendar credentials successfully refreshed")
+                logging.info("✅ Google Calendar OAuth credentials successfully refreshed")
                 # Save the refreshed credentials
                 token_manager.save_token(creds)
-                logging.info("Refreshed credentials saved to %s", token_path)
+                logging.info("💾 Refreshed OAuth credentials saved to %s", token_path)
             except google.auth.exceptions.RefreshError as e:  # Catch refresh-specific errors
                 logging.error(
-                    f"Error refreshing Google Calendar credentials: {e}. Deleting {token_path}."
+                    f"❌ Error refreshing Google Calendar OAuth credentials: {e}. Deleting {token_path}."
                 )
                 token_manager.delete_token()
                 logging.info("Deleted invalid token file: %s", token_path)
@@ -131,16 +131,16 @@ def authorize_google_calendar(headless=False):
 
         # Handle the case where creds is None
         if creds is None:
-            logging.info("Attempting to create new credentials via OAuth flow")
+            logging.info("🔄 Attempting to create new OAuth credentials...")
             try:
-                logging.info("Using credentials file: %s", config_dict["CREDENTIALS_FILE"])
+                logging.info("📁 Using credentials file: %s", config_dict["CREDENTIALS_FILE"])
                 # Use token manager for OAuth flow instead of direct flow creation
                 # This ensures consistency with the headless authentication approach
-                logging.warning("Interactive OAuth flow not supported in this context")
-                logging.info("Please use manual_auth.py or headless authentication instead")
+                logging.warning("⚠️ Interactive OAuth flow not supported in this context")
+                logging.info("💡 Please use manual_auth.py or headless authentication instead")
                 return None
             except FileNotFoundError:
-                logging.error("Credentials file not found: %s", config_dict["CREDENTIALS_FILE"])
+                logging.error("❌ Credentials file not found: %s", config_dict["CREDENTIALS_FILE"])
                 return None
             except Exception as e:
                 logging.error("Error during Google Calendar authorization flow: %s", e)
