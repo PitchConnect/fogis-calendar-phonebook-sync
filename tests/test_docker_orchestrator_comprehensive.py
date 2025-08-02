@@ -103,7 +103,10 @@ class TestCheckServiceHealth:
         mock_get.return_value = mock_response
 
         result = docker_orchestrator.check_service_health(
-            "test-service", "http://localhost:5000/health", max_retries=2, retry_delay=0.1
+            "test-service",
+            "http://localhost:5000/health",
+            max_retries=2,
+            retry_delay=0.1,
         )
 
         assert result is False
@@ -133,7 +136,10 @@ class TestCheckServiceHealth:
         mock_get.side_effect = [mock_response_fail, mock_response_success]
 
         result = docker_orchestrator.check_service_health(
-            "test-service", "http://localhost:5000/health", max_retries=2, retry_delay=0.1
+            "test-service",
+            "http://localhost:5000/health",
+            max_retries=2,
+            retry_delay=0.1,
         )
 
         assert result is True
@@ -687,7 +693,13 @@ class TestMainFunction:
         mock_exit.assert_called_once_with(0)
 
     @patch(
-        "sys.argv", ["docker_orchestrator.py", "--restart-service", "fogis-sync", "--force-rebuild"]
+        "sys.argv",
+        [
+            "docker_orchestrator.py",
+            "--restart-service",
+            "fogis-sync",
+            "--force-rebuild",
+        ],
     )
     @patch("docker_orchestrator.restart_service")
     @patch("sys.exit")

@@ -60,7 +60,8 @@ class TestGoogleCalendarAPIContract:
 
         # Test the contract
         with patch.dict(
-            fogis_calendar_sync.config_dict, {"CALENDAR_ID": "test_calendar", "SYNC_TAG": "TEST"}
+            fogis_calendar_sync.config_dict,
+            {"CALENDAR_ID": "test_calendar", "SYNC_TAG": "TEST"},
         ):
             result = fogis_calendar_sync.find_event_by_match_id(
                 mock_service, "test_calendar", 12345
@@ -83,9 +84,16 @@ class TestGoogleCalendarAPIContract:
             "end": {"dateTime": "2023-05-15T20:00:00Z", "timeZone": "UTC"},
             "description": "Test Description",
             "extendedProperties": {
-                "private": {"matchId": "12345", "syncTag": "TEST_TAG", "matchHash": "test_hash"}
+                "private": {
+                    "matchId": "12345",
+                    "syncTag": "TEST_TAG",
+                    "matchHash": "test_hash",
+                }
             },
-            "reminders": {"useDefault": False, "overrides": [{"method": "popup", "minutes": 2880}]},
+            "reminders": {
+                "useDefault": False,
+                "overrides": [{"method": "popup", "minutes": 2880}],
+            },
         }
 
         # Expected response structure
@@ -112,7 +120,8 @@ class TestGoogleCalendarAPIContract:
 
         # Test 404 error (calendar not found)
         mock_service.calendars().get().execute.side_effect = HttpError(
-            resp=MagicMock(status=404), content=b'{"error": {"code": 404, "message": "Not Found"}}'
+            resp=MagicMock(status=404),
+            content=b'{"error": {"code": 404, "message": "Not Found"}}',
         )
 
         with patch.object(fogis_calendar_sync, "logging"):
@@ -121,7 +130,8 @@ class TestGoogleCalendarAPIContract:
 
         # Test 403 error (permission denied)
         mock_service.events().list().execute.side_effect = HttpError(
-            resp=MagicMock(status=403), content=b'{"error": {"code": 403, "message": "Forbidden"}}'
+            resp=MagicMock(status=403),
+            content=b'{"error": {"code": 403, "message": "Forbidden"}}',
         )
 
         with patch.object(fogis_calendar_sync, "logging"):
@@ -170,7 +180,11 @@ class TestGoogleContactsAPIContract:
                     "resourceName": "people/123",
                     "etag": "etag_value",
                     "names": [
-                        {"displayName": "John Doe", "givenName": "John", "familyName": "Doe"}
+                        {
+                            "displayName": "John Doe",
+                            "givenName": "John",
+                            "familyName": "Doe",
+                        }
                     ],
                     "phoneNumbers": [{"value": "+46701234567", "type": "mobile"}],
                     "emailAddresses": [{"value": "john@example.com", "type": "work"}],

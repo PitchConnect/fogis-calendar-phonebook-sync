@@ -325,7 +325,8 @@ class TestTestConfiguration:
     def test_test_configuration_import_error(self, mock_print):
         """Test configuration testing when headless_auth import fails."""
         with patch(
-            "builtins.__import__", side_effect=ImportError("No module named 'headless_auth'")
+            "builtins.__import__",
+            side_effect=ImportError("No module named 'headless_auth'"),
         ):
             setup_headless_auth.test_configuration()
 
@@ -392,7 +393,11 @@ class TestMainFunction:
         # Setup mocks
         mock_load_config.return_value = {"existing": "config"}
         mock_check_creds.return_value = True
-        mock_input.side_effect = ["y", "yes", "Y"]  # Setup email, auth server, test config
+        mock_input.side_effect = [
+            "y",
+            "yes",
+            "Y",
+        ]  # Setup email, auth server, test config
 
         result = setup_headless_auth.main()
 
@@ -472,7 +477,11 @@ class TestMainFunction:
         """Test main function skipping all optional setups."""
         mock_load_config.return_value = {"test": "config"}
         mock_check_creds.return_value = True
-        mock_input.side_effect = ["N", "N", "n"]  # Skip email, auth server, and test config
+        mock_input.side_effect = [
+            "N",
+            "N",
+            "n",
+        ]  # Skip email, auth server, and test config
 
         result = setup_headless_auth.main()
 

@@ -37,7 +37,10 @@ class TestMainFunction:
 
         # Mock flow
         mock_flow_instance = MagicMock()
-        mock_flow_instance.authorization_url.return_value = ("https://auth.url", "state123")
+        mock_flow_instance.authorization_url.return_value = (
+            "https://auth.url",
+            "state123",
+        )
         mock_flow_instance.credentials = mock_credentials
         mock_flow_from_file.return_value = mock_flow_instance
 
@@ -209,7 +212,10 @@ class TestMainFunction:
 
         # Mock flow that fails during fetch_token
         mock_flow_instance = MagicMock()
-        mock_flow_instance.authorization_url.return_value = ("https://auth.url", "state")
+        mock_flow_instance.authorization_url.return_value = (
+            "https://auth.url",
+            "state",
+        )
         mock_flow_instance.fetch_token.side_effect = Exception("Invalid authorization response")
         mock_flow_from_file.return_value = mock_flow_instance
 
@@ -243,7 +249,10 @@ class TestMainFunction:
 
         # Mock flow
         mock_flow_instance = MagicMock()
-        mock_flow_instance.authorization_url.return_value = ("https://auth.url", "state")
+        mock_flow_instance.authorization_url.return_value = (
+            "https://auth.url",
+            "state",
+        )
         mock_flow_instance.credentials = mock_credentials
         mock_flow_from_file.return_value = mock_flow_instance
 
@@ -273,7 +282,10 @@ class TestMainFunction:
 
         # Mock flow that fails to avoid full execution
         mock_flow_instance = MagicMock()
-        mock_flow_instance.authorization_url.return_value = ("https://example.auth.url", "state")
+        mock_flow_instance.authorization_url.return_value = (
+            "https://example.auth.url",
+            "state",
+        )
         mock_flow_instance.fetch_token.side_effect = Exception("Stop execution")
         mock_flow_from_file.return_value = mock_flow_instance
 

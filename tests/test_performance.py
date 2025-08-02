@@ -322,7 +322,8 @@ class TestConcurrencySimulation:
             args.delete = False
 
             with patch.object(fogis_calendar_sync, "logging"), patch.dict(
-                fogis_calendar_sync.config_dict, {"CALENDAR_ID": "test", "SYNC_TAG": "TEST"}
+                fogis_calendar_sync.config_dict,
+                {"CALENDAR_ID": "test", "SYNC_TAG": "TEST"},
             ), patch("fogis_calendar_sync.process_referees", return_value=True):
 
                 for match in matches_subset:

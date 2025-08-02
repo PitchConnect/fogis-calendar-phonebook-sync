@@ -55,7 +55,10 @@ class AuthServer:
                 received_state = request.args.get("state")
                 if received_state != self.state:
                     logger.error("Invalid state parameter in callback")
-                    return jsonify({"error": "Invalid state parameter", "success": False}), 400
+                    return (
+                        jsonify({"error": "Invalid state parameter", "success": False}),
+                        400,
+                    )
 
                 # Check for error in callback
                 error = request.args.get("error")
@@ -63,7 +66,10 @@ class AuthServer:
                     logger.error(f"OAuth error: {error}")
                     self.auth_completed = True
                     self.auth_success = False
-                    return jsonify({"error": f"OAuth error: {error}", "success": False}), 400
+                    return (
+                        jsonify({"error": f"OAuth error: {error}", "success": False}),
+                        400,
+                    )
 
                 # Get authorization code
                 auth_code = request.args.get("code")
@@ -72,7 +78,12 @@ class AuthServer:
                     self.auth_completed = True
                     self.auth_success = False
                     return (
-                        jsonify({"error": "No authorization code received", "success": False}),
+                        jsonify(
+                            {
+                                "error": "No authorization code received",
+                                "success": False,
+                            }
+                        ),
                         400,
                     )
 
@@ -120,7 +131,10 @@ class AuthServer:
                 logger.exception("Exception in callback handler")
                 self.auth_completed = True
                 self.auth_success = False
-                return jsonify({"error": f"Internal error: {str(e)}", "success": False}), 500
+                return (
+                    jsonify({"error": f"Internal error: {str(e)}", "success": False}),
+                    500,
+                )
 
         @self.app.route("/health")
         def health():

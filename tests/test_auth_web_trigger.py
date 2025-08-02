@@ -168,7 +168,8 @@ class TestRestartAuthRoute:
         auth_web_trigger.auth_manager = None
 
         with patch(
-            "auth_web_trigger.HeadlessAuthManager", side_effect=Exception("Auth manager error")
+            "auth_web_trigger.HeadlessAuthManager",
+            side_effect=Exception("Auth manager error"),
         ), patch("auth_web_trigger.logger") as mock_logger:
 
             response = client.post("/restart-auth")
