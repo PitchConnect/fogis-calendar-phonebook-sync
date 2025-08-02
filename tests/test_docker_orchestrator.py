@@ -70,7 +70,10 @@ def test_check_service_health():
             # Test with a failed health check - use minimal retries for speed
             mock_response.status_code = 500
             result = docker_orchestrator.check_service_health(
-                "test-service", "http://localhost:5000/health", max_retries=2, retry_delay=0.1
+                "test-service",
+                "http://localhost:5000/health",
+                max_retries=2,
+                retry_delay=0.1,
             )
             assert result is False
             # Should have slept once (between first and second attempt)
@@ -83,7 +86,10 @@ def test_check_service_health():
             # Test with a connection error - use minimal retries for speed
             mock_get.side_effect = requests.exceptions.ConnectionError()
             result = docker_orchestrator.check_service_health(
-                "test-service", "http://localhost:5000/health", max_retries=2, retry_delay=0.1
+                "test-service",
+                "http://localhost:5000/health",
+                max_retries=2,
+                retry_delay=0.1,
             )
             assert result is False
             # Should have slept once (between first and second attempt)

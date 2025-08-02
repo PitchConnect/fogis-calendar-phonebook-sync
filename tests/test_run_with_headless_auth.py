@@ -124,7 +124,10 @@ class TestSetupHeadlessMonitoring:
         """Test successful headless monitoring setup."""
         mock_config = {"test": "config"}
         mock_auth_manager = MagicMock()
-        mock_auth_manager.get_token_status.return_value = {"valid": True, "needs_refresh": False}
+        mock_auth_manager.get_token_status.return_value = {
+            "valid": True,
+            "needs_refresh": False,
+        }
 
         with patch("run_with_headless_auth.load_config", return_value=mock_config), patch(
             "headless_auth.HeadlessAuthManager", return_value=mock_auth_manager
@@ -140,7 +143,10 @@ class TestSetupHeadlessMonitoring:
         """Test headless monitoring setup when token needs refresh."""
         mock_config = {"test": "config"}
         mock_auth_manager = MagicMock()
-        mock_auth_manager.get_token_status.return_value = {"valid": False, "needs_refresh": True}
+        mock_auth_manager.get_token_status.return_value = {
+            "valid": False,
+            "needs_refresh": True,
+        }
         mock_credentials = MagicMock()
         mock_auth_manager.get_valid_credentials.return_value = mock_credentials
 
@@ -159,7 +165,10 @@ class TestSetupHeadlessMonitoring:
         """Test headless monitoring setup when credentials fail."""
         mock_config = {"test": "config"}
         mock_auth_manager = MagicMock()
-        mock_auth_manager.get_token_status.return_value = {"valid": False, "needs_refresh": True}
+        mock_auth_manager.get_token_status.return_value = {
+            "valid": False,
+            "needs_refresh": True,
+        }
         mock_auth_manager.get_valid_credentials.return_value = None  # Failure
 
         with patch("run_with_headless_auth.load_config", return_value=mock_config), patch(
@@ -176,7 +185,8 @@ class TestSetupHeadlessMonitoring:
     def test_setup_headless_monitoring_import_error(self):
         """Test headless monitoring setup with import error."""
         with patch("run_with_headless_auth.load_config"), patch(
-            "headless_auth.HeadlessAuthManager", side_effect=ImportError("Module not found")
+            "headless_auth.HeadlessAuthManager",
+            side_effect=ImportError("Module not found"),
         ), patch("run_with_headless_auth.logger") as mock_logger:
 
             result = run_with_headless_auth.setup_headless_monitoring()
@@ -260,7 +270,8 @@ class TestMain:
         mock_auth_manager = MagicMock()
 
         with patch("run_with_headless_auth.check_dependencies", return_value=True), patch(
-            "run_with_headless_auth.setup_headless_monitoring", return_value=mock_auth_manager
+            "run_with_headless_auth.setup_headless_monitoring",
+            return_value=mock_auth_manager,
         ), patch("run_with_headless_auth.run_calendar_sync", return_value=True), patch(
             "run_with_headless_auth.logger"
         ) as mock_logger:
@@ -306,7 +317,8 @@ class TestMain:
         mock_auth_manager = MagicMock()
 
         with patch("run_with_headless_auth.check_dependencies", return_value=True), patch(
-            "run_with_headless_auth.setup_headless_monitoring", return_value=mock_auth_manager
+            "run_with_headless_auth.setup_headless_monitoring",
+            return_value=mock_auth_manager,
         ), patch("run_with_headless_auth.run_calendar_sync", return_value=False), patch(
             "run_with_headless_auth.logger"
         ) as mock_logger:
@@ -334,7 +346,8 @@ class TestMain:
         with patch("run_with_headless_auth.check_dependencies", return_value=True), patch(
             "run_with_headless_auth.setup_headless_monitoring", return_value=None
         ), patch(
-            "run_with_headless_auth.run_calendar_sync", side_effect=Exception("Unexpected error")
+            "run_with_headless_auth.run_calendar_sync",
+            side_effect=Exception("Unexpected error"),
         ), patch(
             "run_with_headless_auth.logger"
         ) as mock_logger:

@@ -157,7 +157,12 @@ class TestCheckPermissions:
     @patch("setup.print_info")
     @patch("os.getcwd")
     def test_check_permissions_no_write_permission(
-        self, mock_getcwd, mock_print_info, mock_print_error, mock_print_header, mock_check_write
+        self,
+        mock_getcwd,
+        mock_print_info,
+        mock_print_error,
+        mock_print_header,
+        mock_check_write,
     ):
         """Test permission check failure due to no write permission."""
         mock_getcwd.return_value = "/test/dir"
@@ -214,7 +219,12 @@ class TestRunCommand:
         assert success is True
         assert output == "Command output"
         mock_subprocess.assert_called_once_with(
-            ["echo", "hello"], shell=False, check=True, text=True, capture_output=True, cwd=None
+            ["echo", "hello"],
+            shell=False,
+            check=True,
+            text=True,
+            capture_output=True,
+            cwd=None,
         )
 
     @patch("subprocess.run")
@@ -570,7 +580,12 @@ class TestInstallDependencies:
     @patch("sys.prefix", "/usr")
     @patch("sys.base_prefix", "/usr")
     def test_install_dependencies_not_in_venv_proceed_no(
-        self, mock_exists, mock_input, mock_print_info, mock_print_warning, mock_print_header
+        self,
+        mock_exists,
+        mock_input,
+        mock_print_info,
+        mock_print_warning,
+        mock_print_header,
     ):
         """Test when not in virtual environment and user chooses not to proceed."""
         mock_exists.return_value = True
@@ -839,7 +854,12 @@ class TestCheckGoogleCredentials:
     @patch("builtins.open", new_callable=mock_open, read_data="{}")
     @patch("os.path.exists")
     def test_check_google_credentials_missing_keys(
-        self, mock_exists, mock_file, mock_print_info, mock_print_error, mock_print_header
+        self,
+        mock_exists,
+        mock_file,
+        mock_print_info,
+        mock_print_error,
+        mock_print_header,
     ):
         """Test when credentials.json is missing required keys."""
         mock_exists.return_value = True
@@ -903,7 +923,11 @@ class TestCheckConfigFile:
 
     @patch("setup.print_header")
     @patch("setup.print_error")
-    @patch("builtins.open", new_callable=mock_open, read_data='{"CALENDAR_ID": "test@gmail.com"}')
+    @patch(
+        "builtins.open",
+        new_callable=mock_open,
+        read_data='{"CALENDAR_ID": "test@gmail.com"}',
+    )
     @patch("os.path.exists")
     def test_check_config_file_missing_keys(
         self, mock_exists, mock_file, mock_print_error, mock_print_header
@@ -926,7 +950,12 @@ class TestCheckConfigFile:
     )
     @patch("os.path.exists")
     def test_check_config_file_invalid_calendar_id(
-        self, mock_exists, mock_file, mock_print_warning, mock_print_success, mock_print_header
+        self,
+        mock_exists,
+        mock_file,
+        mock_print_warning,
+        mock_print_success,
+        mock_print_header,
     ):
         """Test when config.json has invalid calendar ID format."""
         mock_exists.return_value = True
@@ -948,7 +977,12 @@ class TestTestFogisConnection:
     @patch("builtins.input")
     @patch("sys.executable", "/usr/bin/python3")
     def test_test_fogis_connection_success(
-        self, mock_input, mock_run_command, mock_print_info, mock_print_warning, mock_print_header
+        self,
+        mock_input,
+        mock_run_command,
+        mock_print_info,
+        mock_print_warning,
+        mock_print_header,
     ):
         """Test successful FOGIS connection test."""
         mock_input.return_value = "y"
@@ -982,7 +1016,12 @@ class TestTestFogisConnection:
     @patch("builtins.input")
     @patch("sys.executable", "/usr/bin/python3")
     def test_test_fogis_connection_unexpected_response(
-        self, mock_input, mock_run_command, mock_print_info, mock_print_error, mock_print_header
+        self,
+        mock_input,
+        mock_run_command,
+        mock_print_info,
+        mock_print_error,
+        mock_print_header,
     ):
         """Test FOGIS connection with unexpected response."""
         mock_input.return_value = "y"

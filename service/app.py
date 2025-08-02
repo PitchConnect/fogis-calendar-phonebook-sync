@@ -76,7 +76,11 @@ def health_check():
         logger.exception("Health check failed")
         return (
             jsonify(
-                {"status": "unhealthy", "timestamp": datetime.utcnow().isoformat(), "error": str(e)}
+                {
+                    "status": "unhealthy",
+                    "timestamp": datetime.utcnow().isoformat(),
+                    "error": str(e),
+                }
             ),
             500,
         )
@@ -124,13 +128,22 @@ def get_matches():
     except ValueError as e:
         logger.error(f"Configuration error: {e}")
         return (
-            jsonify({"status": "error", "error": "service_configuration_error", "message": str(e)}),
+            jsonify(
+                {
+                    "status": "error",
+                    "error": "service_configuration_error",
+                    "message": str(e),
+                }
+            ),
             500,
         )
 
     except Exception as e:
         logger.exception("Error fetching matches")
-        return jsonify({"status": "error", "error": "api_error", "message": str(e)}), 500
+        return (
+            jsonify({"status": "error", "error": "api_error", "message": str(e)}),
+            500,
+        )
 
 
 @app.route("/api/teams", methods=["GET"])
@@ -155,13 +168,22 @@ def get_teams():
     except ValueError as e:
         logger.error(f"Configuration error: {e}")
         return (
-            jsonify({"status": "error", "error": "service_configuration_error", "message": str(e)}),
+            jsonify(
+                {
+                    "status": "error",
+                    "error": "service_configuration_error",
+                    "message": str(e),
+                }
+            ),
             500,
         )
 
     except Exception as e:
         logger.exception("Error fetching teams")
-        return jsonify({"status": "error", "error": "api_error", "message": str(e)}), 500
+        return (
+            jsonify({"status": "error", "error": "api_error", "message": str(e)}),
+            500,
+        )
 
 
 @app.route("/api/info", methods=["GET"])
@@ -201,7 +223,12 @@ def not_found(error):
                 "status": "error",
                 "error": "not_found",
                 "message": "Endpoint not found",
-                "available_endpoints": ["/health", "/api/matches", "/api/teams", "/api/info"],
+                "available_endpoints": [
+                    "/health",
+                    "/api/matches",
+                    "/api/teams",
+                    "/api/info",
+                ],
             }
         ),
         404,

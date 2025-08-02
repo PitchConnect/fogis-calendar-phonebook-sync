@@ -118,7 +118,8 @@ def test_authorize_google_people_with_valid_token():
     mock_creds.valid = True
 
     with patch("os.path.exists", return_value=True), patch(
-        "google.oauth2.credentials.Credentials.from_authorized_user_file", return_value=mock_creds
+        "google.oauth2.credentials.Credentials.from_authorized_user_file",
+        return_value=mock_creds,
     ), patch.object(fogis_contacts, "logging"):
 
         result = fogis_contacts.authorize_google_people()
@@ -135,7 +136,8 @@ def test_authorize_google_people_with_expired_token():
     mock_creds.refresh_token = "refresh_token"
 
     with patch("os.path.exists", return_value=True), patch(
-        "google.oauth2.credentials.Credentials.from_authorized_user_file", return_value=mock_creds
+        "google.oauth2.credentials.Credentials.from_authorized_user_file",
+        return_value=mock_creds,
     ), patch.object(fogis_contacts, "logging"):
 
         # The function logic checks if creds is valid, and if not, it tries to refresh
@@ -488,7 +490,8 @@ def test_authorize_google_people_refresh_success():
     mock_creds.refresh_token = "refresh_token"
 
     with patch("os.path.exists", return_value=True), patch(
-        "google.oauth2.credentials.Credentials.from_authorized_user_file", return_value=mock_creds
+        "google.oauth2.credentials.Credentials.from_authorized_user_file",
+        return_value=mock_creds,
     ), patch("builtins.open", MagicMock()):
 
         # Mock successful refresh - the function checks valid first, so set it False initially
@@ -673,7 +676,9 @@ def test_process_referees_contact_exception():
     with patch.object(fogis_contacts, "authorize_google_people") as mock_auth, patch(
         "googleapiclient.discovery.build"
     ) as mock_build, patch.object(
-        fogis_contacts, "find_contact_by_name_and_phone", side_effect=Exception("Contact error")
+        fogis_contacts,
+        "find_contact_by_name_and_phone",
+        side_effect=Exception("Contact error"),
     ):
 
         mock_auth.return_value = MagicMock()
