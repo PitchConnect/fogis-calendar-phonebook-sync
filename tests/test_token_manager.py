@@ -271,3 +271,243 @@ class TestTokenManagerFunctions:
             # This should trigger a refresh
             tm.get_credentials()
             # The refresh logic is internal to the class
+
+    @pytest.mark.unit
+    def test_token_refresh_failure(self, mock_config, mock_credentials):
+        """Test token refresh failure handling."""
+        with patch("os.path.exists", return_value=True), patch(
+            "google.oauth2.credentials.Credentials.from_authorized_user_file",
+            return_value=mock_credentials,
+        ):
+            manager = token_manager.TokenManager(
+                config=mock_config, credentials_file="test_creds.json", token_file="test_token.json"
+            )
+
+            # Test refresh failure
+            mock_credentials.expired = True
+            mock_credentials.refresh_token = "refresh_token"
+
+            with patch("google.auth.transport.requests.Request"):
+                mock_credentials.refresh.side_effect = Exception("Refresh failed")
+
+                result = manager.get_credentials()
+                assert result is None
+
+    @pytest.mark.unit
+    def test_check_token_expiration_no_expiry(self, mock_config, mock_credentials):
+        """Test check_token_expiration with no expiry info."""
+        manager = token_manager.TokenManager(
+            config=mock_config, credentials_file="test_creds.json", token_file="test_token.json"
+        )
+
+        # Test credentials with no expiry
+        mock_credentials.expiry = None
+        with patch.object(manager, "get_credentials", return_value=mock_credentials):
+            needs_refresh, expiry = manager.check_token_expiration()
+            assert needs_refresh is False
+            assert expiry is None
+
+    @pytest.mark.unit
+    def test_initiate_auth_flow_missing_credentials_file(self, mock_config):
+        """Test initiate_auth_flow with missing credentials file."""
+        manager = token_manager.TokenManager(
+            config=mock_config, credentials_file="nonexistent.json", token_file="test_token.json"
+        )
+
+        with patch("os.path.exists", return_value=False):
+            with pytest.raises(FileNotFoundError, match="Credentials file not found"):
+                manager.initiate_auth_flow()
+
+    @pytest.mark.unit
+    def test_load_existing_token_failure(self, mock_config):
+        """Test loading existing token with file corruption."""
+        with patch("os.path.exists", return_value=True), patch(
+            "google.oauth2.credentials.Credentials.from_authorized_user_file",
+            side_effect=Exception("Corrupted token file"),
+        ):
+            manager = token_manager.TokenManager(
+                config=mock_config, credentials_file="test_creds.json", token_file="test_token.json"
+            )
+
+            result = manager.get_credentials()
+            assert result is None
+
+    @pytest.mark.unit
+    def test_global_token_manager_initialization(self):
+        """Test global token manager initialization."""
+        # Reset global token manager
+        token_manager._global_token_manager = None
+
+        with patch("os.environ.get") as mock_env, patch(
+            "builtins.open", mock_open(read_data='{"SCOPES": ["test"]}')
+        ):
+            mock_env.side_effect = lambda key, default=None: {
+                "CONFIG_PATH": "config.json",
+                "TOKEN_PATH": "custom_token.json",
+                "GOOGLE_CREDENTIALS_PATH": "custom_creds.json",
+            }.get(key, default)
+
+            manager = token_manager._get_global_token_manager()
+            assert manager is not None
+            assert manager.token_file == "custom_token.json"
+            assert manager.credentials_file == "custom_creds.json"
+
+    @pytest.mark.unit
+    def test_global_token_manager_config_fallback(self):
+        """Test global token manager with config file fallback."""
+        # Reset global token manager
+        token_manager._global_token_manager = None
+
+        with patch("os.environ.get") as mock_env, patch(
+            "builtins.open", side_effect=FileNotFoundError
+        ):
+            mock_env.side_effect = lambda key, default=None: {
+                "TOKEN_PATH": "fallback_token.json",
+                "GOOGLE_CREDENTIALS_PATH": "fallback_creds.json",
+            }.get(key, default)
+
+            manager = token_manager._get_global_token_manager()
+            assert manager is not None
+            # Should use fallback config with default scopes
+
+    @pytest.mark.unit
+    def test_load_token_function(self):
+        """Test load_token utility function."""
+        with patch.object(token_manager, "_get_global_token_manager") as mock_get_manager:
+            mock_manager = MagicMock()
+            mock_manager.get_credentials.return_value = "test_credentials"
+            mock_get_manager.return_value = mock_manager
+
+            result = token_manager.load_token()
+            assert result == "test_credentials"
+            mock_manager.get_credentials.assert_called_once()
+
+    @pytest.mark.unit
+    def test_save_token_function(self):
+        """Test save_token utility function."""
+        with patch.object(token_manager, "_get_global_token_manager") as mock_get_manager:
+            mock_manager = MagicMock()
+            mock_get_manager.return_value = mock_manager
+
+            token_manager.save_token("test_credentials")
+            # The function sets _credentials and calls _save_token() without args
+            assert mock_manager._credentials == "test_credentials"
+            mock_manager._save_token.assert_called_once_with()
+
+    @pytest.mark.unit
+    def test_delete_token_function(self):
+        """Test delete_token utility function."""
+        with patch.object(token_manager, "_get_global_token_manager") as mock_get_manager, patch(
+            "os.path.exists", return_value=True
+        ), patch("os.remove") as mock_remove:
+            mock_manager = MagicMock()
+            mock_manager.token_file = "test_token.json"
+            mock_get_manager.return_value = mock_manager
+
+            token_manager.delete_token()
+            mock_remove.assert_called_once_with("test_token.json")
+
+    @pytest.mark.unit
+    def test_get_credentials_cached(self, mock_config, mock_credentials):
+        """Test get_credentials returns cached credentials."""
+        manager = token_manager.TokenManager(
+            config=mock_config, credentials_file="test_creds.json", token_file="test_token.json"
+        )
+
+        # Set cached credentials
+        manager._credentials = mock_credentials
+        mock_credentials.valid = True
+
+        result = manager.get_credentials()
+        assert result == mock_credentials
+
+    @pytest.mark.unit
+    def test_load_token_exception(self):
+        """Test load_token with exception handling."""
+        with patch.object(
+            token_manager, "_get_global_token_manager", side_effect=Exception("Test error")
+        ):
+            result = token_manager.load_token()
+            assert result is None
+
+    @pytest.mark.unit
+    def test_save_token_exception(self):
+        """Test save_token with exception handling."""
+        with patch.object(
+            token_manager, "_get_global_token_manager", side_effect=Exception("Test error")
+        ):
+            # Should not raise exception
+            token_manager.save_token("test_credentials")
+
+    @pytest.mark.unit
+    def test_delete_token_exception(self):
+        """Test delete_token with exception handling."""
+        with patch.object(
+            token_manager, "_get_global_token_manager", side_effect=Exception("Test error")
+        ):
+            # Should not raise exception
+            token_manager.delete_token()
+
+    @pytest.mark.unit
+    def test_delete_token_file_not_found(self):
+        """Test delete_token when file doesn't exist."""
+        with patch.object(token_manager, "_get_global_token_manager") as mock_get_manager, patch(
+            "os.path.exists", return_value=False
+        ):
+            mock_manager = MagicMock()
+            mock_manager.token_file = "nonexistent_token.json"
+            mock_get_manager.return_value = mock_manager
+
+            # Should not raise exception
+            token_manager.delete_token()
+
+    @pytest.mark.unit
+    def test_token_refresh_success_path(self, mock_config, mock_credentials):
+        """Test successful token refresh path."""
+        with patch("os.path.exists", return_value=True), patch(
+            "google.oauth2.credentials.Credentials.from_authorized_user_file",
+            return_value=mock_credentials,
+        ):
+            manager = token_manager.TokenManager(
+                config=mock_config, credentials_file="test_creds.json", token_file="test_token.json"
+            )
+
+            # Test successful refresh
+            mock_credentials.expired = True
+            mock_credentials.refresh_token = "refresh_token"
+
+            with patch("google.auth.transport.requests.Request"), patch.object(
+                manager, "_save_token"
+            ) as mock_save:
+                mock_credentials.refresh.return_value = None  # Successful refresh
+
+                result = manager.get_credentials()
+                assert result == mock_credentials
+                mock_save.assert_called_once()
+
+    @pytest.mark.unit
+    def test_save_token_method(self, mock_config, mock_credentials):
+        """Test _save_token method."""
+        manager = token_manager.TokenManager(
+            config=mock_config, credentials_file="test_creds.json", token_file="test_token.json"
+        )
+
+        manager._credentials = mock_credentials
+        mock_credentials.to_json.return_value = '{"token": "test"}'
+
+        with patch("builtins.open", mock_open()) as mock_file:
+            manager._save_token()
+            mock_file.assert_called_once_with("test_token.json", "w")
+            mock_file().write.assert_called_once_with('{"token": "test"}')
+
+    @pytest.mark.unit
+    def test_complete_auth_flow_exception(self, mock_config):
+        """Test complete_auth_flow with exception."""
+        manager = token_manager.TokenManager(
+            config=mock_config, credentials_file="test_creds.json", token_file="test_token.json"
+        )
+
+        # Test with exception during flow completion
+        with patch.object(manager, "initiate_auth_flow", side_effect=Exception("Flow error")):
+            result = manager.complete_auth_flow("test_code")
+            assert result is False
