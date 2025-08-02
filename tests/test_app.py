@@ -110,11 +110,13 @@ def test_health_endpoint_no_token_file(client):
             response = client.get("/health")
             assert response.status_code == 200
             data = json.loads(response.data)
-            assert data["status"] == "warning"
+            assert data["status"] == "initializing"
+            assert data["auth_status"] == "initializing"
             assert "OAuth token not found" in data["message"]
             assert "checked_locations" in data
             assert "auth_url" in data
             assert data["auth_url"] == "http://localhost:9083/authorize"
+            assert "note" in data
 
 
 @pytest.mark.unit
