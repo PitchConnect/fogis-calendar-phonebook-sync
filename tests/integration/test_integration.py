@@ -287,7 +287,8 @@ def test_calendar_and_contacts_sync_integration():
 
     # Test calendar sync
     with patch.dict(
-        fogis_calendar_sync.config_dict, {"CALENDAR_ID": "test_calendar", "SYNC_TAG": "TEST"}
+        fogis_calendar_sync.config_dict,
+        {"CALENDAR_ID": "test_calendar", "SYNC_TAG": "TEST"},
     ), patch("fogis_calendar_sync.process_referees", return_value=True):
 
         fogis_calendar_sync.sync_calendar(match_data, mock_calendar_service, args)
@@ -370,7 +371,8 @@ def test_token_refresh_integration():
 
     # Test getting credentials (which handles refresh internally)
     with patch("os.path.exists", return_value=True), patch(
-        "google.oauth2.credentials.Credentials.from_authorized_user_file", return_value=mock_creds
+        "google.oauth2.credentials.Credentials.from_authorized_user_file",
+        return_value=mock_creds,
     ):
 
         # Mock credentials as valid to test the flow

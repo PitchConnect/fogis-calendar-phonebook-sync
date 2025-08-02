@@ -24,7 +24,10 @@ def health_check():
     try:
         # Check if we can access the data directory
         if not os.path.exists("data"):
-            return jsonify({"status": "error", "message": "Data directory not accessible"}), 500
+            return (
+                jsonify({"status": "error", "message": "Data directory not accessible"}),
+                500,
+            )
 
         # Check if OAuth token exists and is readable
         # Use environment variable path if available, otherwise check multiple locations
@@ -57,7 +60,11 @@ def health_check():
                         "status": "initializing",
                         "auth_status": "initializing",
                         "message": "OAuth token not found - service may be starting up",
-                        "checked_locations": [token_path, legacy_token_path, working_dir_token],
+                        "checked_locations": [
+                            token_path,
+                            legacy_token_path,
+                            working_dir_token,
+                        ],
                         "auth_url": "http://localhost:9083/authorize",
                         "note": "If this persists after 60 seconds, authentication may be required",
                     }
@@ -77,18 +84,21 @@ def health_check():
             from datetime import datetime
 
             if os.path.exists(token_location):
-                with open(token_location, 'r') as f:
+                with open(token_location, "r") as f:
                     token_data = json.load(f)
 
-                if 'expiry' in token_data:
-                    expiry_str = token_data['expiry']
+                if "expiry" in token_data:
+                    expiry_str = token_data["expiry"]
                     # Parse ISO format datetime
-                    expiry_dt = datetime.fromisoformat(expiry_str.replace('Z', '+00:00'))
+                    expiry_dt = datetime.fromisoformat(expiry_str.replace("Z", "+00:00"))
                     oauth_info["token_expiry"] = expiry_str
-                    oauth_info["expires_in_hours"] = round((expiry_dt - datetime.now(expiry_dt.tzinfo)).total_seconds() / 3600, 1)
+                    oauth_info["expires_in_hours"] = round(
+                        (expiry_dt - datetime.now(expiry_dt.tzinfo)).total_seconds() / 3600,
+                        1,
+                    )
 
-                if 'refresh_token' in token_data:
-                    oauth_info["has_refresh_token"] = bool(token_data['refresh_token'])
+                if "refresh_token" in token_data:
+                    oauth_info["has_refresh_token"] = bool(token_data["refresh_token"])
 
         except Exception as e:
             logging.debug(f"Could not parse OAuth token info: {e}")
@@ -172,7 +182,10 @@ def sync_fogis():
 
     except Exception as e:
         logging.exception("Error during FOGIS sync")
-        return jsonify({"status": "error", "message": f"Error during FOGIS sync: {str(e)}"}), 500
+        return (
+            jsonify({"status": "error", "message": f"Error during FOGIS sync: {str(e)}"}),
+            500,
+        )
 
 
 if __name__ == "__main__":

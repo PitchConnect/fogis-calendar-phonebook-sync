@@ -185,7 +185,10 @@ Automated notification system
                 "blocks": [
                     {
                         "type": "header",
-                        "text": {"type": "plain_text", "text": "🔐 Google Authentication Required"},
+                        "text": {
+                            "type": "plain_text",
+                            "text": "🔐 Google Authentication Required",
+                        },
                     },
                     {
                         "type": "section",
@@ -271,7 +274,11 @@ Automated notification system
 
             payload = {
                 "embeds": [
-                    {"title": title, "description": description, "color": 0x00FF00}  # Green color
+                    {
+                        "title": title,
+                        "description": description,
+                        "color": 0x00FF00,
+                    }  # Green color
                 ]
             }
 

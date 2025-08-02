@@ -97,7 +97,10 @@ def authorize_google_calendar(headless=False):
             creds = google.oauth2.credentials.Credentials.from_authorized_user_file(
                 token_path, scopes=config_dict["SCOPES"]
             )
-            logging.info("✅ Successfully loaded Google Calendar OAuth credentials from %s", token_path)
+            logging.info(
+                "✅ Successfully loaded Google Calendar OAuth credentials from %s",
+                token_path,
+            )
         except Exception as e:
             logging.error("❌ Error loading OAuth credentials from %s: %s", token_path, e)
             logging.info("🔄 Will attempt to create new OAuth credentials")
@@ -176,7 +179,12 @@ def generate_match_hash(match):
 
     # Sort the referee data to ensure consistent hashing
     referee_data.sort(
-        key=lambda x: (x["personnamn"], x["epostadress"], x["telefonnummer"], x["adress"])
+        key=lambda x: (
+            x["personnamn"],
+            x["epostadress"],
+            x["telefonnummer"],
+            x["adress"],
+        )
     )
     data["referees"] = referee_data
 
@@ -231,7 +239,9 @@ def find_event_by_match_id(service, calendar_id, match_id):
         return None
     except Exception as e:
         logging.exception(
-            "An unexpected error occurred while finding event for match %s: %s", match_id, e
+            "An unexpected error occurred while finding event for match %s: %s",
+            match_id,
+            e,
         )
         return None
 
@@ -405,7 +415,10 @@ def sync_calendar(match, service, args):
             "reminders": {
                 "useDefault": False,
                 "overrides": [
-                    {"method": "popup", "minutes": 48 * 60},  # 2 days before (popup) - 48 hours
+                    {
+                        "method": "popup",
+                        "minutes": 48 * 60,
+                    },  # 2 days before (popup) - 48 hours
                 ],
             },
         }
@@ -461,7 +474,9 @@ def sync_calendar(match, service, args):
 
         except HttpError as error:
             logging.error(
-                "An error occurred during calendar sync for match %s: %s", match_id, error
+                "An error occurred during calendar sync for match %s: %s",
+                match_id,
+                error,
             )  # Use logging
 
     except Exception as e:
@@ -471,7 +486,9 @@ def sync_calendar(match, service, args):
 def main():
     parser = argparse.ArgumentParser(description="Syncs FOGIS match data with Google Calendar.")
     parser.add_argument(
-        "--delete", action="store_true", help="Delete existing calendar events before syncing."
+        "--delete",
+        action="store_true",
+        help="Delete existing calendar events before syncing.",
     )
     parser.add_argument(
         "--download", action="store_true", help="Downloads data from FOGIS to local."

@@ -184,7 +184,12 @@ class TokenManager:
         """
         credentials = self.get_credentials()
         if not credentials:
-            return {"valid": False, "expired": True, "expiry": None, "needs_refresh": True}
+            return {
+                "valid": False,
+                "expired": True,
+                "expiry": None,
+                "needs_refresh": True,
+            }
 
         needs_refresh, expiry = self.check_token_expiration()
 

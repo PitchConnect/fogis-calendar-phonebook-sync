@@ -12,7 +12,10 @@ def main():
 
     scopes = config.get(
         "SCOPES",
-        ["https://www.googleapis.com/auth/calendar", "https://www.googleapis.com/auth/contacts"],
+        [
+            "https://www.googleapis.com/auth/calendar",
+            "https://www.googleapis.com/auth/contacts",
+        ],
     )
 
     # Create flow with explicit redirect URI

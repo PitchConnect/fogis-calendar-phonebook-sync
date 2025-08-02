@@ -42,7 +42,10 @@ class TestCleanAuthMain:
 
         # Mock flow
         mock_flow_instance = MagicMock()
-        mock_flow_instance.authorization_url.return_value = ("https://auth.url", "state")
+        mock_flow_instance.authorization_url.return_value = (
+            "https://auth.url",
+            "state",
+        )
         mock_flow_instance.credentials = mock_credentials
         mock_flow_class.from_client_secrets_file.return_value = mock_flow_instance
 
@@ -54,7 +57,9 @@ class TestCleanAuthMain:
 
         # Verify flow was created correctly with redirect URI
         mock_flow_class.from_client_secrets_file.assert_called_once_with(
-            "credentials.json", mock_config["SCOPES"], redirect_uri="http://localhost:8080/callback"
+            "credentials.json",
+            mock_config["SCOPES"],
+            redirect_uri="http://localhost:8080/callback",
         )
 
         # Verify authorization URL was generated
@@ -101,7 +106,10 @@ class TestCleanAuthMain:
 
         # Mock flow
         mock_flow_instance = MagicMock()
-        mock_flow_instance.authorization_url.return_value = ("https://auth.url", "state")
+        mock_flow_instance.authorization_url.return_value = (
+            "https://auth.url",
+            "state",
+        )
         mock_flow_instance.credentials = mock_credentials
         mock_flow_class.from_client_secrets_file.return_value = mock_flow_instance
 
@@ -217,7 +225,10 @@ class TestCleanAuthMain:
 
         # Mock flow that raises exception during authentication
         mock_flow_instance = MagicMock()
-        mock_flow_instance.authorization_url.return_value = ("https://auth.url", "state")
+        mock_flow_instance.authorization_url.return_value = (
+            "https://auth.url",
+            "state",
+        )
         mock_flow_instance.fetch_token.side_effect = Exception("Authentication failed")
         mock_flow_class.from_client_secrets_file.return_value = mock_flow_instance
 
@@ -254,7 +265,10 @@ class TestCleanAuthMain:
 
         # Mock flow
         mock_flow_instance = MagicMock()
-        mock_flow_instance.authorization_url.return_value = ("https://auth.url", "state")
+        mock_flow_instance.authorization_url.return_value = (
+            "https://auth.url",
+            "state",
+        )
         mock_flow_instance.credentials = mock_credentials
         mock_flow_class.from_client_secrets_file.return_value = mock_flow_instance
 
@@ -294,7 +308,10 @@ class TestCleanAuthMain:
 
         # Mock flow
         mock_flow_instance = MagicMock()
-        mock_flow_instance.authorization_url.return_value = ("https://auth.url", "state")
+        mock_flow_instance.authorization_url.return_value = (
+            "https://auth.url",
+            "state",
+        )
         mock_flow_instance.credentials = mock_credentials
         mock_flow_class.from_client_secrets_file.return_value = mock_flow_instance
 

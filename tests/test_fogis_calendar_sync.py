@@ -143,7 +143,8 @@ def test_find_event_by_match_id():
 
     # Call the function under test
     with patch.object(fogis_calendar_sync, "logging"), patch.dict(
-        fogis_calendar_sync.config_dict, {"CALENDAR_ID": "calendar_id", "SYNC_TAG": "TEST_SYNC_TAG"}
+        fogis_calendar_sync.config_dict,
+        {"CALENDAR_ID": "calendar_id", "SYNC_TAG": "TEST_SYNC_TAG"},
     ):
         result = fogis_calendar_sync.find_event_by_match_id(mock_service, "calendar_id", 12345)
 
@@ -204,7 +205,8 @@ def test_delete_calendar_events():
     match_list = [{"matchid": 12345}, {"matchid": 67890}]
 
     with patch.object(fogis_calendar_sync, "logging"), patch.dict(
-        fogis_calendar_sync.config_dict, {"CALENDAR_ID": "test_calendar", "SYNC_TAG": "TEST_TAG"}
+        fogis_calendar_sync.config_dict,
+        {"CALENDAR_ID": "test_calendar", "SYNC_TAG": "TEST_TAG"},
     ):
         fogis_calendar_sync.delete_calendar_events(mock_service, match_list)
 
@@ -244,7 +246,8 @@ def test_delete_orphaned_events():
     match_list = [{"matchid": 12345}]
 
     with patch.object(fogis_calendar_sync, "logging"), patch.dict(
-        fogis_calendar_sync.config_dict, {"CALENDAR_ID": "test_calendar", "SYNC_TAG": "TEST_TAG"}
+        fogis_calendar_sync.config_dict,
+        {"CALENDAR_ID": "test_calendar", "SYNC_TAG": "TEST_TAG"},
     ):
         fogis_calendar_sync.delete_orphaned_events(
             mock_service, match_list, days_to_keep_past_events=7
@@ -286,7 +289,8 @@ def test_sync_calendar_create_new_event():
     args.delete = False
 
     with patch.object(fogis_calendar_sync, "logging"), patch.dict(
-        fogis_calendar_sync.config_dict, {"CALENDAR_ID": "test_calendar", "SYNC_TAG": "TEST_TAG"}
+        fogis_calendar_sync.config_dict,
+        {"CALENDAR_ID": "test_calendar", "SYNC_TAG": "TEST_TAG"},
     ), patch("fogis_calendar_sync.process_referees", return_value=True):
 
         fogis_calendar_sync.sync_calendar(match, mock_service, args)
@@ -365,7 +369,8 @@ def test_sync_calendar_update_existing_event():
     args.delete = False
 
     with patch.object(fogis_calendar_sync, "logging"), patch.dict(
-        fogis_calendar_sync.config_dict, {"CALENDAR_ID": "test_calendar", "SYNC_TAG": "TEST_TAG"}
+        fogis_calendar_sync.config_dict,
+        {"CALENDAR_ID": "test_calendar", "SYNC_TAG": "TEST_TAG"},
     ), patch("fogis_calendar_sync.process_referees", return_value=True):
 
         fogis_calendar_sync.sync_calendar(match, mock_service, args)
@@ -400,7 +405,8 @@ def test_date_parsing_in_sync_calendar():
     args.delete = False
 
     with patch.object(fogis_calendar_sync, "logging"), patch.dict(
-        fogis_calendar_sync.config_dict, {"CALENDAR_ID": "test_calendar", "SYNC_TAG": "TEST_TAG"}
+        fogis_calendar_sync.config_dict,
+        {"CALENDAR_ID": "test_calendar", "SYNC_TAG": "TEST_TAG"},
     ), patch("fogis_calendar_sync.process_referees", return_value=True):
 
         # This should successfully parse the date and create an event
@@ -953,7 +959,8 @@ def test_authorize_google_calendar_function():
     mock_creds.valid = True
 
     with patch("os.path.exists", return_value=True), patch(
-        "google.oauth2.credentials.Credentials.from_authorized_user_file", return_value=mock_creds
+        "google.oauth2.credentials.Credentials.from_authorized_user_file",
+        return_value=mock_creds,
     ), patch.dict(fogis_calendar_sync.config_dict, {"SCOPES": ["test_scope"]}):
 
         # Test the actual function that exists in the module
@@ -1015,7 +1022,8 @@ def test_authorize_google_calendar_refresh_token():
     mock_creds.refresh_token = "refresh_token"
 
     with patch("os.path.exists", return_value=True), patch(
-        "google.oauth2.credentials.Credentials.from_authorized_user_file", return_value=mock_creds
+        "google.oauth2.credentials.Credentials.from_authorized_user_file",
+        return_value=mock_creds,
     ), patch("fogis_calendar_sync.token_manager"), patch.dict(
         fogis_calendar_sync.config_dict, {"SCOPES": ["test_scope"]}
     ):
@@ -1042,7 +1050,8 @@ def test_authorize_google_calendar_refresh_error():
     mock_creds.refresh.side_effect = RefreshError("Refresh failed")
 
     with patch("os.path.exists", return_value=True), patch(
-        "google.oauth2.credentials.Credentials.from_authorized_user_file", return_value=mock_creds
+        "google.oauth2.credentials.Credentials.from_authorized_user_file",
+        return_value=mock_creds,
     ), patch("fogis_calendar_sync.token_manager"), patch.dict(
         fogis_calendar_sync.config_dict,
         {"CREDENTIALS_FILE": "credentials.json", "SCOPES": ["test_scope"]},
@@ -1061,7 +1070,8 @@ def test_authorize_google_calendar_credentials_file_not_found():
     mock_creds.valid = False
 
     with patch("os.path.exists", return_value=True), patch(
-        "google.oauth2.credentials.Credentials.from_authorized_user_file", return_value=mock_creds
+        "google.oauth2.credentials.Credentials.from_authorized_user_file",
+        return_value=mock_creds,
     ), patch.dict(
         fogis_calendar_sync.config_dict,
         {"CREDENTIALS_FILE": "missing.json", "SCOPES": ["test_scope"]},
@@ -1180,7 +1190,8 @@ def test_sync_calendar_no_changes():
     args.delete = False
 
     with patch.dict(
-        fogis_calendar_sync.config_dict, {"CALENDAR_ID": "calendar_id", "SYNC_TAG": "TEST"}
+        fogis_calendar_sync.config_dict,
+        {"CALENDAR_ID": "calendar_id", "SYNC_TAG": "TEST"},
     ), patch("fogis_contacts.process_referees", return_value=True), patch(
         "fogis_contacts.authorize_google_people", return_value=MagicMock()
     ):
@@ -1217,7 +1228,8 @@ def test_sync_calendar_with_delete_flag():
     args.delete = True  # Delete flag set
 
     with patch.dict(
-        fogis_calendar_sync.config_dict, {"CALENDAR_ID": "calendar_id", "SYNC_TAG": "TEST"}
+        fogis_calendar_sync.config_dict,
+        {"CALENDAR_ID": "calendar_id", "SYNC_TAG": "TEST"},
     ), patch("fogis_contacts.process_referees", return_value=True), patch(
         "fogis_contacts.authorize_google_people", return_value=MagicMock()
     ):
@@ -1255,7 +1267,8 @@ def test_sync_calendar_http_error():
     args.delete = False
 
     with patch.dict(
-        fogis_calendar_sync.config_dict, {"CALENDAR_ID": "calendar_id", "SYNC_TAG": "TEST"}
+        fogis_calendar_sync.config_dict,
+        {"CALENDAR_ID": "calendar_id", "SYNC_TAG": "TEST"},
     ), patch("fogis_contacts.process_referees", return_value=True), patch(
         "fogis_contacts.authorize_google_people", return_value=MagicMock()
     ):

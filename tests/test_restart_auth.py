@@ -162,7 +162,12 @@ class TestRestartAuthMain:
         mock_auth_manager_class.return_value = mock_auth_manager
 
         # Mock token status - no expiry info
-        mock_token_status = {"valid": False, "expired": True, "needs_refresh": True, "expiry": None}
+        mock_token_status = {
+            "valid": False,
+            "expired": True,
+            "needs_refresh": True,
+            "expiry": None,
+        }
         mock_auth_manager.get_token_status.return_value = mock_token_status
 
         # Mock successful force refresh
