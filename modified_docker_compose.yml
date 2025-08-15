@@ -51,13 +51,13 @@ services:
       - google-drive-service-data:/app
     ports:
       - "5001:5000"  # Changed host port to 5001
-    # Keep healthcheck commented out as /health endpoint is not implemented
-    # healthcheck:
-    #   test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
-    #   interval: 30s
-    #   timeout: 10s
-    #   retries: 5
-    #   start_period: 30s
+    # Health check now enabled with optimized authentication-free endpoints
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
   fogis-api-client-service:
     extends:
