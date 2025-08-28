@@ -287,6 +287,7 @@ def test_sync_calendar_create_new_event():
     # Mock args
     args = MagicMock()
     args.delete = False
+    args.fresh_sync = False
 
     with patch.object(fogis_calendar_sync, "logging"), patch.dict(
         fogis_calendar_sync.config_dict,
@@ -367,6 +368,7 @@ def test_sync_calendar_update_existing_event():
     # Mock args
     args = MagicMock()
     args.delete = False
+    args.fresh_sync = False
 
     with patch.object(fogis_calendar_sync, "logging"), patch.dict(
         fogis_calendar_sync.config_dict,
@@ -403,6 +405,7 @@ def test_date_parsing_in_sync_calendar():
 
     args = MagicMock()
     args.delete = False
+    args.fresh_sync = False
 
     with patch.object(fogis_calendar_sync, "logging"), patch.dict(
         fogis_calendar_sync.config_dict,
@@ -438,6 +441,7 @@ class TestMainFunction:
         mock_args.fogis_password = None
         mock_args.headless = False
         mock_args.delete = False
+        mock_args.fresh_sync = False
         mock_args.download = False
 
         mock_parser_instance = MagicMock()
@@ -466,6 +470,7 @@ class TestMainFunction:
         mock_args.fogis_password = "test_pass"
         mock_args.headless = False
         mock_args.delete = False
+        mock_args.fresh_sync = False
         mock_args.download = False
 
         mock_parser_instance = MagicMock()
@@ -502,6 +507,7 @@ class TestMainFunction:
         mock_args.fogis_password = "test_pass"
         mock_args.headless = False
         mock_args.delete = False
+        mock_args.fresh_sync = False
         mock_args.download = False
 
         mock_parser_instance = MagicMock()
@@ -546,6 +552,7 @@ class TestMainFunction:
         mock_args.fogis_password = "test_pass"
         mock_args.headless = False
         mock_args.delete = False
+        mock_args.fresh_sync = False
         mock_args.download = False
 
         mock_parser_instance = MagicMock()
@@ -614,6 +621,7 @@ class TestMainFunction:
         mock_args.fogis_password = "test_pass"
         mock_args.headless = False
         mock_args.delete = False
+        mock_args.fresh_sync = False
         mock_args.download = False
 
         mock_parser_instance = MagicMock()
@@ -706,6 +714,7 @@ class TestMainFunction:
         mock_args.fogis_password = "test_pass"
         mock_args.headless = False
         mock_args.delete = True  # Test delete path
+        mock_args.fresh_sync = False
         mock_args.download = False
 
         mock_parser_instance = MagicMock()
@@ -816,6 +825,7 @@ class TestMainFunction:
         mock_args.fogis_password = "test_pass"
         mock_args.headless = False
         mock_args.delete = False
+        mock_args.fresh_sync = False
         mock_args.download = False
 
         mock_parser_instance = MagicMock()
@@ -900,6 +910,7 @@ class TestMainFunction:
         mock_args.fogis_password = "test_pass"
         mock_args.headless = False
         mock_args.delete = False
+        mock_args.fresh_sync = False
         mock_args.download = False
 
         mock_parser_instance = MagicMock()
@@ -1188,6 +1199,7 @@ def test_sync_calendar_no_changes():
 
     args = MagicMock()
     args.delete = False
+    args.fresh_sync = False
 
     with patch.dict(
         fogis_calendar_sync.config_dict,
@@ -1226,6 +1238,7 @@ def test_sync_calendar_with_delete_flag():
 
     args = MagicMock()
     args.delete = True  # Delete flag set
+    args.fresh_sync = False
 
     with patch.dict(
         fogis_calendar_sync.config_dict,
@@ -1265,6 +1278,7 @@ def test_sync_calendar_http_error():
 
     args = MagicMock()
     args.delete = False
+    args.fresh_sync = False
 
     with patch.dict(
         fogis_calendar_sync.config_dict,
