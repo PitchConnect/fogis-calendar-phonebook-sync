@@ -433,7 +433,7 @@ def sync_calendar(match, service, args):
                     existing_event.get("extendedProperties", {}).get("private", {}).get("matchHash")
                 )
 
-                if existing_hash == match_hash:
+                if existing_hash == match_hash and not args.fresh_sync:
                     logging.info(
                         f"Match {match_id}: No changes detected, skipping update."
                     )  # Use logging
@@ -449,7 +449,9 @@ def sync_calendar(match, service, args):
                         .execute()
                     )
                     logging.info("Updated event: %s", updated_event["summary"])  # Use logging
-                    if not args.delete:  # Keep contact processing logic - UNCOMMENTED
+                    if (
+                        not args.delete or args.fresh_sync
+                    ):  # Process contacts unless delete-only mode
                         if not process_referees(
                             match
                         ):  # Call process_referees, pass people_service and config
@@ -464,7 +466,7 @@ def sync_calendar(match, service, args):
                     .execute()
                 )  # Use config_dict['CALENDAR_ID']
                 logging.info("Created event: %s", event["summary"])  # Use logging
-                if not args.delete:  # Keep contact processing logic - UNCOMMENTED
+                if not args.delete or args.fresh_sync:  # Process contacts unless delete-only mode
                     if not process_referees(
                         match
                     ):  # Call process_referees, pass people_service and config
@@ -489,6 +491,11 @@ def main():
         "--delete",
         action="store_true",
         help="Delete existing calendar events before syncing.",
+    )
+    parser.add_argument(
+        "--fresh-sync",
+        action="store_true",
+        help="Force complete reprocessing of both calendar events and referee contacts, regardless of cached state.",
     )
     parser.add_argument(
         "--download", action="store_true", help="Downloads data from FOGIS to local."
@@ -578,18 +585,30 @@ def main():
             )
             return  # Exit if People API doesn't work
 
-        # Load the old matches from a file
-        try:
-            old_matches = {}  # Removed file loading for test
-        except FileNotFoundError:
-            logging.warning(
-                "Match file not found: %s. Starting with empty match list.",
-                config_dict["MATCH_FILE"],
-            )
+        # Load the old matches from a file (unless fresh-sync is requested)
+        if args.fresh_sync:
+            logging.info("🔄 Fresh sync requested - clearing all cached match data")
             old_matches = {}
-        except Exception as e:
-            logging.warning("An unexpected error occurred while loading old matches: %s", e)
-            old_matches = {}
+            # Also clear the cache file
+            try:
+                if os.path.exists(config_dict["MATCH_FILE"]):
+                    os.remove(config_dict["MATCH_FILE"])
+                    logging.info("📁 Cleared match cache file for fresh sync")
+            except Exception as e:
+                logging.warning("Failed to clear cache file: %s", e)
+        else:
+            try:
+                with open(config_dict["MATCH_FILE"], "r", encoding="utf-8") as f:
+                    old_matches = json.load(f)
+            except FileNotFoundError:
+                logging.warning(
+                    "Match file not found: %s. Starting with empty match list.",
+                    config_dict["MATCH_FILE"],
+                )
+                old_matches = {}
+            except Exception as e:
+                logging.warning("An unexpected error occurred while loading old matches: %s", e)
+                old_matches = {}
 
         # Delete orphaned events (events with syncTag that are not in the match_list)
         print("\n--- Deleting Orphaned Calendar Events ---")
@@ -610,7 +629,11 @@ def main():
             match_id = str(match["matchid"])
             match_hash = generate_match_hash(match)
 
-            if match_id in old_matches and old_matches[match_id] == match_hash:
+            if (
+                not args.fresh_sync
+                and match_id in old_matches
+                and old_matches[match_id] == match_hash
+            ):
                 logging.info("Match %s: No changes detected, skipping sync.", match_id)
                 continue  # Skip to the next match
 
