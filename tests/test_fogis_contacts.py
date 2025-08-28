@@ -1,6 +1,7 @@
 """Tests for the fogis_contacts module."""
 
-from unittest.mock import MagicMock, patch
+import os
+from unittest.mock import MagicMock, mock_open, patch
 
 import pytest
 
@@ -140,44 +141,57 @@ def test_authorize_google_people_with_expired_token():
         return_value=mock_creds,
     ), patch.object(fogis_contacts, "logging"):
 
-        # The function logic checks if creds is valid, and if not, it tries to refresh
-        # But if refresh fails, it creates new credentials via OAuth flow
-        with patch.object(mock_creds, "refresh", side_effect=Exception("Refresh failed")), patch(
-            "google_auth_oauthlib.flow.InstalledAppFlow.from_client_secrets_file"
-        ) as mock_flow, patch("builtins.open", create=True):
+        # Test successful refresh
+        def refresh_side_effect(request):
+            mock_creds.valid = True
 
-            # Mock the OAuth flow
-            mock_flow_instance = MagicMock()
-            mock_flow.return_value = mock_flow_instance
-            mock_new_creds = MagicMock()
-            mock_new_creds.valid = True
-            mock_flow_instance.run_local_server.return_value = mock_new_creds
+        mock_creds.refresh.side_effect = refresh_side_effect
 
+        with patch("builtins.open", mock_open()):
             result = fogis_contacts.authorize_google_people()
 
-            # Should return new credentials from OAuth flow
-            assert result == mock_new_creds
+            # Should return refreshed credentials
+            assert result == mock_creds
+            mock_creds.refresh.assert_called_once()
+
+
+@pytest.mark.unit
+def test_authorize_google_people_with_refresh_failure():
+    """Test authorizing Google People API when token refresh fails."""
+    # Mock expired credentials that fail to refresh
+    mock_creds = MagicMock()
+    mock_creds.valid = False
+    mock_creds.expired = True
+    mock_creds.refresh_token = "refresh_token"
+
+    with patch("os.path.exists", return_value=True), patch(
+        "google.oauth2.credentials.Credentials.from_authorized_user_file",
+        return_value=mock_creds,
+    ), patch.object(fogis_contacts, "logging"):
+
+        # Mock refresh failure
+        mock_creds.refresh.side_effect = Exception("Refresh failed")
+
+        # Mock token_manager fallback failure
+        with patch.object(fogis_contacts.token_manager, "load_token", return_value=None):
+            result = fogis_contacts.authorize_google_people()
+
+            # Should return None when both file and token_manager fail
+            assert result is None
 
 
 @pytest.mark.unit
 def test_authorize_google_people_no_token_file():
     """Test authorizing Google People API when no token file exists."""
-    # Mock the flow for new authorization
-    mock_flow = MagicMock()
-    mock_creds = MagicMock()
-    mock_flow.run_local_server.return_value = mock_creds
-
-    with patch("os.path.exists", return_value=False), patch(
-        "google_auth_oauthlib.flow.InstalledAppFlow.from_client_secrets_file",
-        return_value=mock_flow,
-    ), patch("builtins.open", create=True) as mock_open, patch.object(fogis_contacts, "logging"):
+    # Our new implementation returns None when no token file exists and token_manager fails
+    with patch("os.path.exists", return_value=False), patch.object(
+        fogis_contacts.token_manager, "load_token", return_value=None
+    ), patch.object(fogis_contacts, "logging"):
 
         result = fogis_contacts.authorize_google_people()
 
-        # Verify flow was run and credentials saved
-        mock_flow.run_local_server.assert_called_once()
-        mock_open.assert_called_once()
-        assert result == mock_creds
+        # Should return None when both file and token_manager fail
+        assert result is None
 
 
 @pytest.mark.unit
@@ -511,20 +525,14 @@ def test_authorize_google_people_file_error():
     with patch("os.path.exists", return_value=True), patch(
         "google.oauth2.credentials.Credentials.from_authorized_user_file",
         side_effect=Exception("File error"),
-    ), patch(
-        "google_auth_oauthlib.flow.InstalledAppFlow.from_client_secrets_file"
-    ) as mock_flow, patch(
-        "builtins.open", MagicMock()
+    ), patch.object(fogis_contacts.token_manager, "load_token", return_value=None), patch.object(
+        fogis_contacts, "logging"
     ):
 
-        mock_flow_instance = MagicMock()
-        mock_new_creds = MagicMock()
-        mock_new_creds.valid = True
-        mock_flow_instance.run_local_server.return_value = mock_new_creds
-        mock_flow.return_value = mock_flow_instance
-
         result = fogis_contacts.authorize_google_people()
-        assert result == mock_new_creds
+
+        # Should return None when both file loading and token_manager fail
+        assert result is None
 
 
 @pytest.mark.unit
@@ -571,11 +579,112 @@ def test_find_or_create_referees_group_general_exception():
 @pytest.mark.unit
 def test_process_referees_no_credentials():
     """Test process_referees when authorization fails."""
-    match = {"domaruppdraglista": []}
+    # Use a match with referees so authentication is attempted
+    match = {
+        "domaruppdraglista": [
+            {"domarNr": "12345", "namn": "Test Referee", "telefon": "123-456-7890"}
+        ]
+    }
 
     with patch.object(fogis_contacts, "authorize_google_people", return_value=None):
         result = fogis_contacts.process_referees(match)
         assert result is False
+
+
+@pytest.mark.unit
+def test_authorize_google_people_unified_token_path():
+    """Test authorize_google_people uses TOKEN_PATH environment variable."""
+    mock_creds = MagicMock()
+    mock_creds.valid = True
+
+    with patch.dict(os.environ, {"TOKEN_PATH": "/custom/token/path.json"}), patch(
+        "os.path.exists", return_value=True
+    ), patch(
+        "google.oauth2.credentials.Credentials.from_authorized_user_file", return_value=mock_creds
+    ):
+
+        result = fogis_contacts.authorize_google_people()
+        assert result == mock_creds
+
+
+@pytest.mark.unit
+def test_authorize_google_people_token_manager_fallback():
+    """Test authorize_google_people falls back to token_manager when file not found."""
+    mock_creds = MagicMock()
+    mock_creds.valid = True
+
+    with patch("os.path.exists", return_value=False), patch.object(
+        fogis_contacts.token_manager, "load_token", return_value=mock_creds
+    ):
+
+        result = fogis_contacts.authorize_google_people()
+        assert result == mock_creds
+
+
+@pytest.mark.unit
+def test_authorize_google_people_refresh_expired_token():
+    """Test authorize_google_people refreshes expired tokens."""
+    mock_creds = MagicMock()
+    mock_creds.valid = False
+    mock_creds.expired = True
+    mock_creds.refresh_token = "refresh_token"
+
+    # After refresh, make it valid
+    def refresh_side_effect(request):
+        mock_creds.valid = True
+
+    mock_creds.refresh.side_effect = refresh_side_effect
+
+    with patch.dict(os.environ, {"TOKEN_PATH": "test_token.json"}), patch(
+        "os.path.exists", return_value=True
+    ), patch(
+        "google.oauth2.credentials.Credentials.from_authorized_user_file", return_value=mock_creds
+    ), patch(
+        "builtins.open", mock_open()
+    ):
+
+        result = fogis_contacts.authorize_google_people()
+        assert result == mock_creds
+        mock_creds.refresh.assert_called_once()
+
+
+@pytest.mark.unit
+def test_process_referees_no_referees_simple():
+    """Test process_referees when match has no referees (simple case)."""
+    match = {"domaruppdraglista": []}
+
+    result = fogis_contacts.process_referees(match)
+    assert result is True
+
+
+@pytest.mark.unit
+def test_process_referees_enhanced_logging():
+    """Test process_referees provides enhanced logging and summary."""
+    match = {
+        "domaruppdraglista": [
+            {
+                "personnamn": "Test Referee",
+                "mobiltelefon": "+46701234567",
+                "domarnr": "TEST123",
+            }
+        ]
+    }
+
+    with patch.object(fogis_contacts, "authorize_google_people") as mock_auth, patch(
+        "googleapiclient.discovery.build"
+    ) as mock_build, patch.object(
+        fogis_contacts, "find_contact_by_name_and_phone", return_value=None
+    ), patch.object(
+        fogis_contacts, "find_or_create_referees_group", return_value="group123"
+    ), patch.object(
+        fogis_contacts, "create_google_contact", return_value="contact123"
+    ):
+
+        mock_auth.return_value = MagicMock()
+        mock_build.return_value = MagicMock()
+
+        result = fogis_contacts.process_referees(match)
+        assert result is True
 
 
 @pytest.mark.unit

@@ -18,6 +18,9 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
+# Import token manager for unified authentication
+import token_manager
+
 # Load environment variables from .env file
 load_dotenv()
 
@@ -36,52 +39,90 @@ DELAY_BETWEEN_CONTACT_CALLS = 1  # Increased delay between calls to 1 second!
 
 
 def authorize_google_people():
-    """Authorizes access to the Google People API."""
-    creds = None
-    if os.path.exists("token.json"):
-        try:
-            creds = google.oauth2.credentials.Credentials.from_authorized_user_file(
-                "token.json", SCOPES
-            )
-            logging.info("Successfully loaded Google People credentials from token.json.")
-        except Exception as e:
-            logging.error("Error loading credentials from token.json: %s", e)
-            creds = None
+    """
+    Authorizes access to the Google People API using unified token management.
 
-    if not creds or not creds.valid:
-        if creds and creds.expired and creds.refresh_token:
+    This function now uses the same token management system as the calendar sync
+    to ensure consistent OAuth token handling and proper container path support.
+
+    Returns:
+        google.oauth2.credentials.Credentials: Valid credentials or None if authentication fails
+    """
+    try:
+        # Use configurable token path (same as calendar sync)
+        token_path = os.environ.get("TOKEN_PATH", "token.json")
+        logging.info("🔐 Google People API authentication in progress...")
+        logging.info(f"📁 Using token path: {token_path}")
+
+        # Try to load existing credentials using the same approach as calendar sync
+        creds = None
+        if os.path.exists(token_path):
             try:
-                creds.refresh(google.auth.transport.requests.Request())
-                # Save the refreshed credentials
-                with open("token.json", "w", encoding="utf-8") as token:
-                    token.write(creds.to_json())
-                logging.info("Google People credentials Refreshed and saved")
+                logging.info("📁 Token file found, attempting to load OAuth credentials...")
+                creds = google.oauth2.credentials.Credentials.from_authorized_user_file(
+                    token_path, SCOPES
+                )
+                logging.info("✅ Successfully loaded Google People credentials from %s", token_path)
             except Exception as e:
-                logging.error("Error refreshing credentials: %s", e)
-                # If refresh fails, try to get new credentials
-                try:
-                    flow = InstalledAppFlow.from_client_secrets_file(CREDENTIALS_FILE, SCOPES)
-                    creds = flow.run_local_server(port=0)
-                    with open("token.json", "w", encoding="utf-8") as token:
-                        token.write(creds.to_json())
-                    logging.info("New Google People Creds Auth Completed after refresh failure")
-                except Exception as inner_e:
+                logging.error("❌ Error loading OAuth credentials from %s: %s", token_path, e)
+                logging.info("🔄 Will attempt to use token manager fallback")
+                creds = None
+
+        # If no credentials loaded from file, try token manager
+        if not creds:
+            logging.info("🔄 Attempting to load credentials via token manager...")
+            try:
+                creds = token_manager.load_token()
+                if creds:
+                    logging.info("✅ Successfully loaded credentials via token manager")
+                else:
+                    logging.warning("⚠️ Token manager returned no credentials")
+            except Exception as e:
+                logging.error("❌ Error loading credentials via token manager: %s", e)
+
+        # Validate and refresh credentials if needed
+        if creds:
+            if not creds.valid:
+                if creds.expired and creds.refresh_token:
+                    try:
+                        logging.info("🔄 Refreshing expired Google People API credentials...")
+                        creds.refresh(google.auth.transport.requests.Request())
+
+                        # Save refreshed credentials back to token file
+                        try:
+                            with open(token_path, "w", encoding="utf-8") as token_file:
+                                token_file.write(creds.to_json())
+                            logging.info("💾 Refreshed credentials saved to %s", token_path)
+                        except Exception as save_e:
+                            logging.warning("⚠️ Failed to save refreshed credentials: %s", save_e)
+
+                        logging.info("✅ Google People API credentials successfully refreshed")
+                    except Exception as refresh_e:
+                        logging.error(
+                            "❌ Failed to refresh Google People API credentials: %s", refresh_e
+                        )
+                        creds = None
+                else:
                     logging.error(
-                        "Failed to get new credentials after refresh failure: %s",
-                        inner_e,
+                        "❌ Credentials are invalid and cannot be refreshed (no refresh token)"
                     )
-                    return None
+                    creds = None
+
+        if creds and creds.valid:
+            logging.info("✅ Google People API authentication established")
+            return creds
         else:
-            try:
-                flow = InstalledAppFlow.from_client_secrets_file(CREDENTIALS_FILE, SCOPES)
-                creds = flow.run_local_server(port=0)
-                with open("token.json", "w", encoding="utf-8") as token:
-                    token.write(creds.to_json())
-                logging.info("New Google People Creds Auth Completed")
-            except Exception as e:
-                logging.error("Error during authorization flow: %s", e)
-                return None
-    return creds
+            logging.error("❌ Failed to obtain valid Google People API credentials")
+            logging.error("💡 This may be due to:")
+            logging.error("   - Missing or invalid token file at: %s", token_path)
+            logging.error("   - Expired credentials without refresh token")
+            logging.error("   - OAuth scope mismatch")
+            logging.error("   - Container path configuration issues")
+            return None
+
+    except Exception as e:
+        logging.exception("❌ Unexpected error during Google People API authorization: %s", e)
+        return None
 
 
 def find_or_create_referees_group(service):
@@ -135,32 +176,65 @@ def find_or_create_referees_group(service):
 
 
 def process_referees(match):
-    """Manages referees contacts."""
+    """
+    Manages referees contacts with unified authentication and enhanced error logging.
+
+    This function now uses the same authentication system as calendar sync
+    to ensure consistent OAuth token handling.
+
+    Args:
+        match (dict): Match data containing referee information in 'domaruppdraglista'
+
+    Returns:
+        bool: True if processing completed successfully, False if authentication failed
+    """
+    logging.info("🏃‍♂️ Starting referee contact processing...")
+
+    # Check if match has referee data
+    referees = match.get("domaruppdraglista", [])
+    if not referees:
+        logging.info("ℹ️ No referees found in match data, skipping contact processing")
+        return True
+
+    logging.info(f"📋 Found {len(referees)} referees to process")
+
+    # Authenticate with Google People API using unified system
     creds = authorize_google_people()
     if not creds:
-        logging.error("Failed to obtain Google People API credentials for referee processing.")
+        logging.error("❌ Failed to obtain Google People API credentials for referee processing")
+        logging.error("💡 Contact processing cannot continue without valid authentication")
         return False
+
+    logging.info("✅ Google People API authentication successful")
 
     # Get the user's referee number from environment variable
     user_referee_number = os.environ.get("USER_REFEREE_NUMBER")
     if user_referee_number:
         logging.info(
-            f"User referee number set to {user_referee_number}, will skip updating this contact"
+            f"👤 User referee number set to {user_referee_number}, will skip updating this contact"
         )
 
     try:
         service = build("people", "v1", credentials=creds)
+        logging.info("🔧 Google People API service built successfully")
+
+        processed_count = 0
+        skipped_count = 0
+        error_count = 0
 
         for referee in match["domaruppdraglista"]:
-            name = referee["personnamn"]
-            phone = referee["mobiltelefon"]
-            referee_number = referee.get("domarnr")
+            name = referee.get("personnamn", "Unknown")
+            phone = referee.get("mobiltelefon", "")
+            referee_number = referee.get("domarnr", "")
+
+            logging.info(f"👤 Processing referee: {name} (#{referee_number})")
 
             # Skip updating the current user's contact
             if user_referee_number and referee_number == user_referee_number:
                 logging.info(
-                    f"Skipping contact update for current user: {name} (Referee #{referee_number})"
+                    f"⏭️ Skipping contact update for current user: {name} (Referee #{referee_number})"
                 )
+                skipped_count += 1
                 continue
 
             try:
@@ -168,20 +242,46 @@ def process_referees(match):
 
                 if existing_contact:
                     update_google_contact(service, existing_contact["resourceName"], referee)
-                    logging.info("Updated contact for referee: %s", name)
+                    logging.info("✅ Updated contact for referee: %s", name)
+                    processed_count += 1
                 else:
                     group_id = find_or_create_referees_group(service)
                     if group_id:
                         create_google_contact(service, referee, group_id)
-                        logging.info("Created contact for referee: %s", name)
+                        logging.info("✅ Created contact for referee: %s", name)
+                        processed_count += 1
                     else:
-                        logging.error("Could not find group ID, skipping contact creation")
+                        logging.error(
+                            "❌ Could not find or create Referees group, skipping contact creation for %s",
+                            name,
+                        )
+                        error_count += 1
 
             except Exception as e:
-                logging.exception("An error occurred managing contact for referee %s: %s", name, e)
+                logging.exception("❌ Error managing contact for referee %s: %s", name, e)
+                error_count += 1
+
+        # Summary logging
+        total_referees = len(referees)
+        logging.info("📊 Contact processing summary:")
+        logging.info(f"   Total referees: {total_referees}")
+        logging.info(f"   Processed: {processed_count}")
+        logging.info(f"   Skipped: {skipped_count}")
+        logging.info(f"   Errors: {error_count}")
+
+        if error_count > 0:
+            logging.warning(f"⚠️ Contact processing completed with {error_count} errors")
+        else:
+            logging.info("✅ Contact processing completed successfully")
+
         return True
+
     except Exception as e:
-        logging.exception("An unexpected error occurred building people service: %s", e)
+        logging.exception("❌ Unexpected error occurred building Google People service: %s", e)
+        logging.error("💡 This may be due to:")
+        logging.error("   - Invalid or expired OAuth credentials")
+        logging.error("   - Google People API service unavailable")
+        logging.error("   - Network connectivity issues")
         return False
 
 
