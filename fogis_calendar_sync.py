@@ -449,9 +449,9 @@ def sync_calendar(match, service, args):
                         .execute()
                     )
                     logging.info("Updated event: %s", updated_event["summary"])  # Use logging
-                    if (
-                        not args.delete or args.fresh_sync
-                    ):  # Process contacts unless delete-only mode
+                    # Process referee contacts unless in delete-only mode
+                    # Fresh sync enables contact processing even when deleting calendar events
+                    if not args.delete or args.fresh_sync:
                         if not process_referees(
                             match
                         ):  # Call process_referees, pass people_service and config
@@ -466,7 +466,9 @@ def sync_calendar(match, service, args):
                     .execute()
                 )  # Use config_dict['CALENDAR_ID']
                 logging.info("Created event: %s", event["summary"])  # Use logging
-                if not args.delete or args.fresh_sync:  # Process contacts unless delete-only mode
+                # Process referee contacts unless in delete-only mode
+                # Fresh sync enables contact processing even when deleting calendar events
+                if not args.delete or args.fresh_sync:
                     if not process_referees(
                         match
                     ):  # Call process_referees, pass people_service and config
@@ -586,10 +588,12 @@ def main():
             return  # Exit if People API doesn't work
 
         # Load the old matches from a file (unless fresh-sync is requested)
+        # Fresh sync bypasses all change detection to force complete reprocessing
         if args.fresh_sync:
             logging.info("🔄 Fresh sync requested - clearing all cached match data")
             old_matches = {}
-            # Also clear the cache file
+            # Clear the cache file to ensure all matches are treated as "new"
+            # This forces both calendar sync and contact processing for every match
             try:
                 if os.path.exists(config_dict["MATCH_FILE"]):
                     os.remove(config_dict["MATCH_FILE"])

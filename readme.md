@@ -179,6 +179,23 @@ This will:
    python fogis_calendar_sync.py --delete
    ```
 
+* `--fresh-sync`: Force complete reprocessing of both calendar events and referee contacts, regardless of cached state. This bypasses all change detection and ensures every match is fully processed.
+
+   ```bash
+   python fogis_calendar_sync.py --fresh-sync
+   ```
+
+   **Use cases:**
+   - When referee contacts are missing from Google Contacts
+   - After authentication or configuration changes
+   - To force reprocessing of all matches without deleting calendar events
+   - Can be combined with `--delete` for complete refresh
+
+   ```bash
+   # Force complete reprocessing with calendar event deletion
+   python fogis_calendar_sync.py --fresh-sync --delete
+   ```
+
 * `--download`:  *(Currently this option is not fully implemented and doesn't perform a separate download)*. In the current version, the script always downloads match data from FOGIS.
 
 * `--username <fogis_username>`:  Provide your FOGIS username via command line.
@@ -272,6 +289,12 @@ Logs will show information about:
     * Check the logs for any error messages.
     * Verify that the `CALENDAR_ID` in `config.json` is correct.
     * If using the `--delete` option, ensure that the `SYNC_TAG` in `config.json` is correct so the script can identify and delete existing events.
+    * If referee contacts are missing, try using `--fresh-sync` to force complete reprocessing.
+* Referee Contacts Missing from Google Contacts:
+    * Use the `--fresh-sync` flag to bypass change detection and force contact processing.
+    * Check that Google People API is enabled in your Google Cloud project.
+    * Verify that your OAuth token has the necessary scopes for Google Contacts.
+    * Look for contact processing logs with emoji indicators (🏃‍♂️, 📋, ✅) to confirm processing.
 
 If you encounter issues, please review the logs carefully.  Detailed error messages are logged to help you diagnose problems.
 
