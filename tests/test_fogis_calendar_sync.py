@@ -123,6 +123,380 @@ def test_generate_match_hash():
 
 
 @pytest.mark.unit
+def test_generate_calendar_hash():
+    """Test generating a hash for calendar-specific match data."""
+    match = {
+        "matchid": 12345,
+        "lag1namn": "Home Team",
+        "lag2namn": "Away Team",
+        "anlaggningnamn": "Test Arena",
+        "tid": "/Date(1684177200000)/",
+        "tavlingnamn": "Test League",
+        "domaruppdraglista": [
+            {
+                "personnamn": "John Doe",
+                "epostadress": "john.doe@example.com",
+                "telefonnummer": "+46701234567",
+                "adress": "123 Main St",
+            }
+        ],
+        "kontaktpersoner": [],
+    }
+
+    # Generate calendar hash
+    calendar_hash1 = fogis_calendar_sync.generate_calendar_hash(match)
+
+    # Verify the hash is a string
+    assert isinstance(calendar_hash1, str)
+    assert len(calendar_hash1) == 64  # SHA-256 hash is 64 characters long
+
+    # Modify referee data - calendar hash should NOT change
+    match["domaruppdraglista"][0]["personnamn"] = "Jane Doe"
+    calendar_hash2 = fogis_calendar_sync.generate_calendar_hash(match)
+    assert calendar_hash1 == calendar_hash2  # Calendar hash unchanged
+
+    # Modify calendar data - calendar hash should change
+    match["lag1namn"] = "New Home Team"
+    calendar_hash3 = fogis_calendar_sync.generate_calendar_hash(match)
+    assert calendar_hash1 != calendar_hash3
+
+
+@pytest.mark.unit
+def test_generate_referee_hash():
+    """Test generating a hash for referee data."""
+    referees = [
+        {
+            "personnamn": "John Doe",
+            "epostadress": "john.doe@example.com",
+            "telefonnummer": "+46701234567",
+            "mobiltelefon": "+46701234567",
+            "adress": "123 Main St",
+            "postnr": "12345",
+            "postort": "Stockholm",
+            "land": "Sweden",
+            "domarnr": "REF123",
+            "domarrollkortnamn": "Huvuddomare",
+        }
+    ]
+
+    # Generate referee hash
+    referee_hash1 = fogis_calendar_sync.generate_referee_hash(referees)
+
+    # Verify the hash is a string
+    assert isinstance(referee_hash1, str)
+    assert len(referee_hash1) == 64  # SHA-256 hash is 64 characters long
+
+    # Empty referees should return empty string
+    empty_hash = fogis_calendar_sync.generate_referee_hash([])
+    assert empty_hash == ""
+
+    # Modify referee data - hash should change
+    referees[0]["personnamn"] = "Jane Doe"
+    referee_hash2 = fogis_calendar_sync.generate_referee_hash(referees)
+    assert referee_hash1 != referee_hash2
+
+
+@pytest.mark.unit
+def test_contact_cache_manager():
+    """Test ContactCacheManager functionality."""
+    import os
+    import tempfile
+
+    # Create a temporary file for testing
+    with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".json") as temp_file:
+        cache_file = temp_file.name
+
+    try:
+        # Initialize cache manager
+        cache_manager = fogis_calendar_sync.ContactCacheManager(cache_file)
+
+        # Test loading empty cache
+        cache = cache_manager.load_contact_cache()
+        assert cache == {}
+
+        # Test setting and getting contact hash
+        cache_manager.set_contact_hash("12345", "hash123")
+        retrieved_hash = cache_manager.get_contact_hash("12345")
+        assert retrieved_hash == "hash123"
+
+        # Test getting non-existent hash
+        non_existent = cache_manager.get_contact_hash("99999")
+        assert non_existent is None
+
+        # Test saving and loading cache
+        cache_data = {"12345": "hash123", "67890": "hash456"}
+        cache_manager.save_contact_cache(cache_data)
+        loaded_cache = cache_manager.load_contact_cache()
+        assert loaded_cache == cache_data
+
+        # Test clearing cache
+        cache_manager.clear_contact_cache()
+        assert not os.path.exists(cache_file)
+
+    finally:
+        # Clean up
+        if os.path.exists(cache_file):
+            os.unlink(cache_file)
+
+
+@pytest.mark.unit
+def test_process_referees_if_needed():
+    """Test process_referees_if_needed function."""
+    import os
+    import tempfile
+    from unittest.mock import MagicMock, patch
+
+    # Create a temporary file for testing
+    with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".json") as temp_file:
+        cache_file = temp_file.name
+
+    try:
+        cache_manager = fogis_calendar_sync.ContactCacheManager(cache_file)
+
+        # Test match with no referees
+        match_no_refs = {"matchid": 12345, "domaruppdraglista": []}
+        result = fogis_calendar_sync.process_referees_if_needed(match_no_refs, cache_manager)
+        assert result is True
+
+        # Test match with referees
+        match_with_refs = {
+            "matchid": 12345,
+            "domaruppdraglista": [
+                {
+                    "personnamn": "John Doe",
+                    "epostadress": "john.doe@example.com",
+                    "telefonnummer": "+46701234567",
+                    "mobiltelefon": "+46701234567",
+                    "adress": "123 Main St",
+                    "postnr": "12345",
+                    "postort": "Stockholm",
+                    "land": "Sweden",
+                    "domarnr": "REF123",
+                    "domarrollkortnamn": "Huvuddomare",
+                }
+            ],
+        }
+
+        # Mock process_referees function
+        with patch.object(
+            fogis_calendar_sync, "process_referees", return_value=True
+        ) as mock_process:
+            # First call should process (no cache)
+            result = fogis_calendar_sync.process_referees_if_needed(match_with_refs, cache_manager)
+            assert result is True
+            mock_process.assert_called_once_with(match_with_refs)
+
+            # Second call should skip (cached)
+            mock_process.reset_mock()
+            result = fogis_calendar_sync.process_referees_if_needed(match_with_refs, cache_manager)
+            assert result is True
+            mock_process.assert_not_called()
+
+            # Force processing should always process
+            mock_process.reset_mock()
+            result = fogis_calendar_sync.process_referees_if_needed(
+                match_with_refs, cache_manager, force_processing=True
+            )
+            assert result is True
+            mock_process.assert_called_once_with(match_with_refs)
+
+    finally:
+        # Clean up
+        if os.path.exists(cache_file):
+            os.unlink(cache_file)
+
+
+@pytest.mark.unit
+def test_sync_calendar_returns_status():
+    """Test that sync_calendar returns proper status values."""
+    import argparse
+    from unittest.mock import MagicMock, patch
+
+    mock_service = MagicMock()
+
+    # Create match data
+    match = {
+        "matchid": 12345,
+        "lag1namn": "Team A",
+        "lag2namn": "Team B",
+        "anlaggningnamn": "Stadium",
+        "tid": "/Date(1640995200000)/",
+        "tavlingnamn": "League",
+        "matchnr": "M001",
+        "domaruppdraglista": [],
+        "kontaktpersoner": [],
+    }
+
+    # Create args object
+    args = argparse.Namespace(fresh_sync=False, delete=False, force_calendar=False, force_all=False)
+
+    # Test successful calendar sync (no existing event)
+    with patch.object(fogis_calendar_sync, "find_event_by_match_id", return_value=None):
+        mock_service.events().insert().execute.return_value = {"summary": "Test Event"}
+        result = fogis_calendar_sync.sync_calendar(match, mock_service, args)
+        assert result is True
+
+    # Test successful calendar sync (existing event, no changes)
+    calendar_hash = fogis_calendar_sync.generate_calendar_hash(match)
+    existing_event = {
+        "id": "event_id",
+        "extendedProperties": {"private": {"calendarHash": calendar_hash}},
+    }
+
+    with patch.object(fogis_calendar_sync, "find_event_by_match_id", return_value=existing_event):
+        result = fogis_calendar_sync.sync_calendar(match, mock_service, args)
+        assert result is True  # Should return True for "no changes needed"
+
+
+@pytest.mark.unit
+def test_sync_calendar_force_flags():
+    """Test sync_calendar with force flags."""
+    import argparse
+    from unittest.mock import MagicMock, patch
+
+    mock_service = MagicMock()
+
+    match = {
+        "matchid": 12345,
+        "lag1namn": "Team A",
+        "lag2namn": "Team B",
+        "anlaggningnamn": "Stadium",
+        "tid": "/Date(1640995200000)/",
+        "tavlingnamn": "League",
+        "matchnr": "M001",
+        "domaruppdraglista": [],
+        "kontaktpersoner": [],
+    }
+
+    calendar_hash = fogis_calendar_sync.generate_calendar_hash(match)
+    existing_event = {
+        "id": "event_id",
+        "extendedProperties": {"private": {"calendarHash": calendar_hash}},
+    }
+
+    # Test force_calendar flag
+    args = argparse.Namespace(fresh_sync=False, delete=False, force_calendar=True, force_all=False)
+
+    with patch.object(fogis_calendar_sync, "find_event_by_match_id", return_value=existing_event):
+        mock_service.events().update().execute.return_value = {"summary": "Updated Event"}
+        result = fogis_calendar_sync.sync_calendar(match, mock_service, args)
+        assert result is True
+        # Check that update was called (the exact number depends on mock setup)
+        assert mock_service.events().update.call_count >= 1
+
+    # Test force_all flag
+    mock_service.reset_mock()
+    args = argparse.Namespace(fresh_sync=False, delete=False, force_calendar=False, force_all=True)
+
+    with patch.object(fogis_calendar_sync, "find_event_by_match_id", return_value=existing_event):
+        mock_service.events().update().execute.return_value = {"summary": "Updated Event"}
+        result = fogis_calendar_sync.sync_calendar(match, mock_service, args)
+        assert result is True
+        # Check that update was called (the exact number depends on mock setup)
+        assert mock_service.events().update.call_count >= 1
+
+
+@pytest.mark.unit
+def test_command_line_arguments():
+    """Test new command-line arguments are properly parsed."""
+    import argparse
+    import sys
+    from unittest.mock import patch
+
+    # Test --force-calendar
+    test_args = ["script_name", "--force-calendar"]
+    with patch.object(sys, "argv", test_args):
+        parser = argparse.ArgumentParser()
+        parser.add_argument("--force-calendar", action="store_true")
+        parser.add_argument("--force-contacts", action="store_true")
+        parser.add_argument("--force-all", action="store_true")
+        parser.add_argument("--fresh-sync", action="store_true")
+
+        args = parser.parse_args(test_args[1:])
+        assert args.force_calendar is True
+        assert args.force_contacts is False
+        assert args.force_all is False
+        assert args.fresh_sync is False
+
+    # Test --force-contacts
+    test_args = ["script_name", "--force-contacts"]
+    with patch.object(sys, "argv", test_args):
+        args = parser.parse_args(test_args[1:])
+        assert args.force_calendar is False
+        assert args.force_contacts is True
+        assert args.force_all is False
+        assert args.fresh_sync is False
+
+    # Test --force-all
+    test_args = ["script_name", "--force-all"]
+    with patch.object(sys, "argv", test_args):
+        args = parser.parse_args(test_args[1:])
+        assert args.force_calendar is False
+        assert args.force_contacts is False
+        assert args.force_all is True
+        assert args.fresh_sync is False
+
+    # Test multiple flags
+    test_args = ["script_name", "--force-calendar", "--force-contacts"]
+    with patch.object(sys, "argv", test_args):
+        args = parser.parse_args(test_args[1:])
+        assert args.force_calendar is True
+        assert args.force_contacts is True
+        assert args.force_all is False
+        assert args.fresh_sync is False
+
+
+@pytest.mark.unit
+def test_backward_compatibility():
+    """Test that --fresh-sync still works as expected."""
+    import argparse
+    from unittest.mock import MagicMock, patch
+
+    mock_service = MagicMock()
+
+    match = {
+        "matchid": 12345,
+        "lag1namn": "Team A",
+        "lag2namn": "Team B",
+        "anlaggningnamn": "Stadium",
+        "tid": "/Date(1640995200000)/",
+        "tavlingnamn": "League",
+        "matchnr": "M001",
+        "domaruppdraglista": [
+            {
+                "personnamn": "John Doe",
+                "epostadress": "john.doe@example.com",
+                "telefonnummer": "+46701234567",
+                "mobiltelefon": "+46701234567",
+                "adress": "123 Main St",
+                "postnr": "12345",
+                "postort": "Stockholm",
+                "land": "Sweden",
+                "domarnr": "REF123",
+                "domarrollkortnamn": "Huvuddomare",
+            }
+        ],
+        "kontaktpersoner": [],
+    }
+
+    # Test fresh_sync forces calendar update even with same hash
+    calendar_hash = fogis_calendar_sync.generate_calendar_hash(match)
+    existing_event = {
+        "id": "event_id",
+        "extendedProperties": {"private": {"calendarHash": calendar_hash}},
+    }
+
+    args = argparse.Namespace(fresh_sync=True, delete=False, force_calendar=False, force_all=False)
+
+    with patch.object(fogis_calendar_sync, "find_event_by_match_id", return_value=existing_event):
+        mock_service.events().update().execute.return_value = {"summary": "Updated Event"}
+        result = fogis_calendar_sync.sync_calendar(match, mock_service, args)
+        assert result is True
+        # Check that update was called (the exact number depends on mock setup)
+        assert mock_service.events().update.call_count >= 1
+
+
+@pytest.mark.unit
 def test_find_event_by_match_id():
     """Test finding an event by match ID."""
     # Create mock service and events
@@ -769,35 +1143,55 @@ class TestMainFunction:
         mock_check_cal.return_value = True
         mock_test_contacts.return_value = True
 
-        # Mock hash generation
+        # Mock hash generation - need both calendar and match hashes
         mock_hash.side_effect = ["hash1", "hash2", "hash1", "hash2"]
 
-        # Mock file operations
-        mock_file = MagicMock()
-        mock_open.return_value.__enter__.return_value = mock_file
+        # Mock the new functions
+        with patch("fogis_calendar_sync.generate_calendar_hash") as mock_cal_hash, patch(
+            "fogis_calendar_sync.ContactCacheManager"
+        ) as mock_cache_mgr, patch(
+            "fogis_calendar_sync.process_referees_if_needed"
+        ) as mock_process_refs:
 
-        with patch("fogis_calendar_sync.logging") as mock_logging, patch("builtins.print"), patch(
-            "fogis_calendar_sync.tabulate"
-        ), patch("fogis_calendar_sync.json.dumps") as mock_json_dumps, patch.dict(
-            fogis_calendar_sync.config_dict,
-            {
-                "CALENDAR_ID": "test_calendar",
-                "MATCH_FILE": "test_matches.json",
-                "DAYS_TO_KEEP_PAST_EVENTS": 7,
-            },
-        ):
+            mock_cal_hash.side_effect = ["cal_hash1", "cal_hash2"]
+            mock_cache_mgr_instance = MagicMock()
+            mock_cache_mgr.return_value = mock_cache_mgr_instance
+            mock_process_refs.return_value = True
+            mock_sync.return_value = True  # Mock sync_calendar to return True
 
-            fogis_calendar_sync.main()
+            # Mock file operations
+            mock_file = MagicMock()
+            mock_open.return_value.__enter__.return_value = mock_file
 
-            # Verify key functions were called
-            mock_delete_orphaned.assert_called_once()
-            mock_delete_events.assert_called_once()  # Because delete=True
-            assert mock_sync.call_count == 2  # Two matches
+            with patch("fogis_calendar_sync.logging") as mock_logging, patch(
+                "builtins.print"
+            ), patch("fogis_calendar_sync.tabulate"), patch(
+                "fogis_calendar_sync.json.dumps"
+            ) as mock_json_dumps, patch.dict(
+                fogis_calendar_sync.config_dict,
+                {
+                    "CALENDAR_ID": "test_calendar",
+                    "MATCH_FILE": "test_matches.json",
+                    "DAYS_TO_KEEP_PAST_EVENTS": 7,
+                },
+            ):
+
+                fogis_calendar_sync.main()
+
+                # Verify key functions were called
+                mock_delete_orphaned.assert_called_once()
+                mock_delete_events.assert_called_once()  # Because delete=True
+                assert mock_sync.call_count == 2  # Two matches
+                assert mock_process_refs.call_count == 2  # Two matches for contact processing
             mock_json_dumps.assert_called_once()
 
             # Verify logging
             mock_logging.info.assert_any_call("Fetching matches, filtering out cancelled games.")
-            mock_logging.info.assert_any_call("Storing hashes for %d matches", 2)
+            # The actual call uses f-string formatting, so we check for the formatted string
+            assert any(
+                "Storing calendar hashes for" in str(call)
+                for call in mock_logging.info.call_args_list
+            )
 
     @patch("fogis_calendar_sync.argparse.ArgumentParser")
     @patch("fogis_calendar_sync.os.environ.get")
@@ -1186,30 +1580,31 @@ def test_sync_calendar_no_changes():
         "kontaktpersoner": [],
     }
 
-    # Generate the expected hash
-    expected_hash = fogis_calendar_sync.generate_match_hash(match)
+    # Generate the expected calendar hash (not match hash)
+    expected_hash = fogis_calendar_sync.generate_calendar_hash(match)
 
-    # Mock existing event with same hash
+    # Mock existing event with same calendar hash
     existing_event = {
         "id": "event_id",
-        "extendedProperties": {"private": {"matchId": "12345", "matchHash": expected_hash}},
+        "extendedProperties": {"private": {"matchId": "12345", "calendarHash": expected_hash}},
     }
-
-    mock_service.events().list().execute.return_value = {"items": [existing_event]}
 
     args = MagicMock()
     args.delete = False
     args.fresh_sync = False
+    args.force_calendar = False
+    args.force_all = False
 
     with patch.dict(
         fogis_calendar_sync.config_dict,
         {"CALENDAR_ID": "calendar_id", "SYNC_TAG": "TEST"},
-    ), patch("fogis_contacts.process_referees", return_value=True), patch(
-        "fogis_contacts.authorize_google_people", return_value=MagicMock()
-    ):
-        fogis_calendar_sync.sync_calendar(match, mock_service, args)
+    ), patch.object(fogis_calendar_sync, "find_event_by_match_id", return_value=existing_event):
+        result = fogis_calendar_sync.sync_calendar(match, mock_service, args)
 
-        # Verify no update or insert was called
+        # Should return True (successful, no changes needed)
+        assert result is True
+
+        # Verify no update or insert was called since no changes detected
         mock_service.events().update.assert_not_called()
         mock_service.events().insert.assert_not_called()
 

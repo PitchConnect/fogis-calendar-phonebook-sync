@@ -192,6 +192,155 @@ def generate_match_hash(match):
     return hashlib.sha256(data_string).hexdigest()
 
 
+def generate_calendar_hash(match):
+    """Generates a hash for calendar-specific match data (excluding referee information)."""
+    data = {
+        "lag1namn": match["lag1namn"],
+        "lag2namn": match["lag2namn"],
+        "anlaggningnamn": match["anlaggningnamn"],
+        "tid": match["tid"],
+        "tavlingnamn": match["tavlingnamn"],
+        "kontaktpersoner": match.get("kontaktpersoner", []),  # Handle missing key
+    }
+
+    data_string = json.dumps(data, sort_keys=True).encode("utf-8")
+    return hashlib.sha256(data_string).hexdigest()
+
+
+def generate_referee_hash(referees):
+    """Generates a hash specifically for referee data."""
+    if not referees:
+        return ""
+
+    referee_data = []
+    for referee in referees:
+        referee_data.append(
+            {
+                "personnamn": referee.get("personnamn", ""),
+                "epostadress": referee.get("epostadress", ""),
+                "telefonnummer": referee.get("telefonnummer", ""),
+                "mobiltelefon": referee.get("mobiltelefon", ""),
+                "adress": referee.get("adress", ""),
+                "postnr": referee.get("postnr", ""),
+                "postort": referee.get("postort", ""),
+                "land": referee.get("land", ""),
+                "domarnr": referee.get("domarnr", ""),
+                "domarrollkortnamn": referee.get("domarrollkortnamn", ""),
+            }
+        )
+
+    # Sort the referee data to ensure consistent hashing
+    referee_data.sort(
+        key=lambda x: (
+            x["personnamn"],
+            x["epostadress"],
+            x["telefonnummer"],
+            x["mobiltelefon"],
+            x["adress"],
+            x["domarnr"],
+        )
+    )
+
+    data_string = json.dumps(referee_data, sort_keys=True).encode("utf-8")
+    return hashlib.sha256(data_string).hexdigest()
+
+
+class ContactCacheManager:
+    """Manages contact-specific cache for independent contact processing."""
+
+    def __init__(self, cache_file_path):
+        """Initialize the ContactCacheManager with cache file path."""
+        self.cache_file_path = cache_file_path
+
+    def load_contact_cache(self):
+        """Load contact cache from file."""
+        try:
+            with open(self.cache_file_path, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except FileNotFoundError:
+            logging.info(
+                f"Contact cache file not found: {self.cache_file_path}. Starting with empty cache."
+            )
+            return {}
+        except Exception as e:
+            logging.warning(f"Error loading contact cache: {e}")
+            return {}
+
+    def save_contact_cache(self, cache_data):
+        """Save contact cache to file."""
+        try:
+            with open(self.cache_file_path, "w", encoding="utf-8") as f:
+                f.write(json.dumps(cache_data, indent=4, ensure_ascii=False))
+            logging.debug(f"Contact cache saved with {len(cache_data)} entries")
+        except Exception as e:
+            logging.error(f"Error saving contact cache: {e}")
+
+    def clear_contact_cache(self):
+        """Clear the contact cache file."""
+        try:
+            if os.path.exists(self.cache_file_path):
+                os.remove(self.cache_file_path)
+                logging.info(f"Contact cache cleared: {self.cache_file_path}")
+        except Exception as e:
+            logging.warning(f"Error clearing contact cache: {e}")
+
+    def get_contact_hash(self, match_id):
+        """Get the stored contact hash for a match."""
+        cache = self.load_contact_cache()
+        return cache.get(str(match_id))
+
+    def set_contact_hash(self, match_id, contact_hash):
+        """Set the contact hash for a match."""
+        cache = self.load_contact_cache()
+        cache[str(match_id)] = contact_hash
+        self.save_contact_cache(cache)
+
+
+def process_referees_if_needed(match, contact_cache_manager, force_processing=False):
+    """Process referees only if referee data has changed or force_processing is True.
+
+    Args:
+        match (dict): Match data containing referee information
+        contact_cache_manager (ContactCacheManager): Cache manager for contact hashes
+        force_processing (bool): If True, process regardless of cache state
+
+    Returns:
+        bool: True if processing was performed or skipped successfully, False if failed
+    """
+    match_id = str(match["matchid"])
+    referees = match.get("domaruppdraglista", [])
+
+    if not referees:
+        logging.info(f"Match {match_id}: No referees found, skipping contact processing")
+        return True
+
+    # Generate hash for current referee data
+    referee_hash = generate_referee_hash(referees)
+
+    # Check if processing is needed
+    if not force_processing:
+        cached_hash = contact_cache_manager.get_contact_hash(match_id)
+        if cached_hash == referee_hash:
+            logging.info(f"Match {match_id}: Referee data unchanged, skipping contact processing")
+            return True
+
+    logging.info(
+        f"Match {match_id}: Processing {len(referees)} referees (force={force_processing})"
+    )
+
+    # Process contacts using existing function
+    success = process_referees(match)
+
+    if success:
+        # Update cache with new hash
+        contact_cache_manager.set_contact_hash(match_id, referee_hash)
+        logging.info(f"Match {match_id}: Contact processing completed successfully")
+    else:
+        logging.error(f"Match {match_id}: Contact processing failed")
+
+    return success
+
+
 def check_calendar_exists(service, calendar_id):
     """Checks if a calendar exists and is accessible."""
     try:
@@ -342,10 +491,15 @@ def delete_orphaned_events(service, match_list, days_to_keep_past_events=7):
 
 
 def sync_calendar(match, service, args):
-    """Syncs a single match with Google Calendar and manages referee contacts."""
+    """Syncs a single match with Google Calendar (contacts handled separately).
+
+    Returns:
+        bool: True if calendar sync was performed or skipped successfully, False if failed
+    """
     match_id = match["matchid"]
     try:
-        match_hash = generate_match_hash(match)  # Generate hash for current match data
+        # Use calendar-specific hash for change detection
+        calendar_hash = generate_calendar_hash(match)
 
         # Convert Unix timestamp (milliseconds) to datetime object (UTC)
         timestamp = int(match["tid"][6:-2]) / 1000
@@ -409,7 +563,7 @@ def sync_calendar(match, service, args):
                 "private": {
                     "matchId": str(match_id),
                     "syncTag": config_dict["SYNC_TAG"],  # Use config_dict['SYNC_TAG']
-                    "matchHash": match_hash,  # Store the hash of the match data
+                    "calendarHash": calendar_hash,  # Store calendar-specific hash
                 }
             },
             "reminders": {
@@ -428,15 +582,31 @@ def sync_calendar(match, service, args):
 
         try:
             if existing_event:
-                # Get the stored hash from the existing event
-                existing_hash = (
-                    existing_event.get("extendedProperties", {}).get("private", {}).get("matchHash")
+                # Get the stored calendar hash from the existing event
+                existing_calendar_hash = (
+                    existing_event.get("extendedProperties", {})
+                    .get("private", {})
+                    .get("calendarHash")
                 )
+                # Also check legacy matchHash for backward compatibility
+                if not existing_calendar_hash:
+                    existing_calendar_hash = (
+                        existing_event.get("extendedProperties", {})
+                        .get("private", {})
+                        .get("matchHash")
+                    )
 
-                if existing_hash == match_hash and not args.fresh_sync:
+                # Check if calendar data has changed
+                force_calendar = (
+                    getattr(args, "force_calendar", False)
+                    or getattr(args, "force_all", False)
+                    or args.fresh_sync
+                )
+                if existing_hash == match_hash and not force_calendar:
                     logging.info(
-                        f"Match {match_id}: No changes detected, skipping update."
-                    )  # Use logging
+                        f"Match {match_id}: No calendar changes detected, skipping update."
+                    )
+                    return True  # Calendar sync successful (no changes needed)
                 else:
                     # Update existing event
                     updated_event = (
@@ -458,6 +628,7 @@ def sync_calendar(match, service, args):
                             logging.error(
                                 "Error during referee processing: --- check logs in fogis_contacts.py --- "
                             )  # Logging error if process_referees fails
+                    return True  # Calendar sync successful
             else:
                 # Create new event
                 event = (
@@ -473,16 +644,19 @@ def sync_calendar(match, service, args):
                         logging.error(
                             "Error during referee processing: --- check logs in fogis_contacts.py --- "
                         )  # Logging error if process_referees fails
+                return True  # Calendar sync successful
 
         except HttpError as error:
             logging.error(
                 "An error occurred during calendar sync for match %s: %s",
                 match_id,
                 error,
-            )  # Use logging
+            )
+            return False  # Calendar sync failed
 
     except Exception as e:
         logging.exception("An unexpected error occurred syncing match %s: %s", match_id, e)
+        return False  # Calendar sync failed
 
 
 def main():
@@ -496,6 +670,22 @@ def main():
         "--fresh-sync",
         action="store_true",
         help="Force complete reprocessing of both calendar events and referee contacts, regardless of cached state.",
+    )
+    parser.add_argument(
+    parser.add_argument(
+        "--force-calendar",
+        action="store_true",
+        help="Force reprocessing of calendar events only, ignoring calendar cache.",
+    )
+    parser.add_argument(
+        "--force-contacts",
+        action="store_true",
+        help="Force reprocessing of referee contacts only, ignoring contact cache.",
+    )
+    parser.add_argument(
+        "--force-all",
+        action="store_true",
+        help="Force reprocessing of both calendar events and contacts, ignoring all caches.",
     )
     parser.add_argument(
         "--download", action="store_true", help="Downloads data from FOGIS to local."
@@ -585,29 +775,62 @@ def main():
             )
             return  # Exit if People API doesn't work
 
-        # Load the old matches from a file (unless fresh-sync is requested)
-        if args.fresh_sync:
-            logging.info("🔄 Fresh sync requested - clearing all cached match data")
+        # Initialize dual cache system
+        calendar_cache_file = config_dict["MATCH_FILE"]  # Keep existing file for calendar cache
+        contact_cache_file = calendar_cache_file.replace(".json", "_contacts.json")
+
+        contact_cache_manager = ContactCacheManager(contact_cache_file)
+
+        # Handle cache clearing based on command-line arguments
+        if args.fresh_sync or args.force_all:
+            logging.info("🔄 Fresh sync/force-all requested - clearing all cached data")
             old_matches = {}
-            # Also clear the cache file
+            contact_cache_manager.clear_contact_cache()
+            # Clear calendar cache file
             try:
-                if os.path.exists(config_dict["MATCH_FILE"]):
-                    os.remove(config_dict["MATCH_FILE"])
-                    logging.info("📁 Cleared match cache file for fresh sync")
+                if os.path.exists(calendar_cache_file):
+                    os.remove(calendar_cache_file)
+                    logging.info("📁 Cleared calendar cache file")
             except Exception as e:
-                logging.warning("Failed to clear cache file: %s", e)
-        else:
+                logging.warning("Failed to clear calendar cache file: %s", e)
+        elif args.force_calendar:
+            logging.info("🗓️ Force calendar sync requested - clearing calendar cache only")
+            old_matches = {}
             try:
-                with open(config_dict["MATCH_FILE"], "r", encoding="utf-8") as f:
+                if os.path.exists(calendar_cache_file):
+                    os.remove(calendar_cache_file)
+                    logging.info("📁 Cleared calendar cache file")
+            except Exception as e:
+                logging.warning("Failed to clear calendar cache file: %s", e)
+        elif args.force_contacts:
+            logging.info("👥 Force contact sync requested - clearing contact cache only")
+            contact_cache_manager.clear_contact_cache()
+            # Load existing calendar cache
+            try:
+                with open(calendar_cache_file, "r", encoding="utf-8") as f:
                     old_matches = json.load(f)
             except FileNotFoundError:
                 logging.warning(
-                    "Match file not found: %s. Starting with empty match list.",
-                    config_dict["MATCH_FILE"],
+                    "Calendar cache file not found: %s. Starting with empty cache.",
+                    calendar_cache_file,
                 )
                 old_matches = {}
             except Exception as e:
-                logging.warning("An unexpected error occurred while loading old matches: %s", e)
+                logging.warning("Error loading calendar cache: %s", e)
+                old_matches = {}
+        else:
+            # Normal operation - load existing caches
+            try:
+                with open(calendar_cache_file, "r", encoding="utf-8") as f:
+                    old_matches = json.load(f)
+            except FileNotFoundError:
+                logging.warning(
+                    "Calendar cache file not found: %s. Starting with empty cache.",
+                    calendar_cache_file,
+                )
+                old_matches = {}
+            except Exception as e:
+                logging.warning("Error loading calendar cache: %s", e)
                 old_matches = {}
 
         # Delete orphaned events (events with syncTag that are not in the match_list)
@@ -624,29 +847,66 @@ def main():
             )  # Removed logging to keep prints clean
             delete_calendar_events(service, match_list)
 
-        # Process each match
+        # Process each match with independent pipelines
+        calendar_processed = 0
+        contact_processed = 0
+        calendar_skipped = 0
+        contact_skipped = 0
+
         for match in match_list:
             match_id = str(match["matchid"])
-            match_hash = generate_match_hash(match)
+            calendar_hash = generate_calendar_hash(match)
 
-            if (
-                not args.fresh_sync
-                and match_id in old_matches
-                and old_matches[match_id] == match_hash
-            ):
-                logging.info("Match %s: No changes detected, skipping sync.", match_id)
-                continue  # Skip to the next match
+            # 1. Handle calendar sync independently
+            force_calendar_sync = args.fresh_sync or args.force_calendar or args.force_all
+            calendar_needs_sync = (
+                force_calendar_sync
+                or match_id not in old_matches
+                or old_matches[match_id] != calendar_hash
+            )
 
-            sync_calendar(match, service, args)  # Pass from_date to sync_calendar!
-            # process_referees(match, people_service, config) # No longer called directly here
+            calendar_updated = False
+            if calendar_needs_sync:
+                logging.info(f"Match {match_id}: Processing calendar sync")
+                calendar_updated = sync_calendar(match, service, args)
+                if calendar_updated:
+                    calendar_processed += 1
+                    # Update calendar cache
+                    old_matches[match_id] = calendar_hash
+                else:
+                    logging.error(f"Match {match_id}: Calendar sync failed")
+            else:
+                logging.info(f"Match {match_id}: Calendar data unchanged, skipping sync")
+                calendar_skipped += 1
 
-            # Store hash
-            old_matches[match_id] = match_hash
+            # 2. Handle contact processing independently
+            force_contact_sync = args.fresh_sync or args.force_contacts or args.force_all
+            contact_updated = process_referees_if_needed(
+                match, contact_cache_manager, force_processing=force_contact_sync
+            )
 
-        logging.info("Storing hashes for %d matches", len(old_matches))
+            if contact_updated:
+                # Check if processing was actually performed (not just skipped)
+                referees = match.get("domaruppdraglista", [])
+                if referees:
+                    referee_hash = generate_referee_hash(referees)
+                    cached_hash = contact_cache_manager.get_contact_hash(match_id)
+                    if cached_hash == referee_hash and not force_contact_sync:
+                        contact_skipped += 1
+                    else:
+                        contact_processed += 1
+                else:
+                    contact_skipped += 1
 
-        with open(config_dict["MATCH_FILE"], "w", encoding="utf-8") as f:
+        # Save calendar cache
+        logging.info(f"Storing calendar hashes for {len(old_matches)} matches")
+        with open(calendar_cache_file, "w", encoding="utf-8") as f:
             f.write(json.dumps(old_matches, indent=4, ensure_ascii=False))
+
+        # Print processing summary
+        print("\n--- Processing Summary ---")
+        print(f"Calendar events: {calendar_processed} processed, {calendar_skipped} skipped")
+        print(f"Contact processing: {contact_processed} processed, {contact_skipped} skipped")
 
     except HttpError as error:
         logging.error("An HTTP error occurred: %s", error)
