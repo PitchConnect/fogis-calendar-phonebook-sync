@@ -1,15 +1,80 @@
+# Version control and CI/CD
 .git
 .github
 .gitignore
+
+# Environment and configuration
 .env*
+*.env
+
+# Python cache and compiled files
 __pycache__
 *.pyc
 *.pyo
 *.pyd
 .Python
+*.so
+
+# Virtual environments
 env/
 venv/
 .venv/
+.virtualenv/
+
+# Testing and coverage
+.pytest_cache
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+.tox
+.cache
+nosetests.xml
+*.cover
+
+# Development tools
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs and temporary files
 *.log
+logs/
 .DS_Store
+.tmp/
+tmp/
+
+# Documentation (not needed in container)
+*.md
+docs/
+README*
+CHANGELOG*
+LICENSE*
+
+# Docker files (not needed in container)
+Dockerfile*
+docker-compose*.yml
+.dockerignore
+
+# Node.js (if any)
 node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+
+# Backup and temporary files
+*.bak
+*.backup
+*.tmp
+*~
+
+# OS generated files
+Thumbs.db
+.DS_Store
