@@ -29,11 +29,23 @@ jobs:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
 
+    - name: Determine build platforms
+      id: platforms
+      run: |
+        # Only build ARM64 for releases and main branch pushes
+        if [[ "${{ github.event_name }}" == "push" && "${{ github.ref }}" == "refs/heads/main" ]] || [[ "${{ github.ref }}" == refs/tags/* ]]; then
+          echo "platforms=linux/amd64,linux/arm64" >> $GITHUB_OUTPUT
+          echo "Building multi-platform for release/main"
+        else
+          echo "platforms=linux/amd64" >> $GITHUB_OUTPUT
+          echo "Building AMD64 only for PR/develop"
+        fi
+
     - name: Cache Docker layers
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: /tmp/.buildx-cache
-        key: ${{ runner.os }}-buildx-${{ github.sha }}
+        key: ${{ runner.os }}-buildx-${{ hashFiles('requirements.txt', 'dev-requirements.txt') }}
         restore-keys: |
           ${{ runner.os }}-buildx-
 
@@ -56,8 +68,10 @@ jobs:
       with:
         context: .
         push: ${{ github.event_name != 'pull_request' }}
-        platforms: linux/amd64,linux/arm64
+        platforms: ${{ steps.platforms.outputs.platforms }}
         tags: ${{ steps.meta.outputs.tags }}
         labels: ${{ steps.meta.outputs.labels }}
         cache-from: type=gha
         cache-to: type=gha,mode=max
+        build-args: |
+          VERSION=${{ github.sha }}
