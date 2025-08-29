@@ -195,6 +195,37 @@ This will:
    # Force complete reprocessing with calendar event deletion
    python fogis_calendar_sync.py --fresh-sync --delete
    ```
+* `--force-calendar`: Force reprocessing of calendar events only, ignoring calendar cache but preserving contact processing cache.
+
+   ```bash
+   python fogis_calendar_sync.py --force-calendar
+   ```
+
+   **Use cases:**
+   - When calendar events need updating but contacts are correct
+   - After calendar configuration changes
+   - To refresh calendar events without reprocessing contacts
+
+* `--force-contacts`: Force reprocessing of referee contacts only, ignoring contact cache but preserving calendar processing cache.
+
+   ```bash
+   python fogis_calendar_sync.py --force-contacts
+   ```
+
+   **Use cases:**
+   - When referee contacts are missing or outdated
+   - After Google Contacts configuration changes
+   - To refresh contacts without updating calendar events
+
+* `--force-all`: Force reprocessing of both calendar events and contacts, ignoring all caches (equivalent to `--fresh-sync`).
+
+   ```bash
+   python fogis_calendar_sync.py --force-all
+   ```
+
+   **Use cases:**
+   - Complete refresh of both calendar and contacts
+   - Alternative to `--fresh-sync` with clearer intent
 
 * `--download`:  *(Currently this option is not fully implemented and doesn't perform a separate download)*. In the current version, the script always downloads match data from FOGIS.
 
