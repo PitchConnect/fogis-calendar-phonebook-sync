@@ -6,6 +6,7 @@ and synchronizes them with Google Contacts.
 
 import logging
 import os
+import re  # For phone number normalization
 import time  # Import time for sleep
 
 import google.auth
@@ -36,6 +37,83 @@ MAX_RETRIES_GOOGLE_API = 5
 BACKOFF_FACTOR_GOOGLE_API = 2
 BASE_DELAY_GOOGLE_API = 60  # Increased base delay to 60 seconds for quota errors!
 DELAY_BETWEEN_CONTACT_CALLS = 1  # Increased delay between calls to 1 second!
+
+
+def normalize_email_address(email):
+    """
+    Normalize email address for better duplicate detection.
+
+    Handles common email variations:
+    - Converts to lowercase
+    - Strips whitespace
+    - Validates basic email format
+
+    Args:
+        email (str): Raw email address
+
+    Returns:
+        str: Normalized email address or empty string if invalid
+    """
+    if not email or not isinstance(email, str):
+        return ""
+
+    # Strip whitespace and convert to lowercase
+    normalized = email.strip().lower()
+
+    # Basic email validation (contains @ with content before and after, and at least one dot after @)
+    if "@" in normalized:
+        parts = normalized.split("@")
+        if len(parts) == 2 and parts[0] and parts[1] and "." in parts[1]:
+            return normalized
+
+    # Return empty string for invalid emails
+    logging.debug(f"Email address normalization failed for: {email}")
+    return ""
+
+
+def normalize_phone_number(phone):
+    """
+    Normalize phone number for better duplicate detection.
+
+    Handles common Swedish phone number formats:
+    - Removes spaces, dashes, parentheses
+    - Converts Swedish national format (07X) to international (+467X)
+    - Ensures consistent +46 country code format
+
+    Args:
+        phone (str): Raw phone number
+
+    Returns:
+        str: Normalized phone number or empty string if invalid
+    """
+    if not phone or not isinstance(phone, str):
+        return ""
+
+    # Remove all non-digit characters except +
+    normalized = re.sub(r"[^\d+]", "", phone.strip())
+
+    # Handle empty result
+    if not normalized:
+        return ""
+
+    # Handle Swedish phone number formats
+    if normalized.startswith("0"):
+        # Convert Swedish national format (07X) to international (+467X)
+        normalized = "+46" + normalized[1:]
+    elif normalized.startswith("46") and not normalized.startswith("+46"):
+        # Add + to country code if missing
+        normalized = "+" + normalized
+    elif not normalized.startswith("+") and len(normalized) >= 10:
+        # Assume Swedish number if no country code and reasonable length
+        normalized = "+46" + normalized
+
+    # Validate final format (should be +46 followed by 8-9 digits)
+    if re.match(r"^\+46\d{8,9}$", normalized) or re.match(r"^\+\d{10,15}$", normalized):
+        return normalized
+    else:
+        # Return original if normalization failed
+        logging.debug(f"Phone number normalization failed for: {phone} -> {normalized}")
+        return phone
 
 
 def authorize_google_people():
@@ -366,8 +444,8 @@ def find_contact_by_name_and_phone(service, name, phone, referee):
                 .connections()
                 .list(
                     resourceName="people/me",
-                    personFields="names",
-                    pageSize=1000,  # phoneNumbers',
+                    personFields="names,phoneNumbers,emailAddresses",  # Added emailAddresses for enhanced matching
+                    pageSize=1000,
                 )
             )
             while request:
@@ -377,16 +455,53 @@ def find_contact_by_name_and_phone(service, name, phone, referee):
                 request = service.people().connections().list_next(request, results)
 
             if all_connections:
+                # Normalize the search phone number for comparison
+                normalized_search_phone = normalize_phone_number(phone)
+
                 for person in all_connections:
                     if "phoneNumbers" in person:
                         for phone_number in person["phoneNumbers"]:
+                            # Try exact match first
                             if phone_number["value"] == phone:
                                 logging.info(
-                                    f"  - Contact found by phone number (fallback, paginated): {phone}"
+                                    f"  - Contact found by exact phone number match: {phone}"
                                 )
                                 return person
+
+                            # Try normalized match for better duplicate detection
+                            normalized_contact_phone = normalize_phone_number(phone_number["value"])
+                            if (
+                                normalized_contact_phone
+                                and normalized_contact_phone == normalized_search_phone
+                            ):
+                                logging.info(
+                                    f"  - Contact found by normalized phone number match: {phone} -> {normalized_search_phone}"
+                                )
+                                return person
+
+                # --- Tertiary: Email Address Matching ---
+                referee_email = referee.get("epostadress", "")
+                if referee_email:
+                    normalized_search_email = normalize_email_address(referee_email)
+                    if normalized_search_email:
+                        for person in all_connections:
+                            if "emailAddresses" in person:
+                                for email_data in person["emailAddresses"]:
+                                    contact_email = email_data.get("value", "")
+                                    normalized_contact_email = normalize_email_address(
+                                        contact_email
+                                    )
+                                    if (
+                                        normalized_contact_email
+                                        and normalized_contact_email == normalized_search_email
+                                    ):
+                                        logging.info(
+                                            f"  - Contact found by email address match: {referee_email} -> {normalized_search_email}"
+                                        )
+                                        return person
+
                 logging.info(
-                    f"  - Contact not found for name '{name}' and phone '{phone}' (paginated search)"
+                    f"  - Contact not found for name '{name}', phone '{phone}', and email '{referee_email}' (comprehensive search)"
                 )
                 return None  # Not found by either method
             break  # Break retry loop if successful (or not found)
@@ -578,7 +693,7 @@ def find_contact_by_phone(service, phone):
                 .connections()
                 .list(
                     resourceName="people/me",
-                    personFields="names,phoneNumbers",
+                    personFields="names,phoneNumbers,emailAddresses",  # Added emailAddresses for consistency
                     pageSize=100,
                 )
                 .execute()
@@ -586,12 +701,27 @@ def find_contact_by_phone(service, phone):
             connections = results.get("connections", [])
 
             if connections:
+                # Normalize the search phone number for comparison
+                normalized_search_phone = normalize_phone_number(phone)
+
                 for person in connections:
                     if "phoneNumbers" in person:
                         for phone_number in person["phoneNumbers"]:
+                            # Try exact match first
                             if phone_number["value"] == phone:
                                 logging.info(
-                                    f"  - Existing contact found for phone number: {phone}"
+                                    f"  - Existing contact found for exact phone number: {phone}"
+                                )
+                                return person
+
+                            # Try normalized match for better duplicate detection
+                            normalized_contact_phone = normalize_phone_number(phone_number["value"])
+                            if (
+                                normalized_contact_phone
+                                and normalized_contact_phone == normalized_search_phone
+                            ):
+                                logging.info(
+                                    f"  - Existing contact found for normalized phone number: {phone} -> {normalized_search_phone}"
                                 )
                                 return person
             return (
@@ -624,6 +754,181 @@ def find_contact_by_phone(service, phone):
             return None
         time.sleep(DELAY_BETWEEN_CONTACT_CALLS)  # Rate limiting delay
     return None  # Return None if all retries fail
+
+
+def find_duplicate_contacts(service, dry_run=True):
+    """
+    Identify potential duplicate contacts in Google Contacts.
+
+    This function scans all contacts and identifies potential duplicates based on:
+    1. Normalized phone numbers
+    2. Similar names with same phone numbers
+    3. FogisId external IDs
+
+    Args:
+        service: Google People API service instance
+        dry_run (bool): If True, only report duplicates without making changes
+
+    Returns:
+        dict: Dictionary containing duplicate groups and statistics
+    """
+    logging.info("🔍 Scanning for duplicate contacts...")
+
+    try:
+        # Fetch all contacts with relevant fields
+        all_connections = []
+        request = (
+            service.people()
+            .connections()
+            .list(
+                resourceName="people/me",
+                personFields="names,phoneNumbers,emailAddresses,externalIds,resourceName",  # Added emailAddresses
+                pageSize=1000,
+            )
+        )
+
+        while request:
+            results = request.execute()
+            connections = results.get("connections", [])
+            all_connections.extend(connections)
+            request = service.people().connections().list_next(request, results)
+
+        logging.info(f"📊 Analyzing {len(all_connections)} contacts for duplicates...")
+
+        # Group contacts by normalized phone numbers and email addresses
+        phone_groups = {}
+        email_groups = {}
+        fogis_groups = {}
+
+        for contact in all_connections:
+            contact_id = contact.get("resourceName", "")
+            contact_name = ""
+
+            # Extract contact name
+            if "names" in contact and contact["names"]:
+                contact_name = contact["names"][0].get("displayName", "")
+
+            # Group by normalized phone numbers
+            if "phoneNumbers" in contact:
+                for phone_data in contact["phoneNumbers"]:
+                    phone = phone_data.get("value", "")
+                    if phone:
+                        normalized_phone = normalize_phone_number(phone)
+                        if normalized_phone:
+                            if normalized_phone not in phone_groups:
+                                phone_groups[normalized_phone] = []
+                            phone_groups[normalized_phone].append(
+                                {
+                                    "id": contact_id,
+                                    "name": contact_name,
+                                    "phone": phone,
+                                    "normalized_phone": normalized_phone,
+                                }
+                            )
+
+            # Group by normalized email addresses
+            if "emailAddresses" in contact:
+                for email_data in contact["emailAddresses"]:
+                    email = email_data.get("value", "")
+                    if email:
+                        normalized_email = normalize_email_address(email)
+                        if normalized_email:
+                            if normalized_email not in email_groups:
+                                email_groups[normalized_email] = []
+                            email_groups[normalized_email].append(
+                                {
+                                    "id": contact_id,
+                                    "name": contact_name,
+                                    "email": email,
+                                    "normalized_email": normalized_email,
+                                }
+                            )
+
+            # Group by FogisId external IDs
+            if "externalIds" in contact:
+                for external_id in contact["externalIds"]:
+                    if external_id.get("type") == "account" and external_id.get(
+                        "value", ""
+                    ).startswith("FogisId="):
+                        fogis_id = external_id.get("value")
+                        if fogis_id not in fogis_groups:
+                            fogis_groups[fogis_id] = []
+                        fogis_groups[fogis_id].append(
+                            {"id": contact_id, "name": contact_name, "fogis_id": fogis_id}
+                        )
+
+        # Identify duplicate groups
+        phone_duplicates = {
+            phone: contacts for phone, contacts in phone_groups.items() if len(contacts) > 1
+        }
+        email_duplicates = {
+            email: contacts for email, contacts in email_groups.items() if len(contacts) > 1
+        }
+        fogis_duplicates = {
+            fogis_id: contacts for fogis_id, contacts in fogis_groups.items() if len(contacts) > 1
+        }
+
+        # Generate report
+        duplicate_report = {
+            "phone_duplicates": phone_duplicates,
+            "email_duplicates": email_duplicates,
+            "fogis_duplicates": fogis_duplicates,
+            "total_contacts": len(all_connections),
+            "phone_duplicate_groups": len(phone_duplicates),
+            "email_duplicate_groups": len(email_duplicates),
+            "fogis_duplicate_groups": len(fogis_duplicates),
+            "total_duplicate_contacts": (
+                sum(len(contacts) for contacts in phone_duplicates.values())
+                + sum(len(contacts) for contacts in email_duplicates.values())
+                + sum(len(contacts) for contacts in fogis_duplicates.values())
+            ),
+        }
+
+        # Log summary
+        logging.info("📋 Duplicate Analysis Results:")
+        logging.info(f"   - Total contacts analyzed: {duplicate_report['total_contacts']}")
+        logging.info(
+            f"   - Phone number duplicate groups: {duplicate_report['phone_duplicate_groups']}"
+        )
+        logging.info(
+            f"   - Email address duplicate groups: {duplicate_report['email_duplicate_groups']}"
+        )
+        logging.info(f"   - FogisId duplicate groups: {duplicate_report['fogis_duplicate_groups']}")
+        logging.info(
+            f"   - Total contacts involved in duplicates: {duplicate_report['total_duplicate_contacts']}"
+        )
+
+        # Log detailed duplicates
+        if phone_duplicates:
+            logging.info("📞 Phone Number Duplicates:")
+            for phone, contacts in phone_duplicates.items():
+                logging.info(f"   Phone {phone}:")
+                for contact in contacts:
+                    logging.info(
+                        f"     - {contact['name']} (ID: {contact['id']}) - Original: {contact['phone']}"
+                    )
+
+        if email_duplicates:
+            logging.info("📧 Email Address Duplicates:")
+            for email, contacts in email_duplicates.items():
+                logging.info(f"   Email {email}:")
+                for contact in contacts:
+                    logging.info(
+                        f"     - {contact['name']} (ID: {contact['id']}) - Original: {contact['email']}"
+                    )
+
+        if fogis_duplicates:
+            logging.info("🆔 FogisId Duplicates:")
+            for fogis_id, contacts in fogis_duplicates.items():
+                logging.info(f"   {fogis_id}:")
+                for contact in contacts:
+                    logging.info(f"     - {contact['name']} (ID: {contact['id']})")
+
+        return duplicate_report
+
+    except Exception as e:
+        logging.exception(f"❌ Error scanning for duplicates: {e}")
+        return {"error": str(e)}
 
 
 def create_google_contact(service, referee, group_id):
