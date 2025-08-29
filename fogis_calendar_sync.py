@@ -602,7 +602,7 @@ def sync_calendar(match, service, args):
                     or getattr(args, "force_all", False)
                     or args.fresh_sync
                 )
-                if existing_hash == match_hash and not force_calendar:
+                if existing_calendar_hash == calendar_hash and not force_calendar:
                     logging.info(
                         f"Match {match_id}: No calendar changes detected, skipping update."
                     )
@@ -671,7 +671,6 @@ def main():
         action="store_true",
         help="Force complete reprocessing of both calendar events and referee contacts, regardless of cached state.",
     )
-    parser.add_argument(
     parser.add_argument(
         "--force-calendar",
         action="store_true",
