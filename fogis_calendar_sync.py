@@ -619,6 +619,15 @@ def sync_calendar(match, service, args):
                         .execute()
                     )
                     logging.info("Updated event: %s", updated_event["summary"])  # Use logging
+                    if (
+                        not args.delete or args.fresh_sync
+                    ):  # Process contacts unless delete-only mode
+                        if not process_referees(
+                            match
+                        ):  # Call process_referees, pass people_service and config
+                            logging.error(
+                                "Error during referee processing: --- check logs in fogis_contacts.py --- "
+                            )  # Logging error if process_referees fails
                     return True  # Calendar sync successful
             else:
                 # Create new event
@@ -628,6 +637,13 @@ def sync_calendar(match, service, args):
                     .execute()
                 )  # Use config_dict['CALENDAR_ID']
                 logging.info("Created event: %s", event["summary"])  # Use logging
+                if not args.delete or args.fresh_sync:  # Process contacts unless delete-only mode
+                    if not process_referees(
+                        match
+                    ):  # Call process_referees, pass people_service and config
+                        logging.error(
+                            "Error during referee processing: --- check logs in fogis_contacts.py --- "
+                        )  # Logging error if process_referees fails
                 return True  # Calendar sync successful
 
         except HttpError as error:
