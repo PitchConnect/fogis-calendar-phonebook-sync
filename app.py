@@ -6,24 +6,45 @@ import subprocess
 from dotenv import load_dotenv
 from flask import Flask, jsonify, request
 
+# Import enhanced logging and error handling
+from src.core import (
+    CalendarSyncError,
+    configure_logging,
+    get_logger,
+    handle_calendar_errors,
+)
+
 # Import version information
 from version import get_version
 
 # Load environment variables from .env file
 load_dotenv()
 
-# Configure logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+# Configure enhanced logging
+configure_logging(
+    log_level=os.environ.get("LOG_LEVEL", "INFO"),
+    enable_console=os.environ.get("LOG_ENABLE_CONSOLE", "true").lower() == "true",
+    enable_file=os.environ.get("LOG_ENABLE_FILE", "true").lower() == "true",
+    enable_structured=os.environ.get("LOG_ENABLE_STRUCTURED", "true").lower() == "true",
+    log_dir=os.environ.get("LOG_DIR", "logs"),
+    log_file=os.environ.get("LOG_FILE", "fogis-calendar-phonebook-sync.log"),
+)
 
 app = Flask(__name__)
 
+# Get enhanced logger
+logger = get_logger(__name__, "app")
+
 
 @app.route("/health", methods=["GET"])
+@handle_calendar_errors("health_check", "health")
 def health_check():
     """Health check endpoint for Docker healthcheck."""
+    logger.info("Health check requested")
     try:
         # Check if we can access the data directory
         if not os.path.exists("data"):
+            logger.error("Data directory not accessible")
             return (
                 jsonify({"status": "error", "message": "Data directory not accessible"}),
                 500,
@@ -34,6 +55,7 @@ def health_check():
         token_path = os.environ.get(
             "GOOGLE_CALENDAR_TOKEN_FILE", "/app/credentials/tokens/calendar/token.json"
         )
+        logger.debug(f"Checking OAuth token at path: {token_path}")
         legacy_token_path = "/app/data/token.json"
         working_dir_token = "/app/token.json"
 
@@ -54,6 +76,9 @@ def health_check():
             token_location = working_dir_token
 
         if not token_found:
+            logger.warning(
+                f"OAuth token not found in any checked locations: {[token_path, legacy_token_path, working_dir_token]}"
+            )
             return (
                 jsonify(
                     {
@@ -122,8 +147,10 @@ def health_check():
 
 
 @app.route("/sync", methods=["POST"])
+@handle_calendar_errors("fogis_sync", "sync")
 def sync_fogis():
     """Endpoint to trigger FOGIS calendar and contacts sync."""
+    logger.info("FOGIS sync request received")
     try:
         # Get optional parameters from request
         data = request.get_json(silent=True) or {}
@@ -141,14 +168,14 @@ def sync_fogis():
             env["FOGIS_PASSWORD"] = data["password"]
 
         # Run the sync script as a subprocess
-        logging.info("Starting FOGIS sync process")
+        logger.info(f"Starting FOGIS sync process with command: {' '.join(cmd)}")
         process = subprocess.run(cmd, env=env, capture_output=True, text=True, check=False)
 
         # Check if the process was successful
         if process.returncode == 0:
             # Check for errors in stderr even with success return code
             if process.stderr and ("ERROR" in process.stderr or "FAILED" in process.stderr.upper()):
-                logging.warning("FOGIS sync completed with warnings/errors: %s", process.stderr)
+                logger.warning(f"FOGIS sync completed with warnings/errors: {process.stderr}")
                 return jsonify(
                     {
                         "status": "warning",
@@ -158,7 +185,7 @@ def sync_fogis():
                     }
                 )
             else:
-                logging.info("FOGIS sync completed successfully")
+                logger.info("FOGIS sync completed successfully")
                 return jsonify(
                     {
                         "status": "success",
@@ -167,7 +194,7 @@ def sync_fogis():
                     }
                 )
 
-        logging.error("FOGIS sync failed with error: %s", process.stderr)
+        logger.error(f"FOGIS sync failed with error: {process.stderr}")
         return (
             jsonify(
                 {
@@ -181,7 +208,7 @@ def sync_fogis():
         )
 
     except Exception as e:
-        logging.exception("Error during FOGIS sync")
+        logger.exception("Error during FOGIS sync")
         return (
             jsonify({"status": "error", "message": f"Error during FOGIS sync: {str(e)}"}),
             500,
@@ -192,4 +219,9 @@ if __name__ == "__main__":
     # Use environment variables for host and port if available
     host = os.environ.get("FLASK_HOST", "0.0.0.0")
     port = int(os.environ.get("FLASK_PORT", 5003))
+
+    logger.info(f"Starting FOGIS Calendar & Phonebook Sync service on {host}:{port}")
+    logger.info(f"Version: {get_version()}")
+    logger.info(f"Log level: {os.environ.get('LOG_LEVEL', 'INFO')}")
+
     app.run(host=host, port=port)
