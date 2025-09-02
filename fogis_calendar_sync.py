@@ -36,26 +36,36 @@ from fogis_contacts import (  # Removed other functions
     test_google_contacts_connection,
 )
 
+# Import enhanced logging
+from src.core import configure_logging, get_logger, handle_calendar_errors
+
 # Load environment variables from .env file
 load_dotenv()
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,  # Set the desired logging level (e.g., INFO, DEBUG, WARNING, ERROR)
-    format="%(asctime)s - %(levelname)s - %(message)s",  # Customize the log message format
+# Configure enhanced logging
+configure_logging(
+    log_level=os.environ.get("LOG_LEVEL", "INFO"),
+    enable_console=os.environ.get("LOG_ENABLE_CONSOLE", "true").lower() == "true",
+    enable_file=os.environ.get("LOG_ENABLE_FILE", "true").lower() == "true",
+    enable_structured=os.environ.get("LOG_ENABLE_STRUCTURED", "true").lower() == "true",
+    log_dir=os.environ.get("LOG_DIR", "logs"),
+    log_file=os.environ.get("LOG_FILE", "fogis-calendar-sync.log"),
 )
+
+# Get enhanced logger
+logger = get_logger(__name__, "calendar_sync")
 
 # Load configuration from config.json
 try:
     with open("config.json", "r", encoding="utf-8") as file:
         config_dict = json.load(file)  # Load config data into a dictionary ONCE
 
-    logging.info("Successfully loaded configuration from config.json.")
+    logger.info("Successfully loaded configuration from config.json.")
 except FileNotFoundError:
-    logging.error("Configuration file not found: config.json. Exiting.")
+    logger.error("Configuration file not found: config.json. Exiting.")
     sys.exit(1)
 except json.JSONDecodeError as err:
-    logging.error("Error decoding JSON in config.json: %s. Exiting.", err)
+    logger.error(f"Error decoding JSON in config.json: {err}. Exiting.")
     sys.exit(1)
 
 
@@ -659,7 +669,10 @@ def sync_calendar(match, service, args):
         return False  # Calendar sync failed
 
 
+@handle_calendar_errors("main_calendar_sync", "main")
 def main():
+    """Main function to run the FOGIS calendar sync."""
+    logger.info("Starting FOGIS calendar sync process")
     parser = argparse.ArgumentParser(description="Syncs FOGIS match data with Google Calendar.")
     parser.add_argument(
         "--delete",
@@ -705,16 +718,16 @@ def main():
     fogis_api_client = FogisApiClient(fogis_username, fogis_password)
 
     if not fogis_username or not fogis_password:
-        print("Error: FOGIS_USERNAME and FOGIS_PASSWORD environment variables must be set.")
+        logger.error("FOGIS_USERNAME and FOGIS_PASSWORD environment variables must be set.")
         return
 
     cookies = fogis_api_client.login()
 
     if not cookies:
-        logging.error("Login failed.")
+        logger.error("Login failed.")
         return  # Early exit
 
-    logging.info("Fetching matches, filtering out cancelled games.")
+    logger.info("Fetching matches, filtering out cancelled games.")
     match_list = (
         MatchListFilter()
         .exclude_statuses([MatchStatus.CANCELLED])

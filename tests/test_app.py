@@ -102,10 +102,18 @@ def test_health_endpoint_no_data_directory(client):
 # pylint: disable=redefined-outer-name
 def test_health_endpoint_no_token_file(client):
     """Test health check when OAuth token doesn't exist in any location."""
-    with patch("os.path.exists") as mock_exists:
-        # First call (data directory) returns True, then all token locations return False
-        mock_exists.side_effect = [True, False, False, False]
 
+    def mock_exists_side_effect(path):
+        # Data directory exists
+        if path == "data":
+            return True
+        # All token locations return False
+        if "token.json" in path:
+            return False
+        # Enhanced logging may check log directories - allow them to exist
+        return True
+
+    with patch("os.path.exists", side_effect=mock_exists_side_effect):
         with patch("app.get_version", return_value="test-version"):
             response = client.get("/health")
             assert response.status_code == 200
@@ -123,10 +131,18 @@ def test_health_endpoint_no_token_file(client):
 # pylint: disable=redefined-outer-name
 def test_health_endpoint_token_in_environment_path(client):
     """Test health check when token exists in environment variable path (preferred location)."""
-    with patch("os.path.exists") as mock_exists:
-        # First call (data directory) returns True, second call (env var path) returns True
-        mock_exists.side_effect = [True, True]
 
+    def mock_exists_side_effect(path):
+        # Data directory exists
+        if path == "data":
+            return True
+        # Environment variable token path exists
+        if path == "/app/credentials/tokens/calendar/token.json":
+            return True
+        # Enhanced logging may check log directories - allow them to exist
+        return True
+
+    with patch("os.path.exists", side_effect=mock_exists_side_effect):
         with patch("app.get_version", return_value="test-version"):
             response = client.get("/health")
             assert response.status_code == 200
@@ -142,10 +158,21 @@ def test_health_endpoint_token_in_environment_path(client):
 # pylint: disable=redefined-outer-name
 def test_health_endpoint_token_in_legacy_path(client):
     """Test health check when token exists in legacy data directory."""
-    with patch("os.path.exists") as mock_exists:
-        # First call (data directory) returns True, env var path False, legacy path True
-        mock_exists.side_effect = [True, False, True]
 
+    def mock_exists_side_effect(path):
+        # Data directory exists
+        if path == "data":
+            return True
+        # Environment variable token path doesn't exist
+        if path == "/app/credentials/tokens/calendar/token.json":
+            return False
+        # Legacy token path exists
+        if path == "/app/data/token.json":
+            return True
+        # Enhanced logging may check log directories - allow them to exist
+        return True
+
+    with patch("os.path.exists", side_effect=mock_exists_side_effect):
         with patch("app.get_version", return_value="test-version"):
             response = client.get("/health")
             assert response.status_code == 200
@@ -160,10 +187,21 @@ def test_health_endpoint_token_in_legacy_path(client):
 # pylint: disable=redefined-outer-name
 def test_health_endpoint_token_in_working_directory(client):
     """Test health check when token exists in working directory (backward compatibility)."""
-    with patch("os.path.exists") as mock_exists:
-        # First call (data directory) returns True, env var and legacy paths False, working dir True
-        mock_exists.side_effect = [True, False, False, True]
 
+    def mock_exists_side_effect(path):
+        # Data directory exists
+        if path == "data":
+            return True
+        # Environment variable and legacy token paths don't exist
+        if path in ["/app/credentials/tokens/calendar/token.json", "/app/data/token.json"]:
+            return False
+        # Working directory token path exists
+        if path == "/app/token.json":
+            return True
+        # Enhanced logging may check log directories - allow them to exist
+        return True
+
+    with patch("os.path.exists", side_effect=mock_exists_side_effect):
         with patch("app.get_version", return_value="test-version"):
             response = client.get("/health")
             assert response.status_code == 200
@@ -180,11 +218,18 @@ def test_health_endpoint_with_custom_environment_variable(client):
     """Test health check with custom GOOGLE_CALENDAR_TOKEN_FILE environment variable."""
     custom_token_path = "/custom/path/to/token.json"
 
-    with patch.dict("os.environ", {"GOOGLE_CALENDAR_TOKEN_FILE": custom_token_path}):
-        with patch("os.path.exists") as mock_exists:
-            # First call (data directory) returns True, custom env var path returns True
-            mock_exists.side_effect = [True, True]
+    def mock_exists_side_effect(path):
+        # Data directory exists
+        if path == "data":
+            return True
+        # Custom environment variable token path exists
+        if path == custom_token_path:
+            return True
+        # Enhanced logging may check log directories - allow them to exist
+        return True
 
+    with patch.dict("os.environ", {"GOOGLE_CALENDAR_TOKEN_FILE": custom_token_path}):
+        with patch("os.path.exists", side_effect=mock_exists_side_effect):
             with patch("app.get_version", return_value="test-version"):
                 response = client.get("/health")
                 assert response.status_code == 200
