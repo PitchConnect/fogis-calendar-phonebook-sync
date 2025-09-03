@@ -7,6 +7,8 @@ on:
     workflows: ["Tests", "Code Quality"]
     branches: [develop]
     types: [completed]
+  # Allow manual triggering for testing
+  workflow_dispatch:
 
 jobs:
   check-and-create-pr:
@@ -42,6 +44,18 @@ jobs:
         else
           echo "has_changes=true" >> $GITHUB_OUTPUT
           echo "Changes detected between develop and main branches"
+
+          # Check if this might be a sync-related change
+          MAIN_SHA=$(git rev-parse origin/main)
+          echo "main_sha=$MAIN_SHA" >> $GITHUB_OUTPUT
+
+          # Check for recent sync activity
+          if git log --oneline origin/develop..origin/main --since="1 hour ago" | grep -q "Sync\|sync\|Auto-merge"; then
+            echo "recent_sync_activity=true" >> $GITHUB_OUTPUT
+            echo "Recent sync activity detected"
+          else
+            echo "recent_sync_activity=false" >> $GITHUB_OUTPUT
+          fi
         fi
 
     - name: Wait for concurrent workflows

@@ -1,0 +1,270 @@
+name: Sync Main to Develop
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+    types: [closed]
+  workflow_dispatch:
+    inputs:
+      force_sync:
+        description: 'Force synchronization even if conflicts exist'
+        required: false
+        default: 'false'
+        type: boolean
+
+jobs:
+  sync-branches:
+    name: Synchronize Main to Develop
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.merged == true) || github.event_name == 'workflow_dispatch'
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        token: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Configure Git
+      run: |
+        git config --global user.name "github-actions[bot]"
+        git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+    - name: Fetch all branches
+      run: |
+        git fetch origin
+        echo "Available branches:"
+        git branch -r
+
+    - name: Check branch status
+      id: branch-status
+      run: |
+        # Check if develop branch exists
+        if git show-ref --verify --quiet refs/remotes/origin/develop; then
+          echo "develop_exists=true" >> $GITHUB_OUTPUT
+          echo "✅ Develop branch exists"
+        else
+          echo "develop_exists=false" >> $GITHUB_OUTPUT
+          echo "❌ Develop branch does not exist"
+        fi
+
+        # Get latest commit SHAs
+        MAIN_SHA=$(git rev-parse origin/main)
+        echo "main_sha=$MAIN_SHA" >> $GITHUB_OUTPUT
+
+        if [ "$(git show-ref --verify --quiet refs/remotes/origin/develop; echo $?)" = "0" ]; then
+          DEVELOP_SHA=$(git rev-parse origin/develop)
+          echo "develop_sha=$DEVELOP_SHA" >> $GITHUB_OUTPUT
+
+          # Check if branches are in sync
+          if [ "$MAIN_SHA" = "$DEVELOP_SHA" ]; then
+            echo "branches_in_sync=true" >> $GITHUB_OUTPUT
+            echo "✅ Branches are already in sync"
+          else
+            echo "branches_in_sync=false" >> $GITHUB_OUTPUT
+            echo "🔄 Branches need synchronization"
+          fi
+        else
+          echo "branches_in_sync=false" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Create develop branch if missing
+      if: steps.branch-status.outputs.develop_exists == 'false'
+      run: |
+        echo "🔧 Creating develop branch from main"
+        git checkout -b develop origin/main
+        git push origin develop
+        echo "✅ Develop branch created successfully"
+
+    - name: Check for conflicts
+      id: conflict-check
+      if: steps.branch-status.outputs.develop_exists == 'true' && steps.branch-status.outputs.branches_in_sync == 'false'
+      run: |
+        # Switch to develop and attempt merge
+        git checkout develop
+        git reset --hard origin/develop
+
+        # Check if main can be merged cleanly
+        if git merge-tree $(git merge-base origin/main origin/develop) origin/main origin/develop | grep -q "<<<<<<< "; then
+          echo "has_conflicts=true" >> $GITHUB_OUTPUT
+          echo "❌ Merge conflicts detected"
+
+          # Get conflicting files
+          CONFLICTS=$(git merge-tree $(git merge-base origin/main origin/develop) origin/main origin/develop | grep "<<<<<<< " | cut -d' ' -f2 | sort -u | tr '\n' ',' | sed 's/,$//')
+          echo "conflicting_files=$CONFLICTS" >> $GITHUB_OUTPUT
+        else
+          echo "has_conflicts=false" >> $GITHUB_OUTPUT
+          echo "✅ No merge conflicts detected"
+        fi
+
+    - name: Perform clean merge
+      id: merge
+      if: steps.branch-status.outputs.branches_in_sync == 'false' && (steps.conflict-check.outputs.has_conflicts == 'false' || github.event.inputs.force_sync == 'true')
+      run: |
+        git checkout develop
+        git reset --hard origin/develop
+
+        if [ "${{ steps.conflict-check.outputs.has_conflicts }}" = "true" ]; then
+          echo "⚠️ Force merging despite conflicts (manual resolution required)"
+          git merge origin/main --strategy-option=theirs --no-edit
+          echo "merge_type=force" >> $GITHUB_OUTPUT
+        else
+          echo "🔄 Performing clean merge"
+          git merge origin/main --no-edit
+          echo "merge_type=clean" >> $GITHUB_OUTPUT
+        fi
+
+        echo "✅ Merge completed successfully"
+
+    - name: Push synchronized develop
+      if: steps.merge.conclusion == 'success'
+      run: |
+        git push origin develop
+        echo "✅ Develop branch synchronized with main"
+
+    - name: Get sync details
+      id: sync-details
+      if: steps.merge.conclusion == 'success'
+      run: |
+        # Get commits that were synced
+        SYNCED_COMMITS=$(git log --oneline ${{ steps.branch-status.outputs.develop_sha }}..${{ steps.branch-status.outputs.main_sha }} --pretty=format:"- %s (%h)" | head -10)
+        echo "synced_commits<<EOF" >> $GITHUB_OUTPUT
+        echo "$SYNCED_COMMITS" >> $GITHUB_OUTPUT
+        echo "EOF" >> $GITHUB_OUTPUT
+
+        # Count synced commits
+        COMMIT_COUNT=$(git rev-list --count ${{ steps.branch-status.outputs.develop_sha }}..${{ steps.branch-status.outputs.main_sha }})
+        echo "commit_count=$COMMIT_COUNT" >> $GITHUB_OUTPUT
+
+    - name: Check for existing auto-PR
+      id: check-auto-pr
+      if: steps.merge.conclusion == 'success'
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const { data: prs } = await github.rest.pulls.list({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            head: 'develop',
+            base: 'main',
+            state: 'open'
+          });
+
+          const autoPR = prs.find(pr =>
+            pr.title.includes('Auto-merge: Develop to Main') ||
+            pr.labels.some(label => label.name === 'automated-pr')
+          );
+
+          core.setOutput('has_auto_pr', autoPR ? 'true' : 'false');
+          core.setOutput('auto_pr_number', autoPR ? autoPR.number : '');
+
+          if (autoPR) {
+            console.log(`Found existing auto-PR #${autoPR.number}`);
+          }
+
+    - name: Update auto-PR with sync info
+      if: steps.merge.conclusion == 'success' && steps.check-auto-pr.outputs.has_auto_pr == 'true'
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const prNumber = ${{ steps.check-auto-pr.outputs.auto_pr_number }};
+          const commitCount = '${{ steps.sync-details.outputs.commit_count }}';
+          const syncedCommits = `${{ steps.sync-details.outputs.synced_commits }}`;
+          const mergeType = '${{ steps.merge.outputs.merge_type }}';
+
+          const syncIcon = mergeType === 'force' ? '⚠️' : '🔄';
+          const syncMessage = mergeType === 'force' ? 'Force synchronized' : 'Synchronized';
+
+          await github.rest.issues.createComment({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issue_number: prNumber,
+            body: `## ${syncIcon} Branch Synchronization Update
+
+            The develop branch has been ${syncMessage.toLowerCase()} with main.
+
+            **Sync Details:**
+            - **Commits synced**: ${commitCount}
+            - **Merge type**: ${mergeType}
+            - **Latest main commit**: ${{ steps.branch-status.outputs.main_sha }}
+
+            **Synced commits:**
+            ${syncedCommits}
+
+            ${commitCount > 10 ? `_... and ${commitCount - 10} more commits_` : ''}
+
+            ${mergeType === 'force' ? '⚠️ **Note**: This was a force merge due to conflicts. Please review carefully.' : ''}
+
+            _Updated automatically by the branch synchronization workflow._`
+          });
+
+    - name: Create sync notification issue
+      if: steps.conflict-check.outputs.has_conflicts == 'true' && github.event.inputs.force_sync != 'true'
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const conflictingFiles = '${{ steps.conflict-check.outputs.conflicting_files }}';
+
+          await github.rest.issues.create({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            title: '🚨 Branch Sync Conflict: Manual Resolution Required',
+            body: `## Branch Synchronization Conflict
+
+            The automatic synchronization from main to develop has failed due to merge conflicts.
+
+            **Conflict Details:**
+            - **Main commit**: ${{ steps.branch-status.outputs.main_sha }}
+            - **Develop commit**: ${{ steps.branch-status.outputs.develop_sha }}
+            - **Conflicting files**: ${conflictingFiles}
+
+            **Resolution Options:**
+
+            ### Option 1: Manual Resolution
+            \`\`\`bash
+            git checkout develop
+            git pull origin develop
+            git merge main
+            # Resolve conflicts manually
+            git commit
+            git push origin develop
+            \`\`\`
+
+            ### Option 2: Force Sync (Use with caution)
+            Trigger this workflow manually with the "force_sync" option enabled.
+
+            ### Option 3: Reset Develop to Main
+            \`\`\`bash
+            git checkout develop
+            git reset --hard main
+            git push --force origin develop
+            \`\`\`
+
+            **⚠️ Important**: Review the conflicting changes carefully before resolving.
+
+            _This issue was created automatically by the branch synchronization workflow._`,
+            labels: ['sync-conflict', 'needs-attention', 'manual-resolution-required']
+          });
+
+    - name: Summary
+      if: always()
+      run: |
+        echo "## Branch Synchronization Summary"
+        echo "- Develop exists: ${{ steps.branch-status.outputs.develop_exists }}"
+        echo "- Branches in sync: ${{ steps.branch-status.outputs.branches_in_sync }}"
+        echo "- Has conflicts: ${{ steps.conflict-check.outputs.has_conflicts }}"
+        echo "- Merge completed: ${{ steps.merge.conclusion == 'success' }}"
+        echo "- Force sync: ${{ github.event.inputs.force_sync }}"
+
+        if [ "${{ steps.merge.conclusion }}" = "success" ]; then
+          echo "✅ Synchronization completed successfully"
+          echo "- Synced commits: ${{ steps.sync-details.outputs.commit_count }}"
+          echo "- Merge type: ${{ steps.merge.outputs.merge_type }}"
+        elif [ "${{ steps.conflict-check.outputs.has_conflicts }}" = "true" ]; then
+          echo "❌ Synchronization failed due to conflicts"
+          echo "- Conflicting files: ${{ steps.conflict-check.outputs.conflicting_files }}"
+        else
+          echo "ℹ️ No synchronization needed"
+        fi
