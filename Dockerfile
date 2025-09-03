@@ -1,58 +1,44 @@
-# Multi-stage Docker build for optimized performance and caching
-# Stage 1: Base image with system dependencies
-FROM python:3.9-slim as base
+# Optimized single-stage Docker build for improved performance
+# Based on patterns from google-drive-service and team-logo-combiner
+FROM python:3.11-slim-bookworm
 
-# Add build arguments for versioning
+# Build argument for version
 ARG VERSION=dev
+ENV VERSION=${VERSION}
 
-# Set environment variables early for better caching
-ENV PYTHONUNBUFFERED=1 \
-    PYTHONDONTWRITEBYTECODE=1 \
-    PIP_NO_CACHE_DIR=1 \
-    PIP_DISABLE_PIP_VERSION_CHECK=1 \
-    VERSION=${VERSION}
+# Install system dependencies with improved error handling
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends curl && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 WORKDIR /app
 
-# Install system dependencies in a single layer
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-        curl \
-        && \
-    rm -rf /var/lib/apt/lists/* && \
-    apt-get clean
+# Set environment variables for Python optimization
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1
 
-# Stage 2: Install Python dependencies with cache mounting
-FROM base as dependencies
+# Create non-root user for security (following google-drive-service pattern)
+RUN groupadd -r appuser && useradd -r -g appuser appuser
 
-# Copy requirements files first to leverage Docker cache
-COPY requirements.txt dev-requirements.txt ./
+# Copy and install Python dependencies first (better caching)
+COPY requirements.txt .
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
 
-# Install Python dependencies with BuildKit cache mount
-RUN --mount=type=cache,target=/root/.cache/pip \
-    pip install --upgrade pip && \
-    pip install -r requirements.txt
-
-# Install fogis-api-client with specific version
-RUN --mount=type=cache,target=/root/.cache/pip \
-    pip install fogis-api-client-timmyBird==0.5.1 || \
-    echo "Could not install fogis-api-client-timmyBird from PyPI"
-
-# Stage 3: Final application image
-FROM base as final
-
-# Copy installed packages from dependencies stage
-COPY --from=dependencies /usr/local/lib/python3.9/site-packages /usr/local/lib/python3.9/site-packages
-COPY --from=dependencies /usr/local/bin /usr/local/bin
-
-# Create application directory structure
-RUN mkdir -p /app/fogis_api_client_python
-
-# Copy application code (excluding unnecessary files via .dockerignore)
+# Copy application code
 COPY . .
+
+# Change ownership to non-root user
+RUN chown -R appuser:appuser /app
+USER appuser
 
 # Expose the port the app runs on
 EXPOSE 5003
+
+# Health check with improved error handling (following google-drive-service pattern)
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+  CMD curl -f http://localhost:5003/health || exit 1
 
 # Use exec form for better signal handling
 CMD ["python", "app.py"]
