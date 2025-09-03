@@ -38,9 +38,11 @@ logger = get_logger(__name__, "app")
 
 
 @app.route("/health", methods=["GET"])
+@handle_calendar_errors("health_check", "health")
 def health_check():
     """Optimized health check endpoint with minimal logging."""
     start_time = time.time()
+
     try:
         # Check if we can access the data directory
         if not os.path.exists("data"):
