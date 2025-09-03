@@ -1,6 +1,7 @@
 import logging
 import os
 import subprocess
+import time
 
 # Import dotenv for loading environment variables from .env file
 from dotenv import load_dotenv
@@ -39,8 +40,9 @@ logger = get_logger(__name__, "app")
 @app.route("/health", methods=["GET"])
 @handle_calendar_errors("health_check", "health")
 def health_check():
-    """Health check endpoint for Docker healthcheck."""
-    logger.info("Health check requested")
+    """Optimized health check endpoint with minimal logging."""
+    start_time = time.time()
+
     try:
         # Check if we can access the data directory
         if not os.path.exists("data"):
@@ -128,6 +130,10 @@ def health_check():
         except Exception as e:
             logging.debug(f"Could not parse OAuth token info: {e}")
 
+        # Single optimized log entry
+        duration = time.time() - start_time
+        logger.info(f"✅ Health check OK ({duration:.3f}s)")
+
         return (
             jsonify(
                 {
@@ -142,7 +148,8 @@ def health_check():
             200,
         )
     except Exception as e:
-        logging.exception("Health check failed")
+        duration = time.time() - start_time
+        logger.error(f"❌ Health check FAILED ({duration:.3f}s): {str(e)}")
         return jsonify({"status": "error", "message": str(e)}), 500
 
 
