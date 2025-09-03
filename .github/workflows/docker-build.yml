@@ -32,20 +32,21 @@ jobs:
     - name: Determine build platforms
       id: platforms
       run: |
-        # Only build ARM64 for releases and main branch pushes
-        if [[ "${{ github.event_name }}" == "push" && "${{ github.ref }}" == "refs/heads/main" ]] || [[ "${{ github.ref }}" == refs/tags/* ]]; then
+        # Only build ARM64 for tagged releases to optimize build time
+        # Main branch and PR builds use AMD64 only for faster CI/CD
+        if [[ "${{ github.ref }}" == refs/tags/* ]]; then
           echo "platforms=linux/amd64,linux/arm64" >> $GITHUB_OUTPUT
-          echo "Building multi-platform for release/main"
+          echo "Building multi-platform for tagged release"
         else
           echo "platforms=linux/amd64" >> $GITHUB_OUTPUT
-          echo "Building AMD64 only for PR/develop"
+          echo "Building AMD64 only for faster CI/CD (main/PR/develop)"
         fi
 
     - name: Cache Docker layers
       uses: actions/cache@v4
       with:
         path: /tmp/.buildx-cache
-        key: ${{ runner.os }}-buildx-${{ hashFiles('requirements.txt', 'dev-requirements.txt') }}
+        key: ${{ runner.os }}-buildx-${{ hashFiles('requirements.txt') }}
         restore-keys: |
           ${{ runner.os }}-buildx-
 

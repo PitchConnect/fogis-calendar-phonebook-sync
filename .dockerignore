@@ -69,6 +69,9 @@ build/
 dist/
 *.egg-info/
 
+# Development dependencies (not needed in production)
+dev-requirements.txt
+
 # Backup and temporary files
 *.bak
 *.backup

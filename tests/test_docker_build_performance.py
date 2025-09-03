@@ -31,18 +31,20 @@ class TestDockerBuildPerformance(unittest.TestCase):
         """Test that optimized Dockerfile exists."""
         self.assertTrue(self.dockerfile_path.exists(), "Dockerfile should exist")
 
-    def test_dockerfile_multi_stage_structure(self):
-        """Test that Dockerfile uses multi-stage build structure."""
+    def test_dockerfile_optimized_structure(self):
+        """Test that Dockerfile uses optimized single-stage build structure."""
         with open(self.dockerfile_path, "r") as f:
             content = f.read()
 
-        # Check for multi-stage build stages
-        self.assertIn("FROM python:3.9-slim as base", content)
-        self.assertIn("FROM base as dependencies", content)
-        self.assertIn("FROM base as final", content)
+        # Check for optimized single-stage build with modern base image
+        self.assertIn("FROM python:3.11-slim-bookworm", content)
 
-        # Check for cache mount usage
-        self.assertIn("--mount=type=cache,target=/root/.cache/pip", content)
+        # Check for security improvements (non-root user)
+        self.assertIn("groupadd -r appuser", content)
+        self.assertIn("USER appuser", content)
+
+        # Check for optimized dependency installation
+        self.assertIn("pip install --no-cache-dir", content)
 
     def test_dockerfile_optimization_features(self):
         """Test that Dockerfile includes performance optimizations."""
@@ -52,7 +54,9 @@ class TestDockerBuildPerformance(unittest.TestCase):
         # Check for environment variables that improve performance
         self.assertIn("PYTHONUNBUFFERED=1", content)
         self.assertIn("PYTHONDONTWRITEBYTECODE=1", content)
-        self.assertIn("PIP_NO_CACHE_DIR=1", content)
+
+        # Check for optimized pip usage (--no-cache-dir flag)
+        self.assertIn("--no-cache-dir", content)
 
         # Check for proper layer ordering (requirements before code)
         lines = content.split("\n")
@@ -75,9 +79,10 @@ class TestDockerBuildPerformance(unittest.TestCase):
         self.assertIn("Determine build platforms", content)
         self.assertIn("steps.platforms.outputs.platforms", content)
 
-        # Check for conditional logic
-        self.assertIn("refs/heads/main", content)
+        # Check for optimized conditional logic (tags only for multi-platform)
+        self.assertIn("refs/tags/*", content)
         self.assertIn("linux/amd64,linux/arm64", content)
+        self.assertIn("linux/amd64", content)
         self.assertIn("linux/amd64", content)
 
     def test_workflow_cache_optimization(self):
@@ -85,8 +90,8 @@ class TestDockerBuildPerformance(unittest.TestCase):
         with open(self.workflow_path, "r") as f:
             content = f.read()
 
-        # Check for requirements-based cache key
-        self.assertIn("hashFiles('requirements.txt', 'dev-requirements.txt')", content)
+        # Check for optimized requirements-based cache key (production only)
+        self.assertIn("hashFiles('requirements.txt')", content)
 
         # Check for GitHub Actions cache
         self.assertIn("cache-from: type=gha", content)
