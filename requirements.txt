@@ -8,4 +8,4 @@ python-dotenv==1.0.0
 requests==2.31.0
 werkzeug==3.0.1
 # Add fogis_api_client as a dependency with specific version
-fogis-api-client-timmyBird==0.5.1
+fogis-api-client-timmyBird==0.6.2
