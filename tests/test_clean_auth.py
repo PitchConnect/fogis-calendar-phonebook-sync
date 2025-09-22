@@ -16,9 +16,7 @@ class TestCleanAuthMain:
     @patch("builtins.input")
     @patch("builtins.open")
     @patch("builtins.print")
-    def test_main_success(
-        self, mock_print, mock_file_open, mock_input, mock_flow_class
-    ):
+    def test_main_success(self, mock_print, mock_file_open, mock_input, mock_flow_class):
         """Test successful authentication flow."""
         # Mock config file content
         mock_config = {
@@ -34,9 +32,7 @@ class TestCleanAuthMain:
         mock_file_open.side_effect = [config_file.return_value, token_file.return_value]
 
         # Mock user input for callback URL
-        mock_input.return_value = (
-            "http://localhost:8080/callback?code=test_code&state=test_state"
-        )
+        mock_input.return_value = "http://localhost:8080/callback?code=test_code&state=test_state"
 
         # Mock credentials
         mock_credentials = MagicMock()
@@ -100,9 +96,7 @@ class TestCleanAuthMain:
         mock_file_open.side_effect = [config_file.return_value, token_file.return_value]
 
         # Mock user input for callback URL
-        mock_input.return_value = (
-            "http://localhost:8080/callback?code=test_code&state=test_state"
-        )
+        mock_input.return_value = "http://localhost:8080/callback?code=test_code&state=test_state"
 
         # Mock credentials
         mock_credentials = MagicMock()
@@ -175,9 +169,7 @@ class TestCleanAuthMain:
     @patch("google_auth_oauthlib.flow.Flow")
     @patch("builtins.open")
     @patch("builtins.print")
-    def test_main_config_file_not_found(
-        self, mock_print, mock_file_open, mock_flow_class
-    ):
+    def test_main_config_file_not_found(self, mock_print, mock_file_open, mock_flow_class):
         """Test main function when config.json is not found."""
         # Mock FileNotFoundError when opening config.json
         mock_file_open.side_effect = FileNotFoundError("config.json not found")
@@ -189,16 +181,12 @@ class TestCleanAuthMain:
 
         # Verify error messages were printed
         mock_print.assert_any_call("❌ File not found: config.json not found")
-        mock_print.assert_any_call(
-            "💡 Make sure credentials.json and config.json exist"
-        )
+        mock_print.assert_any_call("💡 Make sure credentials.json and config.json exist")
 
     @patch("google_auth_oauthlib.flow.Flow")
     @patch("builtins.open")
     @patch("builtins.print")
-    def test_main_credentials_file_not_found(
-        self, mock_print, mock_file_open, mock_flow_class
-    ):
+    def test_main_credentials_file_not_found(self, mock_print, mock_file_open, mock_flow_class):
         """Test main function when credentials.json is not found."""
         # Mock config file content
         mock_config = {"SCOPES": ["https://www.googleapis.com/auth/calendar"]}
@@ -217,9 +205,7 @@ class TestCleanAuthMain:
 
         # Verify error messages were printed
         mock_print.assert_any_call("❌ File not found: credentials.json not found")
-        mock_print.assert_any_call(
-            "💡 Make sure credentials.json and config.json exist"
-        )
+        mock_print.assert_any_call("💡 Make sure credentials.json and config.json exist")
 
     @patch("google_auth_oauthlib.flow.Flow")
     @patch("builtins.input")
@@ -235,9 +221,7 @@ class TestCleanAuthMain:
         mock_file_open.return_value = config_file.return_value
 
         # Mock user input for callback URL
-        mock_input.return_value = (
-            "http://localhost:8080/callback?code=test_code&state=test_state"
-        )
+        mock_input.return_value = "http://localhost:8080/callback?code=test_code&state=test_state"
 
         # Mock flow that raises exception during authentication
         mock_flow_instance = MagicMock()
@@ -261,9 +245,7 @@ class TestCleanAuthMain:
     @patch("builtins.input")
     @patch("builtins.open")
     @patch("builtins.print")
-    def test_main_token_save_failure(
-        self, mock_print, mock_file_open, mock_input, mock_flow_class
-    ):
+    def test_main_token_save_failure(self, mock_print, mock_file_open, mock_input, mock_flow_class):
         """Test main function when token saving fails."""
         # Mock config file content
         mock_config = {"SCOPES": ["https://www.googleapis.com/auth/calendar"]}
@@ -275,9 +257,7 @@ class TestCleanAuthMain:
         mock_file_open.side_effect = [config_file.return_value, token_file.return_value]
 
         # Mock user input for callback URL
-        mock_input.return_value = (
-            "http://localhost:8080/callback?code=test_code&state=test_state"
-        )
+        mock_input.return_value = "http://localhost:8080/callback?code=test_code&state=test_state"
 
         # Mock credentials
         mock_credentials = MagicMock()
@@ -318,9 +298,7 @@ class TestCleanAuthMain:
         mock_file_open.side_effect = [config_file.return_value, token_file.return_value]
 
         # Mock user input for callback URL
-        mock_input.return_value = (
-            "http://localhost:8080/callback?code=test_code&state=test_state"
-        )
+        mock_input.return_value = "http://localhost:8080/callback?code=test_code&state=test_state"
 
         # Mock credentials without refresh token
         mock_credentials = MagicMock()

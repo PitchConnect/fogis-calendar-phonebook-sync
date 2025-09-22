@@ -403,4 +403,3 @@ if __name__ == "__main__":
     else:
         logger.error("❌ Redis subscription test failed")
 
-    manager.close()

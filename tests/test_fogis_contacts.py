@@ -53,9 +53,7 @@ def test_find_or_create_group(mock_people_service, mock_contact_group):
         with patch.object(
             fogis_contacts, "find_contact_by_phone", return_value="contactGroups/123"
         ):
-            result = fogis_contacts.find_contact_by_phone(
-                mock_people_service, "Referees"
-            )
+            result = fogis_contacts.find_contact_by_phone(mock_people_service, "Referees")
 
         # Verify the correct group was found
         assert result == "contactGroups/123"
@@ -70,17 +68,13 @@ def test_find_contact_by_phone(mock_people_service):
     """Test finding a contact by phone number."""
     # Call the function under test
     with patch.object(fogis_contacts, "logging"):
-        result = fogis_contacts.find_contact_by_phone(
-            mock_people_service, "+46701234567"
-        )
+        result = fogis_contacts.find_contact_by_phone(mock_people_service, "+46701234567")
 
         # Verify the correct contact was found
         assert result["resourceName"] == "people/123"
 
         # Test with a phone number that doesn't exist
-        result = fogis_contacts.find_contact_by_phone(
-            mock_people_service, "+46709999999"
-        )
+        result = fogis_contacts.find_contact_by_phone(mock_people_service, "+46709999999")
         assert result is None
 
 
@@ -106,12 +100,8 @@ def test_create_contact(mock_people_service):
             "email": "jane.doe@example.com",
             "id": "12345",
         }
-        with patch.object(
-            fogis_contacts, "create_google_contact", return_value="people/456"
-        ):
-            result = fogis_contacts.create_google_contact(
-                mock_people_service, referee, "group_id"
-            )
+        with patch.object(fogis_contacts, "create_google_contact", return_value="people/456"):
+            result = fogis_contacts.create_google_contact(mock_people_service, referee, "group_id")
 
         # Verify the contact was created correctly
         assert result == "people/456"
@@ -183,9 +173,7 @@ def test_authorize_google_people_with_refresh_failure():
         mock_creds.refresh.side_effect = Exception("Refresh failed")
 
         # Mock token_manager fallback failure
-        with patch.object(
-            fogis_contacts.token_manager, "load_token", return_value=None
-        ):
+        with patch.object(fogis_contacts.token_manager, "load_token", return_value=None):
             result = fogis_contacts.authorize_google_people()
 
             # Should return None when both file and token_manager fail
@@ -216,9 +204,7 @@ def test_find_or_create_referees_group_existing():
         {"resourceName": "contactGroups/123", "name": "Referees"},
         {"resourceName": "contactGroups/456", "name": "Other Group"},
     ]
-    mock_service.contactGroups().list().execute.return_value = {
-        "contactGroups": mock_groups
-    }
+    mock_service.contactGroups().list().execute.return_value = {"contactGroups": mock_groups}
 
     with patch.object(fogis_contacts, "logging"):
         result = fogis_contacts.find_or_create_referees_group(mock_service)
@@ -439,9 +425,7 @@ def test_update_google_contact_success():
     }
 
     mock_service.people().get().execute.return_value = existing_contact
-    mock_service.people().updateContact().execute.return_value = {
-        "resourceName": "people/123"
-    }
+    mock_service.people().updateContact().execute.return_value = {"resourceName": "people/123"}
 
     referee = {
         "personnamn": "John Doe",
@@ -456,9 +440,7 @@ def test_update_google_contact_success():
 
     with patch.object(fogis_contacts, "logging"), patch("time.sleep"):
 
-        result = fogis_contacts.update_google_contact(
-            mock_service, "people/123", referee
-        )
+        result = fogis_contacts.update_google_contact(mock_service, "people/123", referee)
 
         assert result == "people/123"
         # Verify updateContact was called (may be called multiple times due to chaining)
@@ -472,9 +454,7 @@ def test_test_google_contacts_connection_success():
 
     # Mock successful connection with contacts
     mock_service.people().connections().list().execute.return_value = {
-        "connections": [
-            {"resourceName": "people/123", "names": [{"displayName": "Test Contact"}]}
-        ]
+        "connections": [{"resourceName": "people/123", "names": [{"displayName": "Test Contact"}]}]
     }
 
     with patch.object(fogis_contacts, "logging"), patch("time.sleep"):
@@ -489,9 +469,7 @@ def test_test_google_contacts_connection_no_contacts():
     mock_service = MagicMock()
 
     # Mock successful connection but no contacts
-    mock_service.people().connections().list().execute.return_value = {
-        "connections": []
-    }
+    mock_service.people().connections().list().execute.return_value = {"connections": []}
 
     with patch.object(fogis_contacts, "logging"), patch("time.sleep"):
 
@@ -547,9 +525,7 @@ def test_authorize_google_people_file_error():
     with patch("os.path.exists", return_value=True), patch(
         "google.oauth2.credentials.Credentials.from_authorized_user_file",
         side_effect=Exception("File error"),
-    ), patch.object(
-        fogis_contacts.token_manager, "load_token", return_value=None
-    ), patch.object(
+    ), patch.object(fogis_contacts.token_manager, "load_token", return_value=None), patch.object(
         fogis_contacts, "logging"
     ):
 
@@ -853,9 +829,7 @@ def test_find_contact_by_name_and_phone_not_found():
     referee = {"domarnr": "NOTFOUND"}
 
     # Mock empty connections
-    mock_service.people().connections().list().execute.return_value = {
-        "connections": []
-    }
+    mock_service.people().connections().list().execute.return_value = {"connections": []}
     mock_service.people().connections().list_next.return_value = None
 
     with patch.object(fogis_contacts, "logging"), patch("time.sleep"):
@@ -909,9 +883,7 @@ def test_find_contact_by_name_and_phone_general_exception():
     mock_service = MagicMock()
     referee = {"domarnr": "EXCEPTION"}
 
-    mock_service.people().connections().list().execute.side_effect = Exception(
-        "Network error"
-    )
+    mock_service.people().connections().list().execute.side_effect = Exception("Network error")
 
     with patch.object(fogis_contacts, "logging"), patch("time.sleep"):
         result = fogis_contacts.find_contact_by_name_and_phone(
@@ -933,9 +905,7 @@ def test_update_google_contact_http_error():
     referee = {"personnamn": "Test", "mobiltelefon": "+46700000000"}
 
     with patch.object(fogis_contacts, "logging"), patch("time.sleep"):
-        result = fogis_contacts.update_google_contact(
-            mock_service, "people/123", referee
-        )
+        result = fogis_contacts.update_google_contact(mock_service, "people/123", referee)
         assert result is None
 
 
@@ -952,9 +922,7 @@ def test_update_google_contact_quota_error():
     referee = {"personnamn": "Test", "mobiltelefon": "+46700000000"}
 
     with patch.object(fogis_contacts, "logging"), patch("time.sleep"):
-        result = fogis_contacts.update_google_contact(
-            mock_service, "people/123", referee
-        )
+        result = fogis_contacts.update_google_contact(mock_service, "people/123", referee)
         assert result is None
 
 
@@ -992,9 +960,7 @@ def test_update_google_contact_notes_error():
     referee = {"personnamn": "Test", "mobiltelefon": "+46700000000"}
 
     with patch.object(fogis_contacts, "logging"), patch("time.sleep"):
-        result = fogis_contacts.update_google_contact(
-            mock_service, "people/123", referee
-        )
+        result = fogis_contacts.update_google_contact(mock_service, "people/123", referee)
         assert result == "people/123"  # Should proceed despite notes error
 
 
@@ -1007,9 +973,7 @@ def test_update_google_contact_general_exception():
     referee = {"personnamn": "Test", "mobiltelefon": "+46700000000"}
 
     with patch.object(fogis_contacts, "logging"), patch("time.sleep"):
-        result = fogis_contacts.update_google_contact(
-            mock_service, "people/123", referee
-        )
+        result = fogis_contacts.update_google_contact(mock_service, "people/123", referee)
         assert result is None
 
 
@@ -1040,9 +1004,7 @@ def test_find_contact_by_phone_success():
 def test_find_contact_by_phone_not_found():
     """Test find_contact_by_phone when contact not found."""
     mock_service = MagicMock()
-    mock_service.people().connections().list().execute.return_value = {
-        "connections": []
-    }
+    mock_service.people().connections().list().execute.return_value = {"connections": []}
 
     with patch.object(fogis_contacts, "logging"), patch("time.sleep"):
         result = fogis_contacts.find_contact_by_phone(mock_service, "+46700000000")

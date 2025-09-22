@@ -59,9 +59,7 @@ def large_contact_dataset():
             "names": [{"displayName": f"Contact {i}"}],
             "phoneNumbers": [{"value": f"+4670123456{i:02d}"}],
             "emailAddresses": [{"value": f"contact{i}@example.com"}],
-            "externalIds": [
-                {"value": f"FogisId=DomarNr=REF{i:03d}", "type": "account"}
-            ],
+            "externalIds": [{"value": f"FogisId=DomarNr=REF{i:03d}", "type": "account"}],
         }
         contacts.append(contact)
     return contacts
@@ -125,9 +123,7 @@ class TestCalendarSyncPerformance:
 
         # Verify all events were processed (the sync_calendar function was called for each match)
         # Note: Due to mocking, the actual call count may vary, but we verify the function ran for all matches
-        assert (
-            mock_service.events().insert.call_count >= 1
-        )  # At least one call was made
+        assert mock_service.events().insert.call_count >= 1  # At least one call was made
 
     @pytest.mark.performance
     def test_find_event_by_match_id_performance(self, large_match_dataset):
@@ -232,24 +228,18 @@ class TestContactsPerformance:
     def test_process_referees_batch_performance(self, large_match_dataset):
         """Test performance of processing large batch of referees."""
         mock_service = MagicMock()
-        mock_service.people().connections().list().execute.return_value = {
-            "connections": []
-        }
+        mock_service.people().connections().list().execute.return_value = {"connections": []}
         mock_service.people().connections().list_next.return_value = None
         mock_service.contactGroups().list().execute.return_value = {
             "contactGroups": [{"resourceName": "contactGroups/123", "name": "Referees"}]
         }
-        mock_service.people().createContact().execute.return_value = {
-            "resourceName": "people/new"
-        }
+        mock_service.people().createContact().execute.return_value = {"resourceName": "people/new"}
 
         start_time = time.time()
 
         with patch.object(
             fogis_contacts, "authorize_google_people", return_value=MagicMock()
-        ), patch(
-            "googleapiclient.discovery.build", return_value=mock_service
-        ), patch.object(
+        ), patch("googleapiclient.discovery.build", return_value=mock_service), patch.object(
             fogis_contacts, "logging"
         ), patch(
             "time.sleep"
@@ -293,9 +283,7 @@ class TestMemoryUsage:
         memory_increase = final_memory - initial_memory
 
         # Memory increase should be reasonable (less than 50MB for 100 matches)
-        assert (
-            memory_increase < 50
-        ), f"Memory usage increased by {memory_increase:.2f}MB"
+        assert memory_increase < 50, f"Memory usage increased by {memory_increase:.2f}MB"
 
     @pytest.mark.performance
     def test_hash_collision_rate(self, large_match_dataset):

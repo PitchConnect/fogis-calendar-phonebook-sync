@@ -208,9 +208,7 @@ class TestStartService:
     @patch("os.path.exists")
     @patch("docker_orchestrator.run_command")
     @patch("docker_orchestrator.check_service_health")
-    def test_start_service_health_failure(
-        self, mock_health, mock_run_command, mock_exists
-    ):
+    def test_start_service_health_failure(self, mock_health, mock_run_command, mock_exists):
         """Test service start with health check failure."""
         mock_exists.return_value = True
         mock_run_command.side_effect = [(0, "", ""), (0, "", "")]
@@ -527,9 +525,7 @@ class TestCheckAllServicesHealth:
 
     @patch("docker_orchestrator.check_service_health")
     @patch("docker_orchestrator.run_command")
-    def test_check_all_services_health_with_endpoints(
-        self, mock_run_command, mock_health
-    ):
+    def test_check_all_services_health_with_endpoints(self, mock_run_command, mock_health):
         """Test health check for services with health endpoints."""
         mock_health.return_value = True
         mock_run_command.return_value = (0, "fogis-sync", "")
@@ -549,18 +545,14 @@ class TestCheckAllServicesHealth:
 
     @patch("docker_orchestrator.check_service_health")
     @patch("docker_orchestrator.run_command")
-    def test_check_all_services_health_without_endpoints(
-        self, mock_run_command, mock_health
-    ):
+    def test_check_all_services_health_without_endpoints(self, mock_run_command, mock_health):
         """Test health check for services without health endpoints."""
         mock_health.return_value = True
 
         # Mock docker ps command to return service names
         def run_command_side_effect(cmd, cwd=None):
             if "docker" in cmd and "ps" in cmd:
-                service_name = next(
-                    (arg.split("=")[1] for arg in cmd if "name=" in arg), ""
-                )
+                service_name = next((arg.split("=")[1] for arg in cmd if "name=" in arg), "")
                 return (0, service_name, "")
             return (0, "", "")
 
@@ -577,16 +569,12 @@ class TestCheckAllServicesHealth:
             if not config.get("health_endpoint")
         ]
         # Should call docker ps for each service without endpoint
-        docker_ps_calls = [
-            call for call in mock_run_command.call_args_list if "ps" in call[0][0]
-        ]
+        docker_ps_calls = [call for call in mock_run_command.call_args_list if "ps" in call[0][0]]
         assert len(docker_ps_calls) == len(services_without_endpoints)
 
     @patch("docker_orchestrator.check_service_health")
     @patch("docker_orchestrator.run_command")
-    def test_check_all_services_health_mixed_results(
-        self, mock_run_command, mock_health
-    ):
+    def test_check_all_services_health_mixed_results(self, mock_run_command, mock_health):
 
         # Mock some services as healthy, others as unhealthy
         def health_side_effect(service_name, endpoint, max_retries=3, retry_delay=2):
@@ -597,9 +585,7 @@ class TestCheckAllServicesHealth:
         # Mock docker ps to return empty for unhealthy services
         def run_command_side_effect(cmd, cwd=None):
             if "docker" in cmd and "ps" in cmd:
-                service_name = next(
-                    (arg.split("=")[1] for arg in cmd if "name=" in arg), ""
-                )
+                service_name = next((arg.split("=")[1] for arg in cmd if "name=" in arg), "")
                 if service_name == "google-drive-service":
                     return (0, service_name, "")
                 return (0, "", "")

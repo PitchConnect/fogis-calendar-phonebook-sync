@@ -69,9 +69,7 @@ class TestSaveConfig:
 
         mock_file.assert_called_once_with("config.json", "w")
         # Verify JSON was written
-        written_data = "".join(
-            call.args[0] for call in mock_file().write.call_args_list
-        )
+        written_data = "".join(call.args[0] for call in mock_file().write.call_args_list)
         parsed_data = json.loads(written_data)
         assert parsed_data == test_config
         mock_print.assert_called_once_with("✅ Configuration saved to config.json")
@@ -85,9 +83,7 @@ class TestSaveConfig:
         setup_headless_auth.save_config(test_config)
 
         mock_file.assert_called_once_with("config.json", "w")
-        mock_print.assert_called_once_with(
-            "❌ Error saving config.json: Permission denied"
-        )
+        mock_print.assert_called_once_with("❌ Error saving config.json: Permission denied")
 
     @patch("builtins.open", side_effect=OSError("Disk full"))
     @patch("builtins.print")
@@ -107,9 +103,7 @@ class TestSetupEmailNotifications:
     @patch("builtins.input")
     @patch("getpass.getpass")
     @patch("builtins.print")
-    def test_setup_email_notifications_complete_setup(
-        self, mock_print, mock_getpass, mock_input
-    ):
+    def test_setup_email_notifications_complete_setup(self, mock_print, mock_getpass, mock_input):
         """Test complete email notification setup."""
         # Mock user inputs
         mock_input.side_effect = [
@@ -137,9 +131,7 @@ class TestSetupEmailNotifications:
     @patch("builtins.input")
     @patch("getpass.getpass")
     @patch("builtins.print")
-    def test_setup_email_notifications_empty_inputs(
-        self, mock_print, mock_getpass, mock_input
-    ):
+    def test_setup_email_notifications_empty_inputs(self, mock_print, mock_getpass, mock_input):
         """Test email setup with empty inputs (keeping defaults)."""
         # Mock empty inputs
         mock_input.side_effect = ["", "", "", ""]
@@ -159,16 +151,12 @@ class TestSetupEmailNotifications:
         assert config["SMTP_PORT"] == 587
 
         # Verify warning message for empty password
-        mock_print.assert_any_call(
-            "⚠️  No app password entered - you'll need to set this manually"
-        )
+        mock_print.assert_any_call("⚠️  No app password entered - you'll need to set this manually")
 
     @patch("builtins.input")
     @patch("getpass.getpass")
     @patch("builtins.print")
-    def test_setup_email_notifications_invalid_port(
-        self, mock_print, mock_getpass, mock_input
-    ):
+    def test_setup_email_notifications_invalid_port(self, mock_print, mock_getpass, mock_input):
         """Test email setup with invalid port number."""
         mock_input.side_effect = ["", "", "", "invalid_port"]
         mock_getpass.return_value = "password123"
@@ -288,9 +276,7 @@ class TestCheckCredentialsFile:
         mock_print.assert_any_call("❌ credentials.json not found!")
         # Verify setup instructions were printed
         mock_print.assert_any_call("1. Go to https://console.cloud.google.com/")
-        mock_print.assert_any_call(
-            "4. Create OAuth 2.0 credentials (Desktop application)"
-        )
+        mock_print.assert_any_call("4. Create OAuth 2.0 credentials (Desktop application)")
 
 
 class TestTestConfiguration:
@@ -330,9 +316,7 @@ class TestTestConfiguration:
 
         # Verify warning messages were printed
         mock_print.assert_any_call("Token valid: False")
-        mock_print.assert_any_call(
-            "\n⚠️  No valid token found - you'll need to authenticate"
-        )
+        mock_print.assert_any_call("\n⚠️  No valid token found - you'll need to authenticate")
         mock_print.assert_any_call(
             "Run the application with --headless flag to start authentication"
         )
@@ -379,9 +363,7 @@ class TestTestConfiguration:
         # Should not print expiry line
         mock_print.assert_any_call("Token valid: True")
         # Verify expiry line was not called
-        expiry_calls = [
-            call for call in mock_print.call_args_list if "Token expiry:" in str(call)
-        ]
+        expiry_calls = [call for call in mock_print.call_args_list if "Token expiry:" in str(call)]
         assert len(expiry_calls) == 0
 
 
@@ -475,9 +457,7 @@ class TestMainFunction:
         result = setup_headless_auth.main()
 
         assert result == 1
-        mock_print.assert_any_call(
-            "❌ Could not load configuration. Please check config.json"
-        )
+        mock_print.assert_any_call("❌ Could not load configuration. Please check config.json")
 
     @patch("setup_headless_auth.test_configuration")
     @patch("setup_headless_auth.save_config")

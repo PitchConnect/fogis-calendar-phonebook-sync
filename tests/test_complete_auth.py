@@ -145,9 +145,7 @@ class TestCompleteAuthScript:
         mock_file.return_value = config_file.return_value
 
         # Mock flow creation failure - this is not in a try-catch, so exception should be raised
-        mock_flow_from_file.side_effect = FileNotFoundError(
-            "credentials.json not found"
-        )
+        mock_flow_from_file.side_effect = FileNotFoundError("credentials.json not found")
 
         with pytest.raises(FileNotFoundError, match="credentials.json not found"):
             complete_auth.main()
@@ -167,9 +165,7 @@ class TestCompleteAuthScript:
 
         # Mock flow that fails during fetch_token
         mock_flow_instance = MagicMock()
-        mock_flow_instance.fetch_token.side_effect = Exception(
-            "Invalid authorization response"
-        )
+        mock_flow_instance.fetch_token.side_effect = Exception("Invalid authorization response")
         mock_flow_from_file.return_value = mock_flow_instance
 
         # Execute the main function
@@ -286,9 +282,7 @@ class TestCompleteAuthEdgeCases:
     @patch("builtins.open", new_callable=mock_open)
     @patch("google_auth_oauthlib.flow.Flow.from_client_secrets_file")
     @patch("builtins.print")
-    def test_complete_auth_empty_config(
-        self, mock_print, mock_flow_from_file, mock_file
-    ):
+    def test_complete_auth_empty_config(self, mock_print, mock_flow_from_file, mock_file):
         """Test complete_auth script with empty config file."""
         # Mock empty config file
         config_file = mock_open(read_data="{}")
@@ -323,9 +317,7 @@ class TestCompleteAuthEdgeCases:
     @patch("builtins.open", new_callable=mock_open)
     @patch("google_auth_oauthlib.flow.Flow.from_client_secrets_file")
     @patch("builtins.print")
-    def test_complete_auth_empty_scopes_list(
-        self, mock_print, mock_flow_from_file, mock_file
-    ):
+    def test_complete_auth_empty_scopes_list(self, mock_print, mock_flow_from_file, mock_file):
         """Test complete_auth script with empty SCOPES list in config."""
         # Mock config with empty SCOPES list
         mock_config = {"SCOPES": []}

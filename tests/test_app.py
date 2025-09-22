@@ -149,9 +149,7 @@ def test_health_endpoint_token_in_environment_path(client):
             data = json.loads(response.data)
             assert data["status"] == "healthy"
             assert data["auth_status"] == "authenticated"
-            assert (
-                data["token_location"] == "/app/credentials/tokens/calendar/token.json"
-            )
+            assert data["token_location"] == "/app/credentials/tokens/calendar/token.json"
             assert data["version"] == "test-version"
             assert "environment" in data
 

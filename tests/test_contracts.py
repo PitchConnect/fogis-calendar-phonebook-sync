@@ -50,9 +50,7 @@ class TestGoogleCalendarAPIContract:
                     "summary": "Event Title",
                     "start": {"dateTime": "2023-05-15T18:00:00Z"},
                     "end": {"dateTime": "2023-05-15T20:00:00Z"},
-                    "extendedProperties": {
-                        "private": {"matchId": "12345", "syncTag": "SYNC_TAG"}
-                    },
+                    "extendedProperties": {"private": {"matchId": "12345", "syncTag": "SYNC_TAG"}},
                 }
             ],
             "nextPageToken": "next_page_token",
@@ -108,11 +106,7 @@ class TestGoogleCalendarAPIContract:
         mock_service.events().insert().execute.return_value = expected_response
 
         # Test the contract
-        result = (
-            mock_service.events()
-            .insert(calendarId="test_calendar", body=event_body)
-            .execute()
-        )
+        result = mock_service.events().insert(calendarId="test_calendar", body=event_body).execute()
 
         # Verify response structure
         assert "id" in result
@@ -131,9 +125,7 @@ class TestGoogleCalendarAPIContract:
         )
 
         with patch.object(fogis_calendar_sync, "logging"):
-            result = fogis_calendar_sync.check_calendar_exists(
-                mock_service, "nonexistent_calendar"
-            )
+            result = fogis_calendar_sync.check_calendar_exists(mock_service, "nonexistent_calendar")
             assert result is False
 
         # Test 403 error (permission denied)
@@ -196,18 +188,14 @@ class TestGoogleContactsAPIContract:
                     ],
                     "phoneNumbers": [{"value": "+46701234567", "type": "mobile"}],
                     "emailAddresses": [{"value": "john@example.com", "type": "work"}],
-                    "externalIds": [
-                        {"value": "FogisId=DomarNr=12345", "type": "account"}
-                    ],
+                    "externalIds": [{"value": "FogisId=DomarNr=12345", "type": "account"}],
                 }
             ],
             "nextPageToken": "next_page_token",
             "totalPeople": 1,
         }
 
-        mock_service.people().connections().list().execute.return_value = (
-            expected_response
-        )
+        mock_service.people().connections().list().execute.return_value = expected_response
         mock_service.people().connections().list_next.return_value = None
 
         # Test the contract
@@ -226,9 +214,7 @@ class TestGoogleContactsAPIContract:
 
         # Expected request body structure
         contact_data = {
-            "names": [
-                {"displayName": "Jane Doe", "givenName": "Jane", "familyName": "Doe"}
-            ],
+            "names": [{"displayName": "Jane Doe", "givenName": "Jane", "familyName": "Doe"}],
             "phoneNumbers": [{"value": "+46709876543", "type": "mobile"}],
             "emailAddresses": [{"value": "jane@example.com", "type": "work"}],
             "addresses": [

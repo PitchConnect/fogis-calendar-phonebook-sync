@@ -24,9 +24,7 @@ class TestDockerBuildPerformance(unittest.TestCase):
         """Set up test environment."""
         self.project_root = Path(__file__).parent.parent
         self.dockerfile_path = self.project_root / "Dockerfile"
-        self.workflow_path = (
-            self.project_root / ".github" / "workflows" / "docker-build.yml"
-        )
+        self.workflow_path = self.project_root / ".github" / "workflows" / "docker-build.yml"
         self.dockerignore_path = self.project_root / ".dockerignore"
 
     def test_dockerfile_exists(self):
@@ -138,9 +136,7 @@ class TestDockerBuildPerformance(unittest.TestCase):
         dev_requirements_path = self.project_root / "dev-requirements.txt"
 
         self.assertTrue(requirements_path.exists(), "requirements.txt should exist")
-        self.assertTrue(
-            dev_requirements_path.exists(), "dev-requirements.txt should exist"
-        )
+        self.assertTrue(dev_requirements_path.exists(), "dev-requirements.txt should exist")
 
         # Check that files are not empty
         with open(requirements_path, "r") as f:

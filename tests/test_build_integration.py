@@ -31,16 +31,12 @@ class TestBuildIntegration(unittest.TestCase):
         """Clean up test artifacts."""
         # Remove test images
         try:
-            subprocess.run(
-                ["docker", "rmi", self.test_image_name], capture_output=True, timeout=30
-            )
+            subprocess.run(["docker", "rmi", self.test_image_name], capture_output=True, timeout=30)
         except (subprocess.TimeoutExpired, subprocess.CalledProcessError):
             pass  # Image might not exist
 
     @pytest.mark.integration
-    @unittest.skipIf(
-        not os.getenv("RUN_INTEGRATION_TESTS"), "Integration tests skipped"
-    )
+    @unittest.skipIf(not os.getenv("RUN_INTEGRATION_TESTS"), "Integration tests skipped")
     def test_docker_build_success(self):
         """Test that Docker build completes successfully."""
         build_cmd = [
@@ -75,9 +71,7 @@ class TestBuildIntegration(unittest.TestCase):
         self.assertEqual(inspect_result.returncode, 0, "Image should be inspectable")
 
     @pytest.mark.integration
-    @unittest.skipIf(
-        not os.getenv("RUN_INTEGRATION_TESTS"), "Integration tests skipped"
-    )
+    @unittest.skipIf(not os.getenv("RUN_INTEGRATION_TESTS"), "Integration tests skipped")
     def test_multi_stage_build_layers(self):
         """Test that multi-stage build creates expected layers."""
         # Build with build-arg to test layer caching
@@ -101,9 +95,7 @@ class TestBuildIntegration(unittest.TestCase):
             cwd=self.project_root,
         )
 
-        self.assertEqual(
-            result.returncode, 0, f"Multi-stage build failed: {result.stderr}"
-        )
+        self.assertEqual(result.returncode, 0, f"Multi-stage build failed: {result.stderr}")
 
         # Check that build output mentions stages
         build_output = result.stdout + result.stderr
@@ -112,9 +104,7 @@ class TestBuildIntegration(unittest.TestCase):
         self.assertIn("final", build_output.lower())
 
     @pytest.mark.integration
-    @unittest.skipIf(
-        not os.getenv("RUN_INTEGRATION_TESTS"), "Integration tests skipped"
-    )
+    @unittest.skipIf(not os.getenv("RUN_INTEGRATION_TESTS"), "Integration tests skipped")
     def test_container_functionality(self):
         """Test that built container functions correctly."""
         # First build the image
@@ -151,9 +141,7 @@ class TestBuildIntegration(unittest.TestCase):
 
         container_id = None
         try:
-            run_result = subprocess.run(
-                run_cmd, capture_output=True, text=True, timeout=30
-            )
+            run_result = subprocess.run(run_cmd, capture_output=True, text=True, timeout=30)
 
             if run_result.returncode == 0:
                 container_id = run_result.stdout.strip()
@@ -174,9 +162,7 @@ class TestBuildIntegration(unittest.TestCase):
         finally:
             # Clean up container
             if container_id:
-                subprocess.run(
-                    ["docker", "stop", container_id], capture_output=True, timeout=30
-                )
+                subprocess.run(["docker", "stop", container_id], capture_output=True, timeout=30)
 
     def test_build_context_optimization(self):
         """Test that build context excludes unnecessary files."""
@@ -268,9 +254,7 @@ class TestCacheEffectiveness(unittest.TestCase):
                 pass
 
     @pytest.mark.integration
-    @unittest.skipIf(
-        not os.getenv("RUN_INTEGRATION_TESTS"), "Integration tests skipped"
-    )
+    @unittest.skipIf(not os.getenv("RUN_INTEGRATION_TESTS"), "Integration tests skipped")
     def test_dependency_layer_caching(self):
         """Test that dependency layers are cached effectively."""
         # First build
@@ -335,9 +319,7 @@ class TestWorkflowValidation(unittest.TestCase):
     def setUp(self):
         """Set up workflow testing environment."""
         self.project_root = Path(__file__).parent.parent
-        self.workflow_path = (
-            self.project_root / ".github" / "workflows" / "docker-build.yml"
-        )
+        self.workflow_path = self.project_root / ".github" / "workflows" / "docker-build.yml"
 
     def test_workflow_syntax_valid(self):
         """Test that workflow YAML syntax is valid."""

@@ -112,14 +112,10 @@ def test_start_service(service_config):
         ]
 
         # Mock the check_service_health function
-        with patch.object(
-            docker_orchestrator, "check_service_health", return_value=True
-        ):
+        with patch.object(docker_orchestrator, "check_service_health", return_value=True):
             # Call the function under test
             with patch.object(docker_orchestrator, "logger"):
-                result = docker_orchestrator.start_service(
-                    "test-service", service_config
-                )
+                result = docker_orchestrator.start_service("test-service", service_config)
 
                 # Verify the result
                 assert result is True

@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+# flake8: noqa: E402#!/usr/bin/env python3
 """
 Tests for Calendar Service Redis Message Handler
 
