@@ -64,20 +64,12 @@ class RedisSubscriptionConfig:
         config.socket_connect_timeout = int(
             os.getenv("REDIS_CONNECTION_TIMEOUT", str(config.socket_connect_timeout))
         )
-        config.socket_timeout = int(
-            os.getenv("REDIS_SOCKET_TIMEOUT", str(config.socket_timeout))
-        )
-        config.retry_on_timeout = (
-            os.getenv("REDIS_RETRY_ON_TIMEOUT", "true").lower() == "true"
-        )
+        config.socket_timeout = int(os.getenv("REDIS_SOCKET_TIMEOUT", str(config.socket_timeout)))
+        config.retry_on_timeout = os.getenv("REDIS_RETRY_ON_TIMEOUT", "true").lower() == "true"
 
         # Connection management
-        config.max_retries = int(
-            os.getenv("REDIS_MAX_RETRIES", str(config.max_retries))
-        )
-        config.retry_delay = float(
-            os.getenv("REDIS_RETRY_DELAY", str(config.retry_delay))
-        )
+        config.max_retries = int(os.getenv("REDIS_MAX_RETRIES", str(config.max_retries)))
+        config.retry_delay = float(os.getenv("REDIS_RETRY_DELAY", str(config.retry_delay)))
         config.health_check_interval = int(
             os.getenv("REDIS_HEALTH_CHECK_INTERVAL", str(config.health_check_interval))
         )
@@ -97,12 +89,8 @@ class RedisSubscriptionConfig:
         )
 
         # Subscription settings
-        config.decode_responses = (
-            os.getenv("REDIS_DECODE_RESPONSES", "true").lower() == "true"
-        )
-        config.auto_reconnect = (
-            os.getenv("REDIS_AUTO_RECONNECT", "true").lower() == "true"
-        )
+        config.decode_responses = os.getenv("REDIS_DECODE_RESPONSES", "true").lower() == "true"
+        config.auto_reconnect = os.getenv("REDIS_AUTO_RECONNECT", "true").lower() == "true"
 
         logger.info("🔧 Redis subscription configuration loaded from environment")
         logger.info(f"   URL: {config.url}")
@@ -345,9 +333,7 @@ def reload_redis_subscription_config() -> None:
 
 if __name__ == "__main__":
     # Test Redis subscription configuration
-    logging.basicConfig(
-        level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
-    )
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
     logger.info("🧪 Testing Redis subscription configuration...")
 

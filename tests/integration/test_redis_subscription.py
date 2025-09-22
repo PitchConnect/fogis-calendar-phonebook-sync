@@ -100,12 +100,8 @@ class TestRedisServiceIntegration(unittest.TestCase):
         )
 
         # Mock successful subscription
-        service.subscriber.connection_manager.subscribe_to_channel = Mock(
-            return_value=True
-        )
-        service.subscriber.connection_manager.unsubscribe_from_channel = Mock(
-            return_value=True
-        )
+        service.subscriber.connection_manager.subscribe_to_channel = Mock(return_value=True)
+        service.subscriber.connection_manager.unsubscribe_from_channel = Mock(return_value=True)
 
         # Test starting subscription
         success = service.start_redis_subscription()
@@ -166,15 +162,9 @@ class TestRedisServiceIntegration(unittest.TestCase):
         )
 
         # Mock successful operations
-        service.subscriber.connection_manager.ensure_connection = Mock(
-            return_value=True
-        )
-        service.subscriber.connection_manager.subscribe_to_channel = Mock(
-            return_value=True
-        )
-        service.subscriber.connection_manager.unsubscribe_from_channel = Mock(
-            return_value=True
-        )
+        service.subscriber.connection_manager.ensure_connection = Mock(return_value=True)
+        service.subscriber.connection_manager.subscribe_to_channel = Mock(return_value=True)
+        service.subscriber.connection_manager.unsubscribe_from_channel = Mock(return_value=True)
 
         test_results = service.test_redis_integration()
 
@@ -246,9 +236,7 @@ class TestFlaskIntegration(unittest.TestCase):
             self.assertEqual(response.status_code, 200)
 
             # Test manual sync endpoint
-            response = client.post(
-                "/manual-sync", json={"matches": [{"matchid": 123456}]}
-            )
+            response = client.post("/manual-sync", json={"matches": [{"matchid": 123456}]})
             self.assertEqual(response.status_code, 200)
 
             data = response.get_json()
@@ -323,12 +311,8 @@ class TestEndToEndWorkflow(unittest.TestCase):
         )
 
         # Mock successful subscription
-        service.subscriber.connection_manager.ensure_connection = Mock(
-            return_value=True
-        )
-        service.subscriber.connection_manager.subscribe_to_channel = Mock(
-            return_value=True
-        )
+        service.subscriber.connection_manager.ensure_connection = Mock(return_value=True)
+        service.subscriber.connection_manager.subscribe_to_channel = Mock(return_value=True)
 
         # Start subscription
         success = service.start_redis_subscription()
@@ -363,12 +347,8 @@ class TestEndToEndWorkflow(unittest.TestCase):
         # Check statistics
         stats = service.get_subscription_statistics()
         self.assertTrue(stats["enabled"])
-        self.assertEqual(
-            stats["statistics"]["subscription_stats"]["total_messages_received"], 1
-        )
-        self.assertEqual(
-            stats["statistics"]["subscription_stats"]["successful_messages"], 1
-        )
+        self.assertEqual(stats["statistics"]["subscription_stats"]["total_messages_received"], 1)
+        self.assertEqual(stats["statistics"]["subscription_stats"]["successful_messages"], 1)
 
     def test_configuration_integration(self):
         """Test configuration integration across components."""

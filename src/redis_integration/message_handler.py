@@ -220,9 +220,7 @@ class MatchUpdateHandler:
                     sync_success = self.calendar_sync_callback(matches)
 
                     if sync_success:
-                        logger.info(
-                            "✅ Calendar synchronization completed successfully"
-                        )
+                        logger.info("✅ Calendar synchronization completed successfully")
                         return MessageProcessingResult(
                             success=True,
                             message_type="match_updates",
@@ -480,9 +478,7 @@ def create_processing_status_handler() -> ProcessingStatusHandler:
 
 if __name__ == "__main__":
     # Test message handlers
-    logging.basicConfig(
-        level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
-    )
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
     logger.info("🧪 Testing message handlers...")
 
@@ -501,9 +497,7 @@ if __name__ == "__main__":
         "version": "1.0",
         "type": "match_updates",
         "payload": {
-            "matches": [
-                {"matchid": 123456, "hemmalag": "Team A", "bortalag": "Team B"}
-            ],
+            "matches": [{"matchid": 123456, "hemmalag": "Team A", "bortalag": "Team B"}],
             "metadata": {
                 "has_changes": True,
                 "change_summary": {

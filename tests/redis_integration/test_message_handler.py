@@ -116,9 +116,7 @@ class TestMatchUpdateHandler(unittest.TestCase):
             "version": "1.0",
             "type": "match_updates",
             "payload": {
-                "matches": [
-                    {"matchid": 123456, "hemmalag": "Team A", "bortalag": "Team B"}
-                ],
+                "matches": [{"matchid": 123456, "hemmalag": "Team A", "bortalag": "Team B"}],
                 "metadata": {
                     "has_changes": False,
                     "change_summary": {"new_matches": 0, "updated_matches": 0},

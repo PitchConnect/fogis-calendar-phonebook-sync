@@ -82,9 +82,7 @@ class CalendarServiceRedisSubscriber:
         if self.connection_manager.ensure_connection():
             logger.info("✅ Redis connection established for subscription")
         else:
-            logger.warning(
-                "⚠️ Redis connection not available - subscription will be disabled"
-            )
+            logger.warning("⚠️ Redis connection not available - subscription will be disabled")
 
     def start_subscription(self, channels: List[str] = None) -> bool:
         """
@@ -242,8 +240,7 @@ class CalendarServiceRedisSubscriber:
             uptime_seconds = uptime.total_seconds()
 
         return {
-            "subscription_active": len(self.subscription_stats["active_subscriptions"])
-            > 0,
+            "subscription_active": len(self.subscription_stats["active_subscriptions"]) > 0,
             "active_channels": list(self.subscription_stats["active_subscriptions"]),
             "subscription_stats": {
                 **self.subscription_stats,
@@ -258,9 +255,7 @@ class CalendarServiceRedisSubscriber:
                     else None
                 ),
                 "uptime_seconds": uptime_seconds,
-                "active_subscriptions": list(
-                    self.subscription_stats["active_subscriptions"]
-                ),
+                "active_subscriptions": list(self.subscription_stats["active_subscriptions"]),
             },
             "connection_status": connection_status,
             "message_processing": match_stats,
@@ -307,9 +302,7 @@ class CalendarServiceRedisSubscriber:
 
             # Test subscription (briefly)
             test_channel = self.channels["match_updates"]
-            if self.connection_manager.subscribe_to_channel(
-                test_channel, lambda msg: None
-            ):
+            if self.connection_manager.subscribe_to_channel(test_channel, lambda msg: None):
                 test_results["subscription_test"] = True
                 logger.info("✅ Subscription test passed")
 
@@ -335,9 +328,7 @@ class CalendarServiceRedisSubscriber:
                 test_results["message_handling_test"] = True
                 logger.info("✅ Message handling test passed")
             else:
-                test_results["errors"].append(
-                    f"Message handling failed: {result.error}"
-                )
+                test_results["errors"].append(f"Message handling failed: {result.error}")
                 logger.error("❌ Message handling test failed")
                 return test_results
 
@@ -404,9 +395,7 @@ def test_calendar_redis_subscription(redis_url: str = None) -> bool:
 
 if __name__ == "__main__":
     # Test Redis subscriber
-    logging.basicConfig(
-        level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
-    )
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
     logger.info("🧪 Testing Redis subscriber...")
 
@@ -416,9 +405,7 @@ if __name__ == "__main__":
         return True
 
     # Create subscriber
-    subscriber = create_calendar_redis_subscriber(
-        calendar_sync_callback=test_calendar_sync
-    )
+    subscriber = create_calendar_redis_subscriber(calendar_sync_callback=test_calendar_sync)
 
     # Test subscription functionality
     test_results = subscriber.test_subscription()
@@ -426,18 +413,14 @@ if __name__ == "__main__":
     if test_results["overall_success"]:
         logger.info("✅ Redis subscriber test successful")
     else:
-        logger.warning(
-            "⚠️ Redis subscriber test failed (expected if Redis not available)"
-        )
+        logger.warning("⚠️ Redis subscriber test failed (expected if Redis not available)")
         for error in test_results["errors"]:
             logger.warning(f"   - {error}")
 
     # Get status
     status = subscriber.get_subscription_status()
     logger.info("📊 Subscription Status:")
-    logger.info(
-        f"   Connection Available: {status['connection_status']['redis_available']}"
-    )
+    logger.info(f"   Connection Available: {status['connection_status']['redis_available']}")
     logger.info(f"   Is Connected: {status['connection_status']['is_connected']}")
     logger.info(f"   Configured Channels: {list(status['channels_config'].values())}")
 

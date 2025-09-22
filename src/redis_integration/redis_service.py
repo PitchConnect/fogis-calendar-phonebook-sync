@@ -71,9 +71,7 @@ class CalendarServiceRedisService:
         """
         try:
             config = RedisSubscriptionConfig(url=self.redis_url)
-            self.subscriber = CalendarServiceRedisSubscriber(
-                config, self.calendar_sync_callback
-            )
+            self.subscriber = CalendarServiceRedisSubscriber(config, self.calendar_sync_callback)
 
             logger.info("✅ Redis subscriber initialized successfully")
             return True
@@ -111,9 +109,7 @@ class CalendarServiceRedisService:
 
                 if success:
                     logger.info("✅ Redis subscription started successfully")
-                    logger.info(
-                        "📡 Calendar service is now receiving real-time match updates"
-                    )
+                    logger.info("📡 Calendar service is now receiving real-time match updates")
                     return True
                 else:
                     logger.error("❌ Failed to start Redis subscription")
@@ -153,9 +149,7 @@ class CalendarServiceRedisService:
                 logger.error(f"❌ Failed to stop Redis subscription: {e}")
                 return False
 
-    def set_calendar_sync_callback(
-        self, callback: Callable[[List[Dict]], bool]
-    ) -> None:
+    def set_calendar_sync_callback(self, callback: Callable[[List[Dict]], bool]) -> None:
         """
         Set or update the calendar synchronization callback.
 
@@ -179,9 +173,7 @@ class CalendarServiceRedisService:
             bool: True if sync successful
         """
         try:
-            logger.info(
-                f"📅 Processing manual calendar sync request for {len(matches)} matches"
-            )
+            logger.info(f"📅 Processing manual calendar sync request for {len(matches)} matches")
 
             if self.calendar_sync_callback:
                 success = self.calendar_sync_callback(matches)
@@ -230,16 +222,13 @@ class CalendarServiceRedisService:
             "enabled": True,
             "status": (
                 "connected"
-                if subscription_status.get("connection_status", {}).get(
-                    "is_connected", False
-                )
+                if subscription_status.get("connection_status", {}).get("is_connected", False)
                 else "disconnected"
             ),
             "redis_url": self.redis_url,
             "subscription_status": subscription_status,
             "processing_history": processing_history,
-            "calendar_sync_callback_configured": self.calendar_sync_callback
-            is not None,
+            "calendar_sync_callback_configured": self.calendar_sync_callback is not None,
         }
 
     def get_subscription_statistics(self) -> Dict[str, Any]:
@@ -366,9 +355,7 @@ def create_calendar_redis_service(
     return CalendarServiceRedisService(redis_url, enabled, calendar_sync_callback)
 
 
-def integrate_with_flask_app(
-    app, calendar_sync_callback: Callable[[List[Dict]], bool] = None
-):
+def integrate_with_flask_app(app, calendar_sync_callback: Callable[[List[Dict]], bool] = None):
     """
     Integrate Redis service with Flask application.
 
@@ -380,9 +367,7 @@ def integrate_with_flask_app(
         CalendarServiceRedisService: Configured Redis service
     """
     # Create Redis service
-    redis_service = create_calendar_redis_service(
-        calendar_sync_callback=calendar_sync_callback
-    )
+    redis_service = create_calendar_redis_service(calendar_sync_callback=calendar_sync_callback)
 
     # Add to Flask app
     app.redis_service = redis_service
@@ -422,9 +407,7 @@ def integrate_with_flask_app(
 
 if __name__ == "__main__":
     # Test Redis service
-    logging.basicConfig(
-        level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
-    )
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
     logger.info("🧪 Testing Redis service...")
 

@@ -71,9 +71,7 @@ class RedisSubscriptionManager:
         if REDIS_AVAILABLE:
             self._connect()
         else:
-            logger.warning(
-                "⚠️ Redis package not available - Redis functionality disabled"
-            )
+            logger.warning("⚠️ Redis package not available - Redis functionality disabled")
 
     def _connect(self) -> bool:
         """
@@ -86,9 +84,7 @@ class RedisSubscriptionManager:
             return False
 
         try:
-            logger.debug(
-                f"🔌 Attempting Redis connection (attempt {self.connection_attempts + 1})"
-            )
+            logger.debug(f"🔌 Attempting Redis connection (attempt {self.connection_attempts + 1})")
 
             self.client = redis.from_url(
                 self.config.url,
@@ -173,9 +169,7 @@ class RedisSubscriptionManager:
             self.last_error = str(e)
             return False
 
-    def subscribe_to_channel(
-        self, channel: str, message_handler: Callable[[Dict], None]
-    ) -> bool:
+    def subscribe_to_channel(self, channel: str, message_handler: Callable[[Dict], None]) -> bool:
         """
         Subscribe to Redis channel with message handler.
 
@@ -231,9 +225,7 @@ class RedisSubscriptionManager:
                     continue
 
                 # Get message with timeout
-                message = self.pubsub.get_message(
-                    timeout=self.config.subscription_timeout
-                )
+                message = self.pubsub.get_message(timeout=self.config.subscription_timeout)
 
                 if message is not None:
                     # Skip subscription confirmation messages
@@ -312,9 +304,7 @@ class RedisSubscriptionManager:
                 else None
             ),
             "subscription_thread_alive": (
-                self.subscription_thread.is_alive()
-                if self.subscription_thread
-                else False
+                self.subscription_thread.is_alive() if self.subscription_thread else False
             ),
             "config": {
                 "url": self.config.url,
@@ -391,9 +381,7 @@ def test_redis_subscription(redis_url: str = None) -> bool:
 
 if __name__ == "__main__":
     # Test Redis subscription manager
-    logging.basicConfig(
-        level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
-    )
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
     logger.info("🧪 Testing Redis subscription manager...")
 
@@ -402,4 +390,3 @@ if __name__ == "__main__":
         logger.info("✅ Redis subscription test successful")
     else:
         logger.error("❌ Redis subscription test failed")
-

@@ -121,9 +121,7 @@ class TestCalendarServiceRedisSubscriber(unittest.TestCase):
         self.assertTrue(success)
 
         # Check that all channels were subscribed
-        self.assertEqual(
-            subscriber.connection_manager.subscribe_to_channel.call_count, 3
-        )
+        self.assertEqual(subscriber.connection_manager.subscribe_to_channel.call_count, 3)
 
     @patch("redis_integration.connection_manager.redis")
     def test_subscription_start_partial_failure(self, mock_redis):
@@ -144,9 +142,7 @@ class TestCalendarServiceRedisSubscriber(unittest.TestCase):
         def mock_subscribe(channel, handler):
             return channel != "fogis:processor:status"  # Fail on one channel
 
-        subscriber.connection_manager.subscribe_to_channel = Mock(
-            side_effect=mock_subscribe
-        )
+        subscriber.connection_manager.subscribe_to_channel = Mock(side_effect=mock_subscribe)
 
         success = subscriber.start_subscription()
         self.assertFalse(success)
@@ -166,9 +162,7 @@ class TestCalendarServiceRedisSubscriber(unittest.TestCase):
             "version": "1.0",
             "type": "match_updates",
             "payload": {
-                "matches": [
-                    {"matchid": 123456, "hemmalag": "Team A", "bortalag": "Team B"}
-                ],
+                "matches": [{"matchid": 123456, "hemmalag": "Team A", "bortalag": "Team B"}],
                 "metadata": {"has_changes": True, "change_summary": {"new_matches": 1}},
             },
         }
@@ -355,9 +349,7 @@ class TestCalendarServiceRedisSubscriber(unittest.TestCase):
         self.assertTrue(success)
 
         # Check that all channels were unsubscribed
-        self.assertEqual(
-            subscriber.connection_manager.unsubscribe_from_channel.call_count, 3
-        )
+        self.assertEqual(subscriber.connection_manager.unsubscribe_from_channel.call_count, 3)
 
     def test_subscriber_close(self):
         """Test closing subscriber."""
