@@ -9,7 +9,7 @@ Date: 2025-09-22
 Issue: Redis pub/sub subscription integration for calendar service
 """
 
-from .connection_manager import RedisConnectionManager
+from .connection_manager import RedisSubscriptionConfig, RedisSubscriptionManager
 from .message_handler import MatchUpdateHandler, ProcessingStatusHandler
 from .redis_service import CalendarServiceRedisService
 from .subscriber import CalendarServiceRedisSubscriber
@@ -18,7 +18,7 @@ __all__ = [
     "CalendarServiceRedisSubscriber",
     "MatchUpdateHandler",
     "ProcessingStatusHandler",
-    "RedisConnectionManager",
+    "RedisSubscriptionManager",
     "CalendarServiceRedisService",
 ]
 
