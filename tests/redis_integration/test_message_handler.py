@@ -12,6 +12,7 @@ Issue: Tests for calendar service Redis message handler
 
 import logging
 import os
+
 # Import modules to test
 import sys
 import unittest
@@ -22,8 +23,12 @@ from unittest.mock import Mock, patch
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../src"))
 
 from redis_integration.message_handler import (
-    MatchUpdateHandler, MessageProcessingResult, ProcessingStatusHandler,
-    create_match_update_handler, create_processing_status_handler)
+    MatchUpdateHandler,
+    MessageProcessingResult,
+    ProcessingStatusHandler,
+    create_match_update_handler,
+    create_processing_status_handler,
+)
 
 # Configure logging for tests
 logging.basicConfig(level=logging.INFO)

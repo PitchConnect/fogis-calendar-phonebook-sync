@@ -277,7 +277,9 @@ class TestCheckPythonVersion:
     @patch("setup.print_header")
     @patch("setup.print_success")
     @patch("sys.version_info")
-    def test_check_python_version_valid(self, mock_version, mock_print_success, mock_print_header):
+    def test_check_python_version_valid(
+        self, mock_version, mock_print_success, mock_print_header
+    ):
         """Test Python version check with valid version."""
         mock_version.major = 3
         mock_version.minor = 9
@@ -292,7 +294,9 @@ class TestCheckPythonVersion:
     @patch("setup.print_header")
     @patch("setup.print_error")
     @patch("sys.version_info")
-    def test_check_python_version_invalid(self, mock_version, mock_print_error, mock_print_header):
+    def test_check_python_version_invalid(
+        self, mock_version, mock_print_error, mock_print_header
+    ):
         """Test Python version check with invalid version."""
         mock_version.major = 3
         mock_version.minor = 5
@@ -533,7 +537,9 @@ class TestSetupVirtualEnvironment:
         result = setup.setup_virtual_environment()
 
         assert result is False
-        mock_print_error.assert_called_with("Failed to create virtual environment: Creation failed")
+        mock_print_error.assert_called_with(
+            "Failed to create virtual environment: Creation failed"
+        )
 
 
 class TestInstallDependencies:
@@ -556,7 +562,9 @@ class TestInstallDependencies:
 
         assert result is True
         mock_print_header.assert_called_once_with("Installing Dependencies")
-        mock_print_success.assert_called_once_with("Dependencies installed successfully")
+        mock_print_success.assert_called_once_with(
+            "Dependencies installed successfully"
+        )
 
     @patch("setup.print_header")
     @patch("setup.print_error")
@@ -594,7 +602,9 @@ class TestInstallDependencies:
         result = setup.install_dependencies()
 
         assert result is False
-        mock_print_warning.assert_called_once_with("Not running in a virtual environment")
+        mock_print_warning.assert_called_once_with(
+            "Not running in a virtual environment"
+        )
         mock_print_info.assert_called()
 
     @patch("setup.print_header")
@@ -622,7 +632,9 @@ class TestInstallDependencies:
         result = setup.install_dependencies()
 
         assert result is True
-        mock_print_warning.assert_called_once_with("Not running in a virtual environment")
+        mock_print_warning.assert_called_once_with(
+            "Not running in a virtual environment"
+        )
         mock_print_success.assert_called()
 
     @patch("setup.print_header")
@@ -641,7 +653,9 @@ class TestInstallDependencies:
         result = setup.install_dependencies()
 
         assert result is False
-        mock_print_error.assert_called_with("Failed to install dependencies: Installation failed")
+        mock_print_error.assert_called_with(
+            "Failed to install dependencies: Installation failed"
+        )
 
 
 class TestSetupEnvFile:
@@ -695,7 +709,9 @@ class TestSetupEnvFile:
 
         assert result is True
         mock_file.assert_called_once_with(".env", "w", encoding="utf-8")
-        mock_print_success.assert_called_once_with("Environment variables saved to .env file")
+        mock_print_success.assert_called_once_with(
+            "Environment variables saved to .env file"
+        )
 
     @patch("setup.print_header")
     @patch("setup.print_error")
@@ -792,7 +808,9 @@ class TestSetupEnvFile:
         result = setup.setup_env_file()
 
         assert result is False
-        mock_print_error.assert_called_with("Failed to write to .env file: Write failed")
+        mock_print_error.assert_called_with(
+            "Failed to write to .env file: Write failed"
+        )
         assert mock_print_info.call_count >= 2
 
 
@@ -897,7 +915,9 @@ class TestCheckConfigFile:
     @patch("setup.print_header")
     @patch("setup.print_error")
     @patch("os.path.exists")
-    def test_check_config_file_missing(self, mock_exists, mock_print_error, mock_print_header):
+    def test_check_config_file_missing(
+        self, mock_exists, mock_print_error, mock_print_header
+    ):
         """Test when config.json doesn't exist."""
         mock_exists.return_value = False
 

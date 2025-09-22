@@ -40,7 +40,9 @@ class TestIndexRoute:
         # Reset global auth_manager to ensure clean test
         auth_web_trigger.auth_manager = None
 
-        with patch("auth_web_trigger.HeadlessAuthManager", return_value=mock_auth_manager):
+        with patch(
+            "auth_web_trigger.HeadlessAuthManager", return_value=mock_auth_manager
+        ):
             response = client.get("/")
 
             assert response.status_code == 200
@@ -142,7 +144,9 @@ class TestRestartAuthRoute:
             assert data["success"] is True
             assert "Authentication process started" in data["message"]
 
-            mock_logger.info.assert_called_with("Web interface triggered authentication restart")
+            mock_logger.info.assert_called_with(
+                "Web interface triggered authentication restart"
+            )
             mock_thread.assert_called_once()
 
     def test_restart_auth_creates_auth_manager(self, client):
@@ -204,7 +208,9 @@ class TestRestartAuthRoute:
             assert response.status_code == 200
             assert thread_executed.is_set()
             mock_auth_manager.force_refresh.assert_called_once()
-            mock_logger.info.assert_any_call("Web-triggered authentication completed successfully")
+            mock_logger.info.assert_any_call(
+                "Web-triggered authentication completed successfully"
+            )
 
     def test_restart_auth_thread_failure(self, client, mock_auth_manager):
         """Test authentication thread failure handling."""
@@ -310,7 +316,9 @@ class TestMainFunction:
 
     def test_main_function(self):
         """Test main function execution."""
-        with patch("auth_web_trigger.app.run") as mock_run, patch("builtins.print") as mock_print:
+        with patch("auth_web_trigger.app.run") as mock_run, patch(
+            "builtins.print"
+        ) as mock_print:
 
             auth_web_trigger.main()
 
@@ -318,7 +326,10 @@ class TestMainFunction:
 
             # Check that informational messages were printed
             print_calls = [args[0][0] for args in mock_print.call_args_list]
-            assert any("Starting FOGIS Authentication Web Manager" in msg for msg in print_calls)
+            assert any(
+                "Starting FOGIS Authentication Web Manager" in msg
+                for msg in print_calls
+            )
             assert any("http://localhost:8090" in msg for msg in print_calls)
             assert any("Bookmark this URL" in msg for msg in print_calls)
 

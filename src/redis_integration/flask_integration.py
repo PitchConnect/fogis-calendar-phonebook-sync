@@ -27,7 +27,9 @@ class CalendarRedisFlaskIntegration:
     """Flask integration for calendar Redis subscription service."""
 
     def __init__(
-        self, app: Flask = None, calendar_sync_callback: Callable[[List[Dict]], bool] = None
+        self,
+        app: Flask = None,
+        calendar_sync_callback: Callable[[List[Dict]], bool] = None,
     ):
         """
         Initialize Flask integration for calendar Redis service.
@@ -54,7 +56,9 @@ class CalendarRedisFlaskIntegration:
             calendar_sync_callback: Function to call for calendar synchronization
         """
         self.app = app
-        self.calendar_sync_callback = calendar_sync_callback or self.calendar_sync_callback
+        self.calendar_sync_callback = (
+            calendar_sync_callback or self.calendar_sync_callback
+        )
 
         # Create Redis service
         self.redis_service = CalendarServiceRedisService(
@@ -103,7 +107,11 @@ class CalendarRedisFlaskIntegration:
                 logger.error(f"❌ Error getting Redis status: {e}")
                 return (
                     jsonify(
-                        {"success": False, "error": str(e), "timestamp": datetime.now().isoformat()}
+                        {
+                            "success": False,
+                            "error": str(e),
+                            "timestamp": datetime.now().isoformat(),
+                        }
                     ),
                     500,
                 )
@@ -128,7 +136,11 @@ class CalendarRedisFlaskIntegration:
                 logger.error(f"❌ Error getting Redis statistics: {e}")
                 return (
                     jsonify(
-                        {"success": False, "error": str(e), "timestamp": datetime.now().isoformat()}
+                        {
+                            "success": False,
+                            "error": str(e),
+                            "timestamp": datetime.now().isoformat(),
+                        }
                     ),
                     500,
                 )
@@ -154,7 +166,11 @@ class CalendarRedisFlaskIntegration:
                 logger.error(f"❌ Error testing Redis integration: {e}")
                 return (
                     jsonify(
-                        {"success": False, "error": str(e), "timestamp": datetime.now().isoformat()}
+                        {
+                            "success": False,
+                            "error": str(e),
+                            "timestamp": datetime.now().isoformat(),
+                        }
                     ),
                     500,
                 )
@@ -181,7 +197,11 @@ class CalendarRedisFlaskIntegration:
                 logger.error(f"❌ Error restarting Redis subscription: {e}")
                 return (
                     jsonify(
-                        {"success": False, "error": str(e), "timestamp": datetime.now().isoformat()}
+                        {
+                            "success": False,
+                            "error": str(e),
+                            "timestamp": datetime.now().isoformat(),
+                        }
                     ),
                     500,
                 )
@@ -206,7 +226,9 @@ class CalendarRedisFlaskIntegration:
 
                 matches = data["matches"]
 
-                logger.info(f"📅 Manual sync request received for {len(matches)} matches")
+                logger.info(
+                    f"📅 Manual sync request received for {len(matches)} matches"
+                )
 
                 # Process manual sync
                 success = self.redis_service.handle_manual_sync_request(matches)
@@ -216,7 +238,9 @@ class CalendarRedisFlaskIntegration:
                         "success": success,
                         "timestamp": datetime.now().isoformat(),
                         "matches_processed": len(matches),
-                        "message": "Manual sync completed" if success else "Manual sync failed",
+                        "message": (
+                            "Manual sync completed" if success else "Manual sync failed"
+                        ),
                     }
                 ), (200 if success else 500)
 
@@ -224,7 +248,11 @@ class CalendarRedisFlaskIntegration:
                 logger.error(f"❌ Error in manual sync: {e}")
                 return (
                     jsonify(
-                        {"success": False, "error": str(e), "timestamp": datetime.now().isoformat()}
+                        {
+                            "success": False,
+                            "error": str(e),
+                            "timestamp": datetime.now().isoformat(),
+                        }
                     ),
                     500,
                 )
@@ -252,14 +280,20 @@ class CalendarRedisFlaskIntegration:
                 logger.error(f"❌ Error getting Redis configuration: {e}")
                 return (
                     jsonify(
-                        {"success": False, "error": str(e), "timestamp": datetime.now().isoformat()}
+                        {
+                            "success": False,
+                            "error": str(e),
+                            "timestamp": datetime.now().isoformat(),
+                        }
                     ),
                     500,
                 )
 
         logger.info("📡 Redis endpoints registered with Flask application")
 
-    def set_calendar_sync_callback(self, callback: Callable[[List[Dict]], bool]) -> None:
+    def set_calendar_sync_callback(
+        self, callback: Callable[[List[Dict]], bool]
+    ) -> None:
         """
         Set or update the calendar synchronization callback.
 
@@ -381,7 +415,9 @@ if __name__ == '__main__':
 
 if __name__ == "__main__":
     # Test Flask integration
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+    logging.basicConfig(
+        level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+    )
 
     logger.info("🧪 Testing Flask integration...")
 

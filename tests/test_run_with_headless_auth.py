@@ -21,9 +21,9 @@ class TestLoadConfig:
 
     def test_load_config_file_not_found(self):
         """Test config loading when file doesn't exist."""
-        with patch("builtins.open", side_effect=FileNotFoundError("File not found")), patch(
-            "run_with_headless_auth.logger"
-        ) as mock_logger:
+        with patch(
+            "builtins.open", side_effect=FileNotFoundError("File not found")
+        ), patch("run_with_headless_auth.logger") as mock_logger:
 
             result = run_with_headless_auth.load_config()
 
@@ -43,9 +43,9 @@ class TestLoadConfig:
 
     def test_load_config_permission_error(self):
         """Test config loading with permission error."""
-        with patch("builtins.open", side_effect=PermissionError("Permission denied")), patch(
-            "run_with_headless_auth.logger"
-        ) as mock_logger:
+        with patch(
+            "builtins.open", side_effect=PermissionError("Permission denied")
+        ), patch("run_with_headless_auth.logger") as mock_logger:
 
             result = run_with_headless_auth.load_config()
 
@@ -129,9 +129,13 @@ class TestSetupHeadlessMonitoring:
             "needs_refresh": False,
         }
 
-        with patch("run_with_headless_auth.load_config", return_value=mock_config), patch(
+        with patch(
+            "run_with_headless_auth.load_config", return_value=mock_config
+        ), patch(
             "headless_auth.HeadlessAuthManager", return_value=mock_auth_manager
-        ), patch("run_with_headless_auth.logger") as mock_logger:
+        ), patch(
+            "run_with_headless_auth.logger"
+        ) as mock_logger:
 
             result = run_with_headless_auth.setup_headless_monitoring()
 
@@ -150,16 +154,22 @@ class TestSetupHeadlessMonitoring:
         mock_credentials = MagicMock()
         mock_auth_manager.get_valid_credentials.return_value = mock_credentials
 
-        with patch("run_with_headless_auth.load_config", return_value=mock_config), patch(
+        with patch(
+            "run_with_headless_auth.load_config", return_value=mock_config
+        ), patch(
             "headless_auth.HeadlessAuthManager", return_value=mock_auth_manager
-        ), patch("run_with_headless_auth.logger") as mock_logger:
+        ), patch(
+            "run_with_headless_auth.logger"
+        ) as mock_logger:
 
             result = run_with_headless_auth.setup_headless_monitoring()
 
         assert result == mock_auth_manager
         mock_auth_manager.get_valid_credentials.assert_called_once()
         mock_auth_manager.start_monitoring.assert_called_once()
-        mock_logger.info.assert_any_call("Token needs refresh - starting headless authentication")
+        mock_logger.info.assert_any_call(
+            "Token needs refresh - starting headless authentication"
+        )
 
     def test_setup_headless_monitoring_credentials_failure(self):
         """Test headless monitoring setup when credentials fail."""
@@ -171,9 +181,13 @@ class TestSetupHeadlessMonitoring:
         }
         mock_auth_manager.get_valid_credentials.return_value = None  # Failure
 
-        with patch("run_with_headless_auth.load_config", return_value=mock_config), patch(
+        with patch(
+            "run_with_headless_auth.load_config", return_value=mock_config
+        ), patch(
             "headless_auth.HeadlessAuthManager", return_value=mock_auth_manager
-        ), patch("run_with_headless_auth.logger") as mock_logger:
+        ), patch(
+            "run_with_headless_auth.logger"
+        ) as mock_logger:
 
             result = run_with_headless_auth.setup_headless_monitoring()
 
@@ -269,10 +283,14 @@ class TestMain:
         """Test successful main execution with headless auth."""
         mock_auth_manager = MagicMock()
 
-        with patch("run_with_headless_auth.check_dependencies", return_value=True), patch(
+        with patch(
+            "run_with_headless_auth.check_dependencies", return_value=True
+        ), patch(
             "run_with_headless_auth.setup_headless_monitoring",
             return_value=mock_auth_manager,
-        ), patch("run_with_headless_auth.run_calendar_sync", return_value=True), patch(
+        ), patch(
+            "run_with_headless_auth.run_calendar_sync", return_value=True
+        ), patch(
             "run_with_headless_auth.logger"
         ) as mock_logger:
 
@@ -287,9 +305,13 @@ class TestMain:
 
     def test_main_success_without_headless_auth(self):
         """Test successful main execution without headless auth."""
-        with patch("run_with_headless_auth.check_dependencies", return_value=True), patch(
+        with patch(
+            "run_with_headless_auth.check_dependencies", return_value=True
+        ), patch(
             "run_with_headless_auth.setup_headless_monitoring", return_value=None
-        ), patch("run_with_headless_auth.run_calendar_sync", return_value=True), patch(
+        ), patch(
+            "run_with_headless_auth.run_calendar_sync", return_value=True
+        ), patch(
             "run_with_headless_auth.logger"
         ) as mock_logger:
 
@@ -303,9 +325,9 @@ class TestMain:
 
     def test_main_dependency_check_failure(self):
         """Test main execution when dependency check fails."""
-        with patch("run_with_headless_auth.check_dependencies", return_value=False), patch(
-            "run_with_headless_auth.logger"
-        ) as mock_logger:
+        with patch(
+            "run_with_headless_auth.check_dependencies", return_value=False
+        ), patch("run_with_headless_auth.logger") as mock_logger:
 
             result = run_with_headless_auth.main()
 
@@ -316,10 +338,14 @@ class TestMain:
         """Test main execution when calendar sync fails."""
         mock_auth_manager = MagicMock()
 
-        with patch("run_with_headless_auth.check_dependencies", return_value=True), patch(
+        with patch(
+            "run_with_headless_auth.check_dependencies", return_value=True
+        ), patch(
             "run_with_headless_auth.setup_headless_monitoring",
             return_value=mock_auth_manager,
-        ), patch("run_with_headless_auth.run_calendar_sync", return_value=False), patch(
+        ), patch(
+            "run_with_headless_auth.run_calendar_sync", return_value=False
+        ), patch(
             "run_with_headless_auth.logger"
         ) as mock_logger:
 
@@ -330,9 +356,13 @@ class TestMain:
 
     def test_main_keyboard_interrupt(self):
         """Test main execution with keyboard interrupt."""
-        with patch("run_with_headless_auth.check_dependencies", return_value=True), patch(
+        with patch(
+            "run_with_headless_auth.check_dependencies", return_value=True
+        ), patch(
             "run_with_headless_auth.setup_headless_monitoring", return_value=None
-        ), patch("run_with_headless_auth.run_calendar_sync", side_effect=KeyboardInterrupt), patch(
+        ), patch(
+            "run_with_headless_auth.run_calendar_sync", side_effect=KeyboardInterrupt
+        ), patch(
             "run_with_headless_auth.logger"
         ) as mock_logger:
 
@@ -343,7 +373,9 @@ class TestMain:
 
     def test_main_unexpected_exception(self):
         """Test main execution with unexpected exception."""
-        with patch("run_with_headless_auth.check_dependencies", return_value=True), patch(
+        with patch(
+            "run_with_headless_auth.check_dependencies", return_value=True
+        ), patch(
             "run_with_headless_auth.setup_headless_monitoring", return_value=None
         ), patch(
             "run_with_headless_auth.run_calendar_sync",

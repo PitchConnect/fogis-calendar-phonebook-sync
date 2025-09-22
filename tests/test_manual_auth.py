@@ -27,7 +27,9 @@ class TestMainFunction:
         mock_file.side_effect = [config_file.return_value, token_file.return_value]
 
         # Mock user input
-        mock_input.return_value = "http://localhost:8080/callback?code=test_code&state=test_state"
+        mock_input.return_value = (
+            "http://localhost:8080/callback?code=test_code&state=test_state"
+        )
 
         # Mock credentials
         mock_credentials = MagicMock()
@@ -135,7 +137,9 @@ class TestMainFunction:
 
         # Verify custom scopes were printed
         mock_print.assert_any_call("  - https://www.googleapis.com/auth/calendar")
-        mock_print.assert_any_call("  - https://www.googleapis.com/auth/contacts.readonly")
+        mock_print.assert_any_call(
+            "  - https://www.googleapis.com/auth/contacts.readonly"
+        )
 
         # Verify refresh token status (False for None)
         mock_print.assert_any_call("✅ Has refresh token: False")
@@ -170,7 +174,9 @@ class TestMainFunction:
         mock_file.return_value = config_file.return_value
 
         # Mock flow creation failure - this is not in a try-catch, so exception should be raised
-        mock_flow_from_file.side_effect = FileNotFoundError("credentials.json not found")
+        mock_flow_from_file.side_effect = FileNotFoundError(
+            "credentials.json not found"
+        )
 
         with pytest.raises(FileNotFoundError, match="credentials.json not found"):
             manual_auth.main()
@@ -190,7 +196,9 @@ class TestMainFunction:
 
         # Mock flow that fails during authorization_url - this is not in a try-catch, so exception should be raised
         mock_flow_instance = MagicMock()
-        mock_flow_instance.authorization_url.side_effect = Exception("Auth URL generation failed")
+        mock_flow_instance.authorization_url.side_effect = Exception(
+            "Auth URL generation failed"
+        )
         mock_flow_from_file.return_value = mock_flow_instance
 
         with pytest.raises(Exception, match="Auth URL generation failed"):
@@ -200,7 +208,9 @@ class TestMainFunction:
     @patch("builtins.open", new_callable=mock_open)
     @patch("google_auth_oauthlib.flow.Flow.from_client_secrets_file")
     @patch("builtins.print")
-    def test_main_fetch_token_failure(self, mock_print, mock_flow_from_file, mock_file, mock_input):
+    def test_main_fetch_token_failure(
+        self, mock_print, mock_flow_from_file, mock_file, mock_input
+    ):
         """Test main function when token fetching fails."""
         # Mock config file
         mock_config = {"SCOPES": ["https://www.googleapis.com/auth/calendar"]}
@@ -216,7 +226,9 @@ class TestMainFunction:
             "https://auth.url",
             "state",
         )
-        mock_flow_instance.fetch_token.side_effect = Exception("Invalid authorization response")
+        mock_flow_instance.fetch_token.side_effect = Exception(
+            "Invalid authorization response"
+        )
         mock_flow_from_file.return_value = mock_flow_instance
 
         result = manual_auth.main()
@@ -231,7 +243,9 @@ class TestMainFunction:
     @patch("builtins.open", new_callable=mock_open)
     @patch("google_auth_oauthlib.flow.Flow.from_client_secrets_file")
     @patch("builtins.print")
-    def test_main_token_save_failure(self, mock_print, mock_flow_from_file, mock_file, mock_input):
+    def test_main_token_save_failure(
+        self, mock_print, mock_flow_from_file, mock_file, mock_input
+    ):
         """Test main function when token saving fails."""
         # Mock config file (first call) and token file write failure (second call)
         mock_config = {"SCOPES": ["https://www.googleapis.com/auth/calendar"]}

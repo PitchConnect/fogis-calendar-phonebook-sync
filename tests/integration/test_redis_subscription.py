@@ -12,6 +12,7 @@ Issue: Integration tests for calendar service Redis subscription
 
 import logging
 import os
+
 # Import modules to test
 import sys
 import threading
@@ -371,7 +372,6 @@ class TestEndToEndWorkflow(unittest.TestCase):
 
     def test_configuration_integration(self):
         """Test configuration integration across components."""
-        from redis_integration.config import RedisSubscriptionConfig
 
         # Create custom configuration
         config = RedisSubscriptionConfig(

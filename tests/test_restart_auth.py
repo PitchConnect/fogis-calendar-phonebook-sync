@@ -86,11 +86,15 @@ class TestRestartAuthMain:
         # Verify success messages were printed
         mock_print.assert_any_call("✅ Authentication completed successfully!")
         mock_print.assert_any_call("✅ New token saved and ready for use.")
-        mock_print.assert_any_call("✅ Background monitoring will continue automatically.")
+        mock_print.assert_any_call(
+            "✅ Background monitoring will continue automatically."
+        )
 
     @patch("restart_auth.HeadlessAuthManager")
     @patch("builtins.print")
-    def test_main_token_needs_refresh_success(self, mock_print, mock_auth_manager_class):
+    def test_main_token_needs_refresh_success(
+        self, mock_print, mock_auth_manager_class
+    ):
         """Test main function when token needs refresh and authentication succeeds."""
         # Mock HeadlessAuthManager
         mock_auth_manager = MagicMock()
@@ -128,7 +132,9 @@ class TestRestartAuthMain:
 
     @patch("restart_auth.HeadlessAuthManager")
     @patch("builtins.print")
-    def test_main_token_needs_refresh_failure(self, mock_print, mock_auth_manager_class):
+    def test_main_token_needs_refresh_failure(
+        self, mock_print, mock_auth_manager_class
+    ):
         """Test main function when token needs refresh but authentication fails."""
         # Mock HeadlessAuthManager
         mock_auth_manager = MagicMock()
@@ -185,7 +191,9 @@ class TestRestartAuthMain:
         mock_print.assert_any_call("  Needs Refresh: True")
 
         # Verify expiry message was NOT printed since expiry is None
-        expiry_calls = [call for call in mock_print.call_args_list if "Expires:" in str(call)]
+        expiry_calls = [
+            call for call in mock_print.call_args_list if "Expires:" in str(call)
+        ]
         assert len(expiry_calls) == 0
 
     @patch("restart_auth.HeadlessAuthManager")
@@ -210,7 +218,9 @@ class TestRestartAuthMain:
     @patch("restart_auth.HeadlessAuthManager")
     @patch("builtins.print")
     @patch("restart_auth.logger")
-    def test_main_general_exception(self, mock_logger, mock_print, mock_auth_manager_class):
+    def test_main_general_exception(
+        self, mock_logger, mock_print, mock_auth_manager_class
+    ):
         """Test main function when a general exception occurs."""
         # Mock HeadlessAuthManager
         mock_auth_manager = MagicMock()
@@ -262,7 +272,9 @@ class TestRestartAuthMain:
 
     @patch("restart_auth.HeadlessAuthManager")
     @patch("builtins.print")
-    def test_main_user_input_proceed_variations(self, mock_print, mock_auth_manager_class):
+    def test_main_user_input_proceed_variations(
+        self, mock_print, mock_auth_manager_class
+    ):
         """Test main function with user inputs that should proceed."""
         # Mock HeadlessAuthManager
         mock_auth_manager = MagicMock()
@@ -351,11 +363,15 @@ class TestRestartAuthEdgeCases:
         # Verify default values were used
         mock_print.assert_any_call("  Valid: False")  # Default for missing 'valid'
         mock_print.assert_any_call("  Expired: True")  # Default for missing 'expired'
-        mock_print.assert_any_call("  Needs Refresh: True")  # Default for missing 'needs_refresh'
+        mock_print.assert_any_call(
+            "  Needs Refresh: True"
+        )  # Default for missing 'needs_refresh'
 
     @patch("restart_auth.HeadlessAuthManager")
     @patch("builtins.print")
-    def test_main_auth_manager_creation_failure(self, mock_print, mock_auth_manager_class):
+    def test_main_auth_manager_creation_failure(
+        self, mock_print, mock_auth_manager_class
+    ):
         """Test main function when HeadlessAuthManager creation fails."""
         # Mock HeadlessAuthManager creation failure
         mock_auth_manager_class.side_effect = Exception("Failed to create auth manager")

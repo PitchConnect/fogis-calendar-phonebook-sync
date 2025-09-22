@@ -140,7 +140,9 @@ def test_unknown_notification_method(mock_config):
 
     assert result is False
     mock_logger.warning.assert_any_call("Unknown notification method: unknown_method")
-    mock_logger.warning.assert_any_call("Failed to send notification via configured method")
+    mock_logger.warning.assert_any_call(
+        "Failed to send notification via configured method"
+    )
 
 
 @pytest.mark.fast
@@ -156,8 +158,12 @@ def test_notification_fallback_logging(mock_config):
         result = sender.send_auth_notification(auth_url)
 
     assert result is False
-    mock_logger.warning.assert_any_call("Failed to send notification via configured method")
-    mock_logger.info.assert_any_call(f"AUTHENTICATION REQUIRED: Please visit {auth_url}")
+    mock_logger.warning.assert_any_call(
+        "Failed to send notification via configured method"
+    )
+    mock_logger.info.assert_any_call(
+        f"AUTHENTICATION REQUIRED: Please visit {auth_url}"
+    )
 
 
 @pytest.mark.fast
@@ -181,7 +187,9 @@ def test_email_smtp_exception(mock_config):
     sender = notification.NotificationSender(mock_config)
 
     # Mock SMTP to raise an exception
-    with mock.patch("smtplib.SMTP") as mock_smtp, mock.patch("notification.logger") as mock_logger:
+    with mock.patch("smtplib.SMTP") as mock_smtp, mock.patch(
+        "notification.logger"
+    ) as mock_logger:
         mock_smtp.side_effect = Exception("SMTP connection failed")
 
         result = sender._send_email("Test Subject", "Test Message")
@@ -200,7 +208,9 @@ def test_discord_missing_webhook_url(mock_config):
     sender = notification.NotificationSender(incomplete_config)
 
     with mock.patch("notification.logger") as mock_logger:
-        result = sender._send_discord("Test Subject", "Test Message", "https://example.com/auth")
+        result = sender._send_discord(
+            "Test Subject", "Test Message", "https://example.com/auth"
+        )
 
     assert result is False
     mock_logger.error.assert_called_with("Discord webhook URL not configured")
@@ -217,7 +227,9 @@ def test_discord_webhook_error_status(mock_config):
         mock_response = mock_urlopen.return_value.__enter__.return_value
         mock_response.status = 400  # Error status
 
-        result = sender._send_discord("Test Subject", "Test Message", "https://example.com/auth")
+        result = sender._send_discord(
+            "Test Subject", "Test Message", "https://example.com/auth"
+        )
 
     assert result is False
     mock_logger.error.assert_called_with("Discord webhook returned status 400")
@@ -233,10 +245,14 @@ def test_discord_webhook_exception(mock_config):
     ) as mock_logger:
         mock_urlopen.side_effect = Exception("Network error")
 
-        result = sender._send_discord("Test Subject", "Test Message", "https://example.com/auth")
+        result = sender._send_discord(
+            "Test Subject", "Test Message", "https://example.com/auth"
+        )
 
     assert result is False
-    mock_logger.error.assert_called_with("Failed to send Discord notification: Network error")
+    mock_logger.error.assert_called_with(
+        "Failed to send Discord notification: Network error"
+    )
 
 
 @pytest.mark.fast
@@ -247,7 +263,9 @@ def test_slack_missing_webhook_url(mock_config):
     sender = notification.NotificationSender(incomplete_config)
 
     with mock.patch("notification.logger") as mock_logger:
-        result = sender._send_slack("Test Subject", "Test Message", "https://example.com/auth")
+        result = sender._send_slack(
+            "Test Subject", "Test Message", "https://example.com/auth"
+        )
 
     assert result is False
     mock_logger.error.assert_called_with("Slack webhook URL not configured")
@@ -264,7 +282,9 @@ def test_slack_webhook_error_status(mock_config):
         mock_response = mock_urlopen.return_value.__enter__.return_value
         mock_response.status = 500  # Error status
 
-        result = sender._send_slack("Test Subject", "Test Message", "https://example.com/auth")
+        result = sender._send_slack(
+            "Test Subject", "Test Message", "https://example.com/auth"
+        )
 
     assert result is False
     mock_logger.error.assert_called_with("Slack webhook returned status 500")
@@ -280,10 +300,14 @@ def test_slack_webhook_exception(mock_config):
     ) as mock_logger:
         mock_urlopen.side_effect = Exception("Connection timeout")
 
-        result = sender._send_slack("Test Subject", "Test Message", "https://example.com/auth")
+        result = sender._send_slack(
+            "Test Subject", "Test Message", "https://example.com/auth"
+        )
 
     assert result is False
-    mock_logger.error.assert_called_with("Failed to send Slack notification: Connection timeout")
+    mock_logger.error.assert_called_with(
+        "Failed to send Slack notification: Connection timeout"
+    )
 
 
 @pytest.mark.fast
@@ -308,7 +332,9 @@ def test_send_success_notification_discord(mock_config):
     mock_config["NOTIFICATION_METHOD"] = "discord"
     sender = notification.NotificationSender(mock_config)
 
-    with mock.patch.object(sender, "_send_discord_simple", return_value=True) as mock_discord:
+    with mock.patch.object(
+        sender, "_send_discord_simple", return_value=True
+    ) as mock_discord:
         result = sender.send_success_notification()
 
     assert result is True
@@ -324,7 +350,9 @@ def test_send_success_notification_slack(mock_config):
     mock_config["NOTIFICATION_METHOD"] = "slack"
     sender = notification.NotificationSender(mock_config)
 
-    with mock.patch.object(sender, "_send_slack_simple", return_value=True) as mock_slack:
+    with mock.patch.object(
+        sender, "_send_slack_simple", return_value=True
+    ) as mock_slack:
         result = sender.send_success_notification()
 
     assert result is True

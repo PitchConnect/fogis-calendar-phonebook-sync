@@ -41,7 +41,10 @@ def test_load_config():
 
             # Verify the config was loaded correctly
             assert loaded_config == config
-            assert loaded_config["CALENDAR_ID"] == "test_calendar_id@group.calendar.google.com"
+            assert (
+                loaded_config["CALENDAR_ID"]
+                == "test_calendar_id@group.calendar.google.com"
+            )
             assert loaded_config["SYNC_TAG"] == "TEST_SYNC_TAG"
     finally:
         # Clean up the temporary file

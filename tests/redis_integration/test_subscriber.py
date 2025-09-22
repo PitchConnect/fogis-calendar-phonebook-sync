@@ -12,6 +12,7 @@ Issue: Tests for calendar service Redis subscriber
 
 import logging
 import os
+
 # Import modules to test
 import sys
 import time
@@ -23,8 +24,10 @@ from unittest.mock import MagicMock, Mock, patch
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../src"))
 
 from redis_integration.connection_manager import RedisSubscriptionConfig
-from redis_integration.subscriber import (CalendarServiceRedisSubscriber,
-                                          create_calendar_redis_subscriber)
+from redis_integration.subscriber import (
+    CalendarServiceRedisSubscriber,
+    create_calendar_redis_subscriber,
+)
 
 # Configure logging for tests
 logging.basicConfig(level=logging.INFO)

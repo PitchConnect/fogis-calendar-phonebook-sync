@@ -69,16 +69,18 @@ class TestHeadlessAuthManager:
 
     def test_load_config_success(self, mock_config_file, mock_config):
         """Test successful config loading."""
-        with patch("headless_auth.TokenManager"), patch("headless_auth.NotificationSender"):
+        with patch("headless_auth.TokenManager"), patch(
+            "headless_auth.NotificationSender"
+        ):
 
             manager = headless_auth.HeadlessAuthManager(mock_config_file)
             assert manager.config == mock_config
 
     def test_load_config_file_not_found(self):
         """Test config loading with missing file."""
-        with patch("headless_auth.TokenManager"), patch("headless_auth.NotificationSender"), patch(
-            "headless_auth.logger"
-        ) as mock_logger:
+        with patch("headless_auth.TokenManager"), patch(
+            "headless_auth.NotificationSender"
+        ), patch("headless_auth.logger") as mock_logger:
 
             manager = headless_auth.HeadlessAuthManager("nonexistent.json")
             assert manager.config == {}
@@ -90,9 +92,9 @@ class TestHeadlessAuthManager:
             f.write("invalid json content")
             invalid_file = f.name
 
-        with patch("headless_auth.TokenManager"), patch("headless_auth.NotificationSender"), patch(
-            "headless_auth.logger"
-        ) as mock_logger:
+        with patch("headless_auth.TokenManager"), patch(
+            "headless_auth.NotificationSender"
+        ), patch("headless_auth.logger") as mock_logger:
 
             manager = headless_auth.HeadlessAuthManager(invalid_file)
             assert manager.config == {}
@@ -135,9 +137,9 @@ class TestHeadlessAuthManager:
         expiry = datetime.now() + timedelta(days=1)
         auth_manager.token_manager.check_token_expiration.return_value = (True, expiry)
 
-        with patch.object(auth_manager, "_perform_headless_auth", return_value=False), patch(
-            "headless_auth.logger"
-        ) as mock_logger:
+        with patch.object(
+            auth_manager, "_perform_headless_auth", return_value=False
+        ), patch("headless_auth.logger") as mock_logger:
 
             result = auth_manager.get_valid_credentials()
 
@@ -166,7 +168,9 @@ class TestHeadlessAuthManager:
         ) as mock_auth_server_class, patch("headless_auth.logger") as mock_logger:
 
             auth_manager.notification_sender.send_auth_notification.return_value = True
-            auth_manager.notification_sender.send_success_notification.return_value = True
+            auth_manager.notification_sender.send_success_notification.return_value = (
+                True
+            )
 
             result = auth_manager._perform_headless_auth("test expiry info")
 
@@ -181,7 +185,9 @@ class TestHeadlessAuthManager:
                 "http://localhost:8080/auth", "test expiry info"
             )
             auth_manager.notification_sender.send_success_notification.assert_called_once()
-            mock_logger.info.assert_any_call("Headless authentication completed successfully")
+            mock_logger.info.assert_any_call(
+                "Headless authentication completed successfully"
+            )
 
     def test_perform_headless_auth_timeout(self, auth_manager):
         """Test headless authentication timeout."""
@@ -198,13 +204,15 @@ class TestHeadlessAuthManager:
             result = auth_manager._perform_headless_auth()
 
             assert result is False
-            mock_logger.error.assert_called_with("Headless authentication failed or timed out")
+            mock_logger.error.assert_called_with(
+                "Headless authentication failed or timed out"
+            )
 
     def test_perform_headless_auth_exception(self, auth_manager):
         """Test headless authentication with exception."""
-        with patch("headless_auth.AuthServer", side_effect=Exception("Test error")), patch(
-            "headless_auth.logger"
-        ) as mock_logger:
+        with patch(
+            "headless_auth.AuthServer", side_effect=Exception("Test error")
+        ), patch("headless_auth.logger") as mock_logger:
 
             result = auth_manager._perform_headless_auth()
 
@@ -230,7 +238,9 @@ class TestHeadlessAuthManager:
 
     def test_start_monitoring_success(self, auth_manager):
         """Test starting monitoring successfully."""
-        with patch("threading.Thread") as mock_thread, patch("headless_auth.logger") as mock_logger:
+        with patch("threading.Thread") as mock_thread, patch(
+            "headless_auth.logger"
+        ) as mock_logger:
 
             mock_thread_instance = MagicMock()
             mock_thread.return_value = mock_thread_instance
@@ -246,7 +256,9 @@ class TestHeadlessAuthManager:
         """Test starting monitoring when already running."""
         auth_manager._monitoring = True
 
-        with patch("threading.Thread") as mock_thread, patch("headless_auth.logger") as mock_logger:
+        with patch("threading.Thread") as mock_thread, patch(
+            "headless_auth.logger"
+        ) as mock_logger:
 
             auth_manager.start_monitoring()
 
@@ -297,10 +309,14 @@ class TestIntegrationFunctions:
         config_dict = {"test": "config"}
 
         with patch("headless_auth.logger") as mock_logger:
-            result = headless_auth.integrate_with_existing_auth(config_dict, headless_mode=False)
+            result = headless_auth.integrate_with_existing_auth(
+                config_dict, headless_mode=False
+            )
 
             assert result is None
-            mock_logger.info.assert_called_with("Using standard (non-headless) authentication")
+            mock_logger.info.assert_called_with(
+                "Using standard (non-headless) authentication"
+            )
 
     def test_integrate_with_existing_auth_headless_success(self):
         """Test integration function with headless_mode=True and success."""
@@ -315,7 +331,9 @@ class TestIntegrationFunctions:
             mock_manager.get_valid_credentials.return_value = mock_credentials
             mock_manager_class.return_value = mock_manager
 
-            result = headless_auth.integrate_with_existing_auth(config_dict, headless_mode=True)
+            result = headless_auth.integrate_with_existing_auth(
+                config_dict, headless_mode=True
+            )
 
             assert result == mock_credentials
             mock_logger.info.assert_called_with("Using headless authentication mode")
@@ -324,7 +342,10 @@ class TestIntegrationFunctions:
 
             # Check that manager was stored for cleanup
             assert hasattr(headless_auth.integrate_with_existing_auth, "_auth_managers")
-            assert mock_manager in headless_auth.integrate_with_existing_auth._auth_managers
+            assert (
+                mock_manager
+                in headless_auth.integrate_with_existing_auth._auth_managers
+            )
 
     def test_integrate_with_existing_auth_headless_failure(self):
         """Test integration function with headless_mode=True and failure."""
@@ -338,7 +359,9 @@ class TestIntegrationFunctions:
             mock_manager.get_valid_credentials.return_value = None
             mock_manager_class.return_value = mock_manager
 
-            result = headless_auth.integrate_with_existing_auth(config_dict, headless_mode=True)
+            result = headless_auth.integrate_with_existing_auth(
+                config_dict, headless_mode=True
+            )
 
             assert result is None
             mock_manager.get_valid_credentials.assert_called_once()
@@ -452,8 +475,12 @@ class TestMonitoringLoop:
                 f"Current token expires: {expiry.strftime('%Y-%m-%d %H:%M:%S UTC')}"
             )
             mock_auth.assert_called_once_with(expected_expiry_info)
-            mock_logger.info.assert_any_call("Background monitor detected token needs refresh")
-            mock_logger.info.assert_any_call("Background token refresh completed successfully")
+            mock_logger.info.assert_any_call(
+                "Background monitor detected token needs refresh"
+            )
+            mock_logger.info.assert_any_call(
+                "Background token refresh completed successfully"
+            )
 
     def test_monitor_loop_refresh_needed_failure(self, auth_manager_with_monitoring):
         """Test monitoring loop when refresh is needed but fails."""
@@ -484,9 +511,13 @@ class TestMonitoringLoop:
         auth_manager._monitoring = True
 
         # Mock token check to raise exception
-        auth_manager.token_manager.check_token_expiration.side_effect = Exception("Test error")
+        auth_manager.token_manager.check_token_expiration.side_effect = Exception(
+            "Test error"
+        )
 
-        with patch("time.sleep") as mock_sleep, patch("headless_auth.logger") as mock_logger:
+        with patch("time.sleep") as mock_sleep, patch(
+            "headless_auth.logger"
+        ) as mock_logger:
 
             # Stop monitoring after exception handling
             call_count = 0
@@ -501,16 +532,22 @@ class TestMonitoringLoop:
 
             auth_manager._monitor_loop()
 
-            mock_logger.exception.assert_called_with("Error in monitoring loop: Test error")
+            mock_logger.exception.assert_called_with(
+                "Error in monitoring loop: Test error"
+            )
             # Should sleep 60 seconds on exception, then check again
             assert mock_sleep.call_count >= 1
 
-    def test_monitor_loop_stops_when_monitoring_false(self, auth_manager_with_monitoring):
+    def test_monitor_loop_stops_when_monitoring_false(
+        self, auth_manager_with_monitoring
+    ):
         """Test that monitoring loop stops when _monitoring is set to False."""
         auth_manager = auth_manager_with_monitoring
         auth_manager._monitoring = False  # Start with monitoring disabled
 
-        with patch.object(auth_manager.token_manager, "check_token_expiration") as mock_check:
+        with patch.object(
+            auth_manager.token_manager, "check_token_expiration"
+        ) as mock_check:
             auth_manager._monitor_loop()
 
             # Should not check token if monitoring is disabled

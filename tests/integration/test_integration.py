@@ -59,7 +59,9 @@ def setup_test_environment():
             }
         ]
 
-        with open(os.path.join(temp_dir, "local_matches.json"), "w", encoding="utf-8") as f:
+        with open(
+            os.path.join(temp_dir, "local_matches.json"), "w", encoding="utf-8"
+        ) as f:
             json.dump(matches, f)
 
         yield temp_dir, config, matches
@@ -86,12 +88,16 @@ def test_end_to_end_sync(setup_test_environment):
     }
 
     # Mock the people service
-    mock_people_service.contactGroups().list().execute.return_value = {"contactGroups": []}
+    mock_people_service.contactGroups().list().execute.return_value = {
+        "contactGroups": []
+    }
     mock_people_service.contactGroups().create().execute.return_value = {
         "resourceName": "contactGroups/123",
         "name": "Referees",
     }
-    mock_people_service.people().connections().list().execute.return_value = {"connections": []}
+    mock_people_service.people().connections().list().execute.return_value = {
+        "connections": []
+    }
     mock_people_service.people().createContact().execute.return_value = {
         "resourceName": "people/123",
         "names": [{"displayName": "John Doe"}],
@@ -129,7 +135,9 @@ def test_end_to_end_sync(setup_test_environment):
     ):
 
         # Override the config.json path
-        with patch.dict(os.environ, {"CONFIG_PATH": os.path.join(temp_dir, "config.json")}):
+        with patch.dict(
+            os.environ, {"CONFIG_PATH": os.path.join(temp_dir, "config.json")}
+        ):
             # Run the sync process
             with app.app.test_client() as client:
                 response = client.post("/sync")
@@ -158,7 +166,9 @@ def test_full_authentication_flow():
     }
 
     # Test TokenManager integration with proper mocking
-    with patch("os.path.exists", return_value=True), patch("builtins.open", create=True), patch(
+    with patch("os.path.exists", return_value=True), patch(
+        "builtins.open", create=True
+    ), patch(
         "json.load",
         return_value={
             "installed": {
@@ -174,7 +184,9 @@ def test_full_authentication_flow():
         tm = token_manager.TokenManager(config)
 
         # Mock the OAuth flow
-        with patch("google_auth_oauthlib.flow.Flow.from_client_secrets_file") as mock_flow_class:
+        with patch(
+            "google_auth_oauthlib.flow.Flow.from_client_secrets_file"
+        ) as mock_flow_class:
             mock_flow = MagicMock()
             mock_flow.authorization_url.return_value = ("http://auth.url", "state123")
             mock_flow_class.return_value = mock_flow
@@ -272,7 +284,9 @@ def test_calendar_and_contacts_sync_integration():
     }
 
     # Mock contacts operations
-    mock_people_service.people().connections().list().execute.return_value = {"connections": []}
+    mock_people_service.people().connections().list().execute.return_value = {
+        "connections": []
+    }
     mock_people_service.people().connections().list_next.return_value = None
     mock_people_service.contactGroups().list().execute.return_value = {
         "contactGroups": [{"resourceName": "contactGroups/123", "name": "Referees"}]
@@ -297,9 +311,13 @@ def test_calendar_and_contacts_sync_integration():
         mock_calendar_service.events().insert.assert_called_once()
 
     # Test contacts sync
-    with patch.object(fogis_contacts, "authorize_google_people", return_value=MagicMock()), patch(
+    with patch.object(
+        fogis_contacts, "authorize_google_people", return_value=MagicMock()
+    ), patch(
         "googleapiclient.discovery.build", return_value=mock_people_service
-    ), patch("time.sleep"):
+    ), patch(
+        "time.sleep"
+    ):
 
         result = fogis_contacts.process_referees(match_data)
         assert result is True
@@ -316,7 +334,9 @@ def test_error_handling_integration():
         resp=MagicMock(status=404), content=b'{"error": {"message": "Not found"}}'
     )
 
-    result = fogis_calendar_sync.check_calendar_exists(mock_service, "nonexistent_calendar")
+    result = fogis_calendar_sync.check_calendar_exists(
+        mock_service, "nonexistent_calendar"
+    )
     assert result is False
 
     # Test contacts API error handling
