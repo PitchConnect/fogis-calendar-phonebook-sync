@@ -103,16 +103,16 @@ class CalendarService:
         self.redis_service = CalendarServiceRedisService(
             calendar_sync_callback=self.sync_matches_to_calendar
         )
-        
+
         # Start Redis subscription
         if self.redis_service.enabled:
             self.redis_service.start_redis_subscription()
-    
+
     def sync_matches_to_calendar(self, matches):
         """Your calendar synchronization logic."""
         # Process matches and sync with Google Calendar
         return True
-    
+
     def get_redis_status(self):
         """Get Redis integration status."""
         return self.redis_service.get_redis_status()
