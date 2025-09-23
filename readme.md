@@ -335,14 +335,29 @@ Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for gui
 
 ### Development Setup
 
-For development, we recommend installing the development dependencies and pre-commit hooks:
+For development, you **must** install the development dependencies and pre-commit hooks:
 
 ```bash
+# Install development dependencies
 pip install -r dev-requirements.txt
+
+# Install pre-commit hooks (REQUIRED)
 pre-commit install
+
+# Verify pre-commit setup
+pre-commit run --all-files
 ```
 
-This will set up pre-commit hooks to ensure code quality standards are met. For more information on our code quality standards, see [docs/code_quality.md](docs/code_quality.md).
+**⚠️ Important**: Pre-commit hooks are required for all development work. They ensure code quality standards are met and prevent CI/CD pipeline failures.
+
+The pre-commit hooks include:
+- **Code formatting** (black, isort)
+- **Linting** (flake8)
+- **Security scanning** (bandit)
+- **Test execution** (pytest)
+- **File validation** (YAML, JSON)
+
+For more information on our code quality standards, see the [Pre-commit Setup Guide](../PRE_COMMIT_SETUP_GUIDE.md).
 
 ### CI/CD Pipeline
 
