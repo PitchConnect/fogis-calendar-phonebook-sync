@@ -58,7 +58,9 @@ class RedisSubscriptionConfig:
 
         # Load configuration from environment variables
         config.url = os.getenv("REDIS_URL", config.url)
-        config.enabled = os.getenv("REDIS_PUBSUB_ENABLED", "true").lower() == "true"
+        # Check both REDIS_ENABLED and REDIS_PUBSUB_ENABLED for compatibility
+        enabled_env = os.getenv("REDIS_ENABLED") or os.getenv("REDIS_PUBSUB_ENABLED", "true")
+        config.enabled = enabled_env.lower() == "true"
 
         # Connection timeouts
         config.socket_connect_timeout = int(
@@ -211,6 +213,17 @@ class RedisSubscriptionConfigManager:
         """
         return self.config
 
+    def update_config(self, new_config: RedisSubscriptionConfig) -> None:
+        """
+        Update the Redis subscription configuration.
+
+        Args:
+            new_config: New Redis configuration to apply
+        """
+        self.config = new_config
+        self._validation_result = None  # Reset validation cache
+        logger.info("✅ Redis subscription configuration updated")
+
     def validate_config(self) -> Dict[str, Any]:
         """
         Validate current Redis subscription configuration.
@@ -231,7 +244,7 @@ class RedisSubscriptionConfigManager:
             bool: True if configuration is valid
         """
         validation = self.validate_config()
-        return validation.get("valid", False)
+        return validation.get("is_valid", False)
 
     def get_connection_url(self) -> str:
         """

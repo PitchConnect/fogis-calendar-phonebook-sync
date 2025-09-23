@@ -170,7 +170,7 @@ class TestRedisSubscriptionConfigManager(unittest.TestCase):
         manager = RedisSubscriptionConfigManager()
 
         # Should not raise exception for valid config
-        is_valid = manager.validate_config()
+        is_valid = manager.is_valid()
 
         self.assertIsInstance(is_valid, bool)
 

@@ -15,7 +15,7 @@ import threading
 import time
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 try:
     import redis
@@ -62,7 +62,7 @@ class RedisSubscriptionManager:
         self.last_error: Optional[str] = None
         self.subscribed_channels = set()
         self.subscription_thread: Optional[threading.Thread] = None
-        self.stop_subscription = threading.Event()
+        self.stop_subscription_event = threading.Event()
 
         logger.info("🔧 Redis Subscription Manager initialized")
         logger.info(f"   Redis URL: {self.config.url}")
@@ -194,7 +194,7 @@ class RedisSubscriptionManager:
 
             # Start subscription thread if not already running
             if not self.subscription_thread or not self.subscription_thread.is_alive():
-                self.stop_subscription.clear()
+                self.stop_subscription_event.clear()
                 self.subscription_thread = threading.Thread(
                     target=self._subscription_loop, args=(message_handler,), daemon=True
                 )
@@ -218,7 +218,7 @@ class RedisSubscriptionManager:
         """
         logger.info("🔄 Starting Redis subscription loop")
 
-        while not self.stop_subscription.is_set():
+        while not self.stop_subscription_event.is_set():
             try:
                 if not self.ensure_connection() or not self.pubsub:
                     time.sleep(self.config.retry_delay)
@@ -313,12 +313,94 @@ class RedisSubscriptionManager:
             },
         }
 
+    def get_message(self, timeout: float = 1.0) -> Optional[Dict[str, Any]]:
+        """
+        Get a message from the subscription.
+
+        Args:
+            timeout: Timeout in seconds to wait for a message
+
+        Returns:
+            Optional[Dict[str, Any]]: Message data or None if no message
+        """
+        if not self.pubsub:
+            return None
+
+        try:
+            message = self.pubsub.get_message(timeout=timeout)
+            if message and message.get("type") == "message":
+                return {
+                    "channel": message.get("channel", b"").decode("utf-8"),
+                    "data": message.get("data", b"").decode("utf-8"),
+                    "type": message.get("type"),
+                }
+        except Exception as e:
+            logger.warning(f"⚠️ Error getting message: {e}")
+
+        return None
+
+    def start_subscription(self, channels: List[str]) -> bool:
+        """
+        Start subscription to specified channels.
+
+        Args:
+            channels: List of channel names to subscribe to
+
+        Returns:
+            bool: True if subscription started successfully
+        """
+        if not self.redis_available:
+            logger.warning("⚠️ Cannot start subscription: Redis not available")
+            return False
+
+        try:
+            # Ensure connection
+            if not self.ensure_connection():
+                return False
+
+            # Subscribe to channels
+            success_count = 0
+            for channel in channels:
+                if self.subscribe_to_channel(channel):
+                    success_count += 1
+
+            if success_count > 0:
+                logger.info(f"✅ Started subscription to {success_count}/{len(channels)} channels")
+                return True
+            else:
+                logger.error("❌ Failed to subscribe to any channels")
+                return False
+
+        except Exception as e:
+            logger.error(f"❌ Failed to start subscription: {e}")
+            return False
+
+    def stop_subscription(self) -> bool:
+        """
+        Stop subscription to all channels.
+
+        Returns:
+            bool: True if subscription stopped successfully
+        """
+        try:
+            if self.subscription_thread and self.subscription_thread.is_alive():
+                self.stop_subscription_event.set()
+                self.subscription_thread.join(timeout=5)
+                logger.info("✅ Subscription stopped successfully")
+                return True
+            else:
+                logger.info("ℹ️ No active subscription to stop")
+                return True
+        except Exception as e:
+            logger.error(f"❌ Failed to stop subscription: {e}")
+            return False
+
     def close(self) -> None:
         """Close Redis subscription gracefully."""
         logger.info("🔌 Closing Redis subscription")
 
         # Stop subscription loop
-        self.stop_subscription.set()
+        self.stop_subscription_event.set()
 
         # Wait for subscription thread to finish
         if self.subscription_thread and self.subscription_thread.is_alive():
@@ -341,6 +423,7 @@ class RedisSubscriptionManager:
         self.pubsub = None
         self.is_connected = False
         self.is_subscribed = False
+        self.redis_available = REDIS_AVAILABLE
 
 
 # Convenience functions for external use

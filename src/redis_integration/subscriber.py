@@ -383,6 +383,18 @@ class CalendarServiceRedisSubscriber:
             logger.error(f"❌ Failed to publish message to {channel}: {e}")
             return False
 
+    def get_message(self, timeout: float = 1.0) -> Optional[Dict[str, Any]]:
+        """
+        Get a message from the subscription.
+
+        Args:
+            timeout: Timeout in seconds to wait for a message
+
+        Returns:
+            Optional[Dict[str, Any]]: Message data or None if no message
+        """
+        return self.connection_manager.get_message(timeout)
+
     def close(self) -> None:
         """Close Redis subscription gracefully."""
         logger.info("🔌 Closing Redis subscription")
