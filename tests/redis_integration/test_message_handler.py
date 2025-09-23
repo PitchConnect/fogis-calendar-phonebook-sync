@@ -294,7 +294,7 @@ class TestMatchUpdateHandler(unittest.TestCase):
 
         # Check result
         self.assertFalse(result.success)
-        self.assertIn("Failed to process message", result.error)
+        self.assertIn("Failed to process match updates", result.error)
 
     def test_processing_statistics(self):
         """Test processing statistics tracking."""
