@@ -18,7 +18,7 @@ from unittest.mock import Mock, patch
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../src"))
 
-from redis_integration.config import (
+from redis_integration.config import (  # noqa: E402
     RedisSubscriptionConfig,
     RedisSubscriptionConfigManager,
     get_redis_subscription_config,
@@ -33,7 +33,7 @@ class TestRedisSubscriptionConfig(unittest.TestCase):
     def test_redis_config_creation_with_defaults(self):
         """Test Redis config creation with default values."""
         config = RedisSubscriptionConfig()
-        
+
         self.assertIsInstance(config.url, str)
         self.assertIsInstance(config.enabled, bool)
         self.assertIsInstance(config.socket_connect_timeout, int)
@@ -53,9 +53,9 @@ class TestRedisSubscriptionConfig(unittest.TestCase):
             retry_on_timeout=False,
             max_retries=5,
             retry_delay=2.0,
-            health_check_interval=60
+            health_check_interval=60,
         )
-        
+
         self.assertEqual(config.url, "redis://custom:6379")
         self.assertFalse(config.enabled)
         self.assertEqual(config.socket_connect_timeout, 10)
@@ -84,10 +84,7 @@ class TestRedisSubscriptionConfig(unittest.TestCase):
 
     def test_redis_config_from_environment(self):
         """Test creating Redis config from environment variables."""
-        with patch.dict(os.environ, {
-            "REDIS_URL": "redis://env:6379",
-            "REDIS_ENABLED": "false"
-        }):
+        with patch.dict(os.environ, {"REDIS_URL": "redis://env:6379", "REDIS_ENABLED": "false"}):
             config = RedisSubscriptionConfig.from_environment()
 
             self.assertEqual(config.url, "redis://env:6379")
@@ -95,11 +92,10 @@ class TestRedisSubscriptionConfig(unittest.TestCase):
 
     def test_redis_config_environment_parsing(self):
         """Test environment variable parsing."""
-        with patch.dict(os.environ, {
-            "REDIS_ENABLED": "true",
-            "REDIS_MAX_RETRIES": "10",
-            "REDIS_RETRY_DELAY": "3.5"
-        }):
+        with patch.dict(
+            os.environ,
+            {"REDIS_ENABLED": "true", "REDIS_MAX_RETRIES": "10", "REDIS_RETRY_DELAY": "3.5"},
+        ):
             config = RedisSubscriptionConfig.from_environment()
 
             self.assertTrue(config.enabled)

@@ -18,9 +18,9 @@ from unittest.mock import Mock, patch
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../src"))
 
-from redis_integration.connection_manager import (
-    RedisSubscriptionManager,
+from redis_integration.connection_manager import (  # noqa: E402
     RedisSubscriptionConfig,
+    RedisSubscriptionManager,
     create_redis_subscription_manager,
 )
 
@@ -31,7 +31,7 @@ class TestRedisSubscriptionConfig(unittest.TestCase):
     def test_subscription_config_creation_with_defaults(self):
         """Test subscription config creation with default values."""
         config = RedisSubscriptionConfig()
-        
+
         self.assertIsInstance(config.channels, list)
         self.assertIsInstance(config.patterns, list)
         self.assertIsInstance(config.ignore_subscribe_messages, bool)
@@ -40,13 +40,11 @@ class TestRedisSubscriptionConfig(unittest.TestCase):
         """Test subscription config creation with custom values."""
         channels = ["test:channel1", "test:channel2"]
         patterns = ["test:*", "match:*"]
-        
+
         config = RedisSubscriptionConfig(
-            channels=channels,
-            patterns=patterns,
-            ignore_subscribe_messages=False
+            channels=channels, patterns=patterns, ignore_subscribe_messages=False
         )
-        
+
         self.assertEqual(config.channels, channels)
         self.assertEqual(config.patterns, patterns)
         self.assertFalse(config.ignore_subscribe_messages)
@@ -73,7 +71,7 @@ class TestRedisSubscriptionManager(unittest.TestCase):
 
     def test_connect_success(self):
         """Test successful Redis connection."""
-        with patch('redis.from_url') as mock_redis_from_url:
+        with patch("redis.from_url") as mock_redis_from_url:
             mock_connection = Mock()
             mock_connection.ping.return_value = True
             mock_redis_from_url.return_value = mock_connection
@@ -84,7 +82,7 @@ class TestRedisSubscriptionManager(unittest.TestCase):
 
     def test_connect_failure(self):
         """Test Redis connection failure."""
-        with patch('redis.from_url') as mock_redis_from_url:
+        with patch("redis.from_url") as mock_redis_from_url:
             mock_redis_from_url.side_effect = Exception("Connection failed")
 
             result = self.manager._connect()
@@ -93,7 +91,7 @@ class TestRedisSubscriptionManager(unittest.TestCase):
 
     def test_connect_ping_failure(self):
         """Test Redis connection with ping failure."""
-        with patch('redis.from_url') as mock_redis_from_url:
+        with patch("redis.from_url") as mock_redis_from_url:
             mock_connection = Mock()
             mock_connection.ping.side_effect = Exception("Ping failed")
             mock_redis_from_url.return_value = mock_connection

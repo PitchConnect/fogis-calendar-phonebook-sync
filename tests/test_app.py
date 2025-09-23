@@ -136,8 +136,8 @@ def test_health_endpoint_token_in_environment_path(client):
         # Data directory exists
         if path == "data":
             return True
-        # Environment variable token path exists
-        if path == "/app/credentials/tokens/calendar/token.json":
+        # Environment variable token path exists (actual value from .env file)
+        if path == "/app/data/google-calendar/token.json":
             return True
         # Enhanced logging may check log directories - allow them to exist
         return True
@@ -149,7 +149,7 @@ def test_health_endpoint_token_in_environment_path(client):
             data = json.loads(response.data)
             assert data["status"] == "healthy"
             assert data["auth_status"] == "authenticated"
-            assert data["token_location"] == "/app/credentials/tokens/calendar/token.json"
+            assert data["token_location"] == "/app/data/google-calendar/token.json"
             assert data["version"] == "test-version"
             assert "environment" in data
 
@@ -163,8 +163,8 @@ def test_health_endpoint_token_in_legacy_path(client):
         # Data directory exists
         if path == "data":
             return True
-        # Environment variable token path doesn't exist
-        if path == "/app/credentials/tokens/calendar/token.json":
+        # Environment variable token path doesn't exist (actual value from .env file)
+        if path == "/app/data/google-calendar/token.json":
             return False
         # Legacy token path exists
         if path == "/app/data/token.json":
@@ -194,7 +194,7 @@ def test_health_endpoint_token_in_working_directory(client):
             return True
         # Environment variable and legacy token paths don't exist
         if path in [
-            "/app/credentials/tokens/calendar/token.json",
+            "/app/data/google-calendar/token.json",
             "/app/data/token.json",
         ]:
             return False
