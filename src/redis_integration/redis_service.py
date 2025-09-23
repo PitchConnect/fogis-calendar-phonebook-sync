@@ -192,6 +192,122 @@ class CalendarServiceRedisService:
             logger.error(f"❌ Manual calendar sync error: {e}")
             return False
 
+    def initialize_redis_publishing(self) -> bool:
+        """
+        Initialize Redis publishing capabilities.
+
+        Returns:
+            bool: True if publishing is available, False otherwise
+        """
+        if not self.enabled:
+            logger.info("📋 Redis publishing disabled by configuration")
+            return False
+
+        if not self.subscriber:
+            logger.warning("⚠️ Redis subscriber not initialized, publishing unavailable")
+            return False
+
+        try:
+            # Check if Redis connection is available for publishing
+            connection_status = self.subscriber.get_connection_status()
+            if connection_status.get("redis_available", False):
+                logger.info("✅ Redis publishing initialized successfully")
+                return True
+            else:
+                logger.warning("⚠️ Redis connection not available for publishing")
+                return False
+        except Exception as e:
+            logger.error(f"❌ Failed to initialize Redis publishing: {e}")
+            return False
+
+    def handle_calendar_sync_start(self, sync_details: Dict[str, Any]) -> bool:
+        """
+        Handle calendar sync start event.
+
+        Args:
+            sync_details: Details about the sync operation
+
+        Returns:
+            bool: True if handled successfully
+        """
+        if not self.enabled:
+            return True  # Graceful degradation when disabled
+
+        try:
+            if self.subscriber:
+                # Publish sync start event
+                message = {
+                    "event": "calendar_sync_start",
+                    "timestamp": datetime.now().isoformat(),
+                    "details": sync_details,
+                }
+                return self.subscriber.publish_message("fogis:calendar:events", message)
+            return True
+        except Exception as e:
+            logger.error(f"❌ Failed to handle calendar sync start: {e}")
+            return True  # Graceful degradation
+
+    def handle_calendar_sync_complete(
+        self, sync_results: Dict[str, Any], sync_details: Dict[str, Any]
+    ) -> bool:
+        """
+        Handle calendar sync completion event.
+
+        Args:
+            sync_results: Results of the sync operation
+            sync_details: Details about the sync operation
+
+        Returns:
+            bool: True if handled successfully
+        """
+        if not self.enabled:
+            return True  # Graceful degradation when disabled
+
+        try:
+            if self.subscriber:
+                # Publish sync completion event
+                message = {
+                    "event": "calendar_sync_complete",
+                    "timestamp": datetime.now().isoformat(),
+                    "results": sync_results,
+                    "details": sync_details,
+                }
+                return self.subscriber.publish_message("fogis:calendar:events", message)
+            return True
+        except Exception as e:
+            logger.error(f"❌ Failed to handle calendar sync complete: {e}")
+            return True  # Graceful degradation
+
+    def handle_calendar_sync_error(self, error: Exception, sync_details: Dict[str, Any]) -> bool:
+        """
+        Handle calendar sync error event.
+
+        Args:
+            error: The error that occurred
+            sync_details: Details about the sync operation
+
+        Returns:
+            bool: True if handled successfully
+        """
+        if not self.enabled:
+            return True  # Graceful degradation when disabled
+
+        try:
+            if self.subscriber:
+                # Publish sync error event
+                message = {
+                    "event": "calendar_sync_error",
+                    "timestamp": datetime.now().isoformat(),
+                    "error": str(error),
+                    "error_type": type(error).__name__,
+                    "details": sync_details,
+                }
+                return self.subscriber.publish_message("fogis:calendar:events", message)
+            return True
+        except Exception as e:
+            logger.error(f"❌ Failed to handle calendar sync error: {e}")
+            return True  # Graceful degradation
+
     def get_redis_status(self) -> Dict[str, Any]:
         """
         Get comprehensive Redis service status.
@@ -218,14 +334,17 @@ class CalendarServiceRedisService:
         subscription_status = self.subscriber.get_subscription_status()
         processing_history = self.subscriber.get_processing_history()
 
+        # Extract connection status for compatibility
+        connection_status = subscription_status.get("connection_status", {})
+
         return {
             "enabled": True,
             "status": (
-                "connected"
-                if subscription_status.get("connection_status", {}).get("is_connected", False)
-                else "disconnected"
+                "connected" if connection_status.get("is_connected", False) else "disconnected"
             ),
             "redis_url": self.redis_url,
+            "redis_available": connection_status.get("redis_available", False),
+            "connection_status": connection_status,
             "subscription_status": subscription_status,
             "processing_history": processing_history,
             "calendar_sync_callback_configured": self.calendar_sync_callback is not None,

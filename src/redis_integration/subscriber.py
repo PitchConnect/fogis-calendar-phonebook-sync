@@ -342,6 +342,47 @@ class CalendarServiceRedisSubscriber:
 
         return test_results
 
+    def publish_message(self, channel: str, message: Dict[str, Any]) -> bool:
+        """
+        Publish a message to a Redis channel.
+
+        Args:
+            channel: Redis channel name
+            message: Message to publish
+
+        Returns:
+            bool: True if message published successfully
+        """
+        try:
+            if not self.connection_manager.is_connected():
+                logger.warning("⚠️ Redis not connected, cannot publish message")
+                return False
+
+            # Get Redis connection
+            redis_client = self.connection_manager.get_redis_client()
+            if not redis_client:
+                logger.warning("⚠️ Redis client not available for publishing")
+                return False
+
+            # Serialize message to JSON
+            import json
+
+            message_json = json.dumps(message)
+
+            # Publish message
+            result = redis_client.publish(channel, message_json)
+
+            if result > 0:
+                logger.debug(f"📤 Published message to {channel}: {result} subscribers")
+                return True
+            else:
+                logger.debug(f"📤 Published message to {channel}: no subscribers")
+                return True  # Still consider it successful
+
+        except Exception as e:
+            logger.error(f"❌ Failed to publish message to {channel}: {e}")
+            return False
+
     def close(self) -> None:
         """Close Redis subscription gracefully."""
         logger.info("🔌 Closing Redis subscription")
