@@ -40,6 +40,16 @@ class RedisSubscriptionConfig:
     max_retries: int = 3
     retry_delay: float = 1.0
     subscription_timeout: int = 1  # Timeout for subscription operations
+    channels: List[str] = None  # Channels to subscribe to
+    patterns: List[str] = None  # Patterns to subscribe to
+    ignore_subscribe_messages: bool = True  # Whether to ignore subscription confirmation messages
+
+    def __post_init__(self):
+        """Initialize default values for mutable fields."""
+        if self.channels is None:
+            self.channels = []
+        if self.patterns is None:
+            self.patterns = []
 
 
 class RedisSubscriptionManager:
@@ -63,6 +73,7 @@ class RedisSubscriptionManager:
         self.subscribed_channels = set()
         self.subscription_thread: Optional[threading.Thread] = None
         self.stop_subscription_event = threading.Event()
+        self.redis_available = REDIS_AVAILABLE
 
         logger.info("🔧 Redis Subscription Manager initialized")
         logger.info(f"   Redis URL: {self.config.url}")
@@ -339,12 +350,15 @@ class RedisSubscriptionManager:
 
         return None
 
-    def start_subscription(self, channels: List[str]) -> bool:
+    def start_subscription(
+        self, channels: List[str], message_handler: Callable[[Dict], None] = None
+    ) -> bool:
         """
         Start subscription to specified channels.
 
         Args:
             channels: List of channel names to subscribe to
+            message_handler: Optional message handler function
 
         Returns:
             bool: True if subscription started successfully
@@ -358,10 +372,18 @@ class RedisSubscriptionManager:
             if not self.ensure_connection():
                 return False
 
+            # Use default message handler if none provided
+            if message_handler is None:
+
+                def default_handler(msg):
+                    logger.info(f"📨 Received message: {msg}")
+
+                message_handler = default_handler
+
             # Subscribe to channels
             success_count = 0
             for channel in channels:
-                if self.subscribe_to_channel(channel):
+                if self.subscribe_to_channel(channel, message_handler):
                     success_count += 1
 
             if success_count > 0:
@@ -383,14 +405,22 @@ class RedisSubscriptionManager:
             bool: True if subscription stopped successfully
         """
         try:
+            # Stop subscription thread
             if self.subscription_thread and self.subscription_thread.is_alive():
                 self.stop_subscription_event.set()
                 self.subscription_thread.join(timeout=5)
-                logger.info("✅ Subscription stopped successfully")
-                return True
-            else:
-                logger.info("ℹ️ No active subscription to stop")
-                return True
+
+            # Close pubsub connection
+            if self.pubsub:
+                self.pubsub.close()
+                self.pubsub = None
+
+            # Reset subscription state
+            self.is_subscribed = False
+            self.subscribed_channels.clear()
+
+            logger.info("✅ Subscription stopped successfully")
+            return True
         except Exception as e:
             logger.error(f"❌ Failed to stop subscription: {e}")
             return False

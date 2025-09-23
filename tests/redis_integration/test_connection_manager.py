@@ -103,7 +103,7 @@ class TestRedisSubscriptionManager(unittest.TestCase):
     def test_close_connection(self):
         """Test closing Redis connection."""
         mock_connection = Mock()
-        self.manager.redis_client = mock_connection
+        self.manager.client = mock_connection
 
         self.manager.close()
 
@@ -111,7 +111,7 @@ class TestRedisSubscriptionManager(unittest.TestCase):
 
     def test_close_no_connection(self):
         """Test closing when no connection exists."""
-        self.manager.redis_client = None
+        self.manager.client = None
 
         # Should not raise exception
         self.manager.close()
@@ -120,7 +120,7 @@ class TestRedisSubscriptionManager(unittest.TestCase):
         """Test closing connection with exception."""
         mock_connection = Mock()
         mock_connection.close.side_effect = Exception("Close failed")
-        self.manager.redis_client = mock_connection
+        self.manager.client = mock_connection
 
         # Should not raise exception
         self.manager.close()
@@ -129,7 +129,7 @@ class TestRedisSubscriptionManager(unittest.TestCase):
         """Test successful health check."""
         mock_connection = Mock()
         mock_connection.ping.return_value = True
-        self.manager.redis_client = mock_connection
+        self.manager.client = mock_connection
 
         result = self.manager._health_check()
 
@@ -137,7 +137,7 @@ class TestRedisSubscriptionManager(unittest.TestCase):
 
     def test_health_check_not_connected(self):
         """Test health check when not connected."""
-        self.manager.redis_client = None
+        self.manager.client = None
 
         result = self.manager._health_check()
 
@@ -147,7 +147,7 @@ class TestRedisSubscriptionManager(unittest.TestCase):
         """Test health check with ping failure."""
         mock_connection = Mock()
         mock_connection.ping.side_effect = Exception("Ping failed")
-        self.manager.redis_client = mock_connection
+        self.manager.client = mock_connection
 
         result = self.manager._health_check()
 
@@ -158,7 +158,9 @@ class TestRedisSubscriptionManager(unittest.TestCase):
         mock_connection = Mock()
         mock_pubsub = Mock()
         mock_connection.pubsub.return_value = mock_pubsub
-        self.manager.redis_client = mock_connection
+        self.manager.client = mock_connection
+        self.manager.pubsub = mock_pubsub
+        self.manager.is_connected = True
 
         result = self.manager.start_subscription(["test:channel"])
 
@@ -166,7 +168,7 @@ class TestRedisSubscriptionManager(unittest.TestCase):
 
     def test_subscription_when_not_connected(self):
         """Test subscription when not connected."""
-        self.manager.redis_client = None
+        self.manager.client = None
 
         result = self.manager.start_subscription(["test:channel"])
 
