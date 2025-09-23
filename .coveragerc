@@ -23,6 +23,13 @@ omit =
     setup.py
     conftest.py
     */conftest.py
+    # Exclude Redis integration from unit test coverage (has separate test suite)
+    src/redis_integration/*
+    # Exclude utility scripts and development tools
+    add_headless_support.py
+    duplicate_contact_analyzer.py
+    fix_docstrings.py
+    simple_manual_auth.py
 
 # Branch coverage (measure both line and branch coverage)
 branch = True
