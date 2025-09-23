@@ -167,10 +167,11 @@ class TestCalendarRedisFlaskIntegration(unittest.TestCase):
 
     def test_handle_flask_request_context(self):
         """Test handling Flask request context."""
-        with patch("flask.request") as mock_request:
-            mock_request.method = "GET"
-            mock_request.path = "/test"
+        from flask import Flask
 
+        app = Flask(__name__)
+
+        with app.test_request_context("/test", method="GET"):
             # Should not raise exception
             result = self.integration.handle_request_context()
 
