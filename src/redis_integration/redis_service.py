@@ -322,6 +322,19 @@ class CalendarServiceRedisService:
                 "message": "Redis integration disabled by configuration",
             }
 
+        # Check if Redis is available at all
+        if (
+            not self.subscriber
+            or not hasattr(self.subscriber.connection_manager, "redis_available")
+            or not self.subscriber.connection_manager.redis_available
+        ):
+            return {
+                "enabled": False,
+                "status": "disabled",
+                "message": "Redis package not available",
+                "redis_available": False,
+            }
+
         if not self.subscriber:
             return {
                 "enabled": True,

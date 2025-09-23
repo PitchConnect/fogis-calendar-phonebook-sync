@@ -17,7 +17,7 @@ from typing import Any, Callable, Dict, List, Optional
 
 from flask import Flask, jsonify, request
 
-from .config import get_redis_subscription_config
+from .config import get_redis_subscription_config, get_redis_subscription_config_manager
 from .redis_service import CalendarServiceRedisService
 
 logger = logging.getLogger(__name__)
@@ -255,8 +255,7 @@ class CalendarRedisFlaskIntegration:
         def redis_config():
             """Get Redis configuration information."""
             try:
-                config = get_redis_subscription_config()
-                config_manager = config.__class__(config)
+                config_manager = get_redis_subscription_config_manager()
                 status_summary = config_manager.get_status_summary()
 
                 return (
