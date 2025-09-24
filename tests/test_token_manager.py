@@ -280,7 +280,9 @@ class TestTokenManagerFunctions:
             return_value=mock_credentials,
         ):
             manager = token_manager.TokenManager(
-                config=mock_config, credentials_file="test_creds.json", token_file="test_token.json"
+                config=mock_config,
+                credentials_file="test_creds.json",
+                token_file="test_token.json",
             )
 
             # Test refresh failure
@@ -297,7 +299,9 @@ class TestTokenManagerFunctions:
     def test_check_token_expiration_no_expiry(self, mock_config, mock_credentials):
         """Test check_token_expiration with no expiry info."""
         manager = token_manager.TokenManager(
-            config=mock_config, credentials_file="test_creds.json", token_file="test_token.json"
+            config=mock_config,
+            credentials_file="test_creds.json",
+            token_file="test_token.json",
         )
 
         # Test credentials with no expiry
@@ -311,7 +315,9 @@ class TestTokenManagerFunctions:
     def test_initiate_auth_flow_missing_credentials_file(self, mock_config):
         """Test initiate_auth_flow with missing credentials file."""
         manager = token_manager.TokenManager(
-            config=mock_config, credentials_file="nonexistent.json", token_file="test_token.json"
+            config=mock_config,
+            credentials_file="nonexistent.json",
+            token_file="test_token.json",
         )
 
         with patch("os.path.exists", return_value=False):
@@ -326,7 +332,9 @@ class TestTokenManagerFunctions:
             side_effect=Exception("Corrupted token file"),
         ):
             manager = token_manager.TokenManager(
-                config=mock_config, credentials_file="test_creds.json", token_file="test_token.json"
+                config=mock_config,
+                credentials_file="test_creds.json",
+                token_file="test_token.json",
             )
 
             result = manager.get_credentials()
@@ -411,7 +419,9 @@ class TestTokenManagerFunctions:
     def test_get_credentials_cached(self, mock_config, mock_credentials):
         """Test get_credentials returns cached credentials."""
         manager = token_manager.TokenManager(
-            config=mock_config, credentials_file="test_creds.json", token_file="test_token.json"
+            config=mock_config,
+            credentials_file="test_creds.json",
+            token_file="test_token.json",
         )
 
         # Set cached credentials
@@ -425,7 +435,9 @@ class TestTokenManagerFunctions:
     def test_load_token_exception(self):
         """Test load_token with exception handling."""
         with patch.object(
-            token_manager, "_get_global_token_manager", side_effect=Exception("Test error")
+            token_manager,
+            "_get_global_token_manager",
+            side_effect=Exception("Test error"),
         ):
             result = token_manager.load_token()
             assert result is None
@@ -434,7 +446,9 @@ class TestTokenManagerFunctions:
     def test_save_token_exception(self):
         """Test save_token with exception handling."""
         with patch.object(
-            token_manager, "_get_global_token_manager", side_effect=Exception("Test error")
+            token_manager,
+            "_get_global_token_manager",
+            side_effect=Exception("Test error"),
         ):
             # Should not raise exception
             token_manager.save_token("test_credentials")
@@ -443,7 +457,9 @@ class TestTokenManagerFunctions:
     def test_delete_token_exception(self):
         """Test delete_token with exception handling."""
         with patch.object(
-            token_manager, "_get_global_token_manager", side_effect=Exception("Test error")
+            token_manager,
+            "_get_global_token_manager",
+            side_effect=Exception("Test error"),
         ):
             # Should not raise exception
             token_manager.delete_token()
@@ -469,7 +485,9 @@ class TestTokenManagerFunctions:
             return_value=mock_credentials,
         ):
             manager = token_manager.TokenManager(
-                config=mock_config, credentials_file="test_creds.json", token_file="test_token.json"
+                config=mock_config,
+                credentials_file="test_creds.json",
+                token_file="test_token.json",
             )
 
             # Test successful refresh
@@ -489,7 +507,9 @@ class TestTokenManagerFunctions:
     def test_save_token_method(self, mock_config, mock_credentials):
         """Test _save_token method."""
         manager = token_manager.TokenManager(
-            config=mock_config, credentials_file="test_creds.json", token_file="test_token.json"
+            config=mock_config,
+            credentials_file="test_creds.json",
+            token_file="test_token.json",
         )
 
         manager._credentials = mock_credentials
@@ -504,7 +524,9 @@ class TestTokenManagerFunctions:
     def test_complete_auth_flow_exception(self, mock_config):
         """Test complete_auth_flow with exception."""
         manager = token_manager.TokenManager(
-            config=mock_config, credentials_file="test_creds.json", token_file="test_token.json"
+            config=mock_config,
+            credentials_file="test_creds.json",
+            token_file="test_token.json",
         )
 
         # Test with exception during flow completion
