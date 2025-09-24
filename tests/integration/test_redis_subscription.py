@@ -24,10 +24,9 @@ from unittest.mock import MagicMock, Mock, patch
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../src"))
 
-from redis_integration.config import RedisSubscriptionConfig
-from redis_integration.flask_integration import CalendarRedisFlaskIntegration
-from redis_integration.redis_service import CalendarServiceRedisService
-from redis_integration.subscriber import CalendarServiceRedisSubscriber
+from redis_integration.config import RedisConfig
+from redis_integration.flask_integration_simple import RedisFlaskIntegration
+from redis_integration.subscriber_simple import RedisSubscriber
 
 # Configure logging for tests
 logging.basicConfig(level=logging.INFO)

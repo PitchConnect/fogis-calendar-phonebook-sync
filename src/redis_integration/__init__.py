@@ -1,26 +1,27 @@
 """
-Redis Integration Module for Calendar Service
+Simplified Redis Integration Module for Calendar Service
 
-This module provides Redis pub/sub subscription integration for the FOGIS calendar service,
-enabling real-time reception of match updates from the match processor.
-
-Author: FOGIS System Architecture Team
-Date: 2025-09-22
-Issue: Redis pub/sub subscription integration for calendar service
+Provides essential Redis pub/sub functionality for real-time match updates.
+Simplified from 7 modules to 3 core modules.
 """
 
-from .connection_manager import RedisSubscriptionConfig, RedisSubscriptionManager
-from .message_handler import MatchUpdateHandler, ProcessingStatusHandler
-from .redis_service import CalendarServiceRedisService
-from .subscriber import CalendarServiceRedisSubscriber
+# Import simplified components
+from .config import RedisConfig, get_redis_config, reload_redis_config
+from .flask_integration_simple import RedisFlaskIntegration, add_redis_to_calendar_app
+from .subscriber_simple import RedisSubscriber, create_redis_subscriber
 
 __all__ = [
-    "CalendarServiceRedisSubscriber",
-    "MatchUpdateHandler",
-    "ProcessingStatusHandler",
-    "RedisSubscriptionManager",
-    "CalendarServiceRedisService",
+    # Configuration
+    "RedisConfig",
+    "get_redis_config",
+    "reload_redis_config",
+    # Subscriber
+    "RedisSubscriber",
+    "create_redis_subscriber",
+    # Flask Integration
+    "RedisFlaskIntegration",
+    "add_redis_to_calendar_app",
 ]
 
-__version__ = "1.0.0"
+__version__ = "2.0.0"
 __author__ = "FOGIS System Architecture Team"
