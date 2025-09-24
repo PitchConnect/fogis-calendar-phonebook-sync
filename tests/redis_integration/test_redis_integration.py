@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 """
-Simplified Tests for Redis Integration
+Tests for Redis Integration
 
-Consolidated test suite that covers essential functionality.
-Reduces test complexity from 1,689 lines to ~150 lines.
+Comprehensive test suite for Redis pub/sub integration functionality.
 """
 
 import json
@@ -83,7 +82,7 @@ class TestRedisSubscriber(unittest.TestCase):
         result = subscriber.start_subscription()
         self.assertFalse(result)
 
-    @patch("redis_integration.subscriber_simple.redis")
+    @patch("redis_integration.subscriber.redis")
     def test_subscriber_connection(self, mock_redis):
         """Test Redis connection."""
         mock_client = Mock()
@@ -141,7 +140,7 @@ class TestFlaskIntegration(unittest.TestCase):
 
         self.mock_calendar_sync = mock_calendar_sync
 
-    @patch("redis_integration.flask_integration_simple.create_redis_subscriber")
+    @patch("redis_integration.flask_integration.create_redis_subscriber")
     def test_flask_integration_init(self, mock_create_subscriber):
         """Test Flask integration initialization."""
         mock_subscriber = Mock()
@@ -154,7 +153,7 @@ class TestFlaskIntegration(unittest.TestCase):
         self.assertEqual(integration.calendar_sync_callback, self.mock_calendar_sync)
         self.assertIsNotNone(integration.subscriber)
 
-    @patch("redis_integration.flask_integration_simple.create_redis_subscriber")
+    @patch("redis_integration.flask_integration.create_redis_subscriber")
     def test_redis_status_endpoint(self, mock_create_subscriber):
         """Test /redis-status endpoint."""
         mock_subscriber = Mock()
@@ -172,7 +171,7 @@ class TestFlaskIntegration(unittest.TestCase):
             self.assertTrue(data["success"])
             self.assertIn("redis_status", data)
 
-    @patch("redis_integration.flask_integration_simple.create_redis_subscriber")
+    @patch("redis_integration.flask_integration.create_redis_subscriber")
     def test_manual_sync_endpoint(self, mock_create_subscriber):
         """Test /manual-sync endpoint."""
         mock_subscriber = Mock()

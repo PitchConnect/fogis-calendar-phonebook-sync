@@ -1,14 +1,14 @@
 """
-Simplified Redis Integration Module for Calendar Service
+Redis Integration Module for Calendar Service
 
-Provides essential Redis pub/sub functionality for real-time match updates.
-Simplified from 7 modules to 3 core modules.
+Provides Redis pub/sub functionality for real-time match updates from the match processor.
+Production-ready implementation with essential functionality and clean architecture.
 """
 
-# Import simplified components
+# Import Redis integration components
 from .config import RedisConfig, get_redis_config, reload_redis_config
-from .flask_integration_simple import RedisFlaskIntegration, add_redis_to_calendar_app
-from .subscriber_simple import RedisSubscriber, create_redis_subscriber
+from .flask_integration import RedisFlaskIntegration, add_redis_to_calendar_app
+from .subscriber import RedisSubscriber, create_redis_subscriber
 
 __all__ = [
     # Configuration
@@ -23,5 +23,5 @@ __all__ = [
     "add_redis_to_calendar_app",
 ]
 
-__version__ = "2.0.0"
+__version__ = "1.0.0"
 __author__ = "FOGIS System Architecture Team"

@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 """
-Simplified Redis Configuration for Calendar Service
+Redis Configuration for Calendar Service
 
-Consolidated configuration management for Redis pub/sub integration.
-Reduces complexity from 385 lines to ~60 lines.
+Configuration management for Redis pub/sub integration.
 """
 
 import logging

@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-Simplified Flask Integration for Redis Calendar Service
+Flask Integration for Redis Calendar Service
 
-Consolidates Flask endpoints and integration logic.
-Reduces complexity from 660 lines to ~100 lines.
+Provides Flask endpoints and integration logic for Redis pub/sub
+functionality in the calendar service.
 """
 
 import logging
@@ -13,7 +13,7 @@ from typing import Callable, Dict, List
 from flask import Flask, jsonify, request
 
 from .config import get_redis_config
-from .subscriber_simple import create_redis_subscriber
+from .subscriber import create_redis_subscriber
 
 logger = logging.getLogger(__name__)
 

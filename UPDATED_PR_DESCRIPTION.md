@@ -47,9 +47,9 @@ add_redis_to_calendar_app(app, existing_calendar_sync_function)
 ```
 src/redis_integration/
 ├── __init__.py                    # Module initialization (27 lines)
-├── config.py                     # Simplified configuration (67 lines)
-├── subscriber_simple.py          # Redis subscription client (160 lines)
-└── flask_integration_simple.py   # Flask application integration (222 lines)
+├── config.py                     # Redis configuration (67 lines)
+├── subscriber.py                  # Redis subscription client (159 lines)
+└── flask_integration.py          # Flask application integration (219 lines)
 ```
 
 **Total Core Implementation**: 476 lines (85% reduction from original design)

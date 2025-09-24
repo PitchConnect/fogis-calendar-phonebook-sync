@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-Simplified Redis Subscriber for Calendar Service
+Redis Subscriber for Calendar Service
 
-Consolidates connection management, message handling, and subscription logic.
-Reduces complexity from ~1,500 lines across 3 files to ~150 lines in 1 file.
+Provides Redis pub/sub subscription functionality for receiving real-time
+match updates from the match processor service.
 """
 
 import json
