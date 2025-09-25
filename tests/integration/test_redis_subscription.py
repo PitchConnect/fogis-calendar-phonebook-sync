@@ -29,6 +29,7 @@ from redis_integration.flask_integration import RedisFlaskIntegration
 from redis_integration.service_wrapper import (
     CalendarRedisFlaskIntegration,
     CalendarServiceRedisService,
+    CalendarServiceRedisSubscriber,
     RedisSubscriptionConfig,
 )
 from redis_integration.subscriber import RedisSubscriber

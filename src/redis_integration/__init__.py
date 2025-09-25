@@ -13,6 +13,7 @@ from .flask_integration import RedisFlaskIntegration, add_redis_to_calendar_app
 from .service_wrapper import (
     CalendarRedisFlaskIntegration,
     CalendarServiceRedisService,
+    CalendarServiceRedisSubscriber,
     RedisSubscriptionConfig,
 )
 from .subscriber import RedisSubscriber, create_redis_subscriber
@@ -30,6 +31,7 @@ __all__ = [
     "add_redis_to_calendar_app",
     # Test Compatibility Wrappers
     "CalendarServiceRedisService",
+    "CalendarServiceRedisSubscriber",
     "CalendarRedisFlaskIntegration",
     "RedisSubscriptionConfig",
 ]

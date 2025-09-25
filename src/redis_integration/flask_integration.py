@@ -109,8 +109,13 @@ class RedisFlaskIntegration:
         def manual_sync():
             """Manual calendar sync endpoint."""
             try:
-                data = request.get_json()
-                if not data or "matches" not in data:
+                data = request.get_json(force=True, silent=True)
+                if not data:
+                    return (
+                        jsonify({"success": False, "error": "Missing JSON data in request"}),
+                        400,
+                    )
+                if "matches" not in data:
                     return (
                         jsonify({"success": False, "error": "Missing 'matches' in request data"}),
                         400,
