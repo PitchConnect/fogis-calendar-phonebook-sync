@@ -1,6 +1,7 @@
 """Tests for the app module."""
 
 import json
+import os
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -136,20 +137,24 @@ def test_health_endpoint_token_in_environment_path(client):
         # Data directory exists
         if path == "data":
             return True
-        # Environment variable token path exists
+        # Environment variable token path exists (actual default value)
         if path == "/app/credentials/tokens/calendar/token.json":
             return True
         # Enhanced logging may check log directories - allow them to exist
         return True
 
-    with patch("os.path.exists", side_effect=mock_exists_side_effect):
-        with patch("app.get_version", return_value="test-version"):
-            response = client.get("/health")
-            assert response.status_code == 200
-            data = json.loads(response.data)
-            assert data["status"] == "healthy"
-            assert data["auth_status"] == "authenticated"
-            assert data["token_location"] == "/app/credentials/tokens/calendar/token.json"
+    with patch.dict(
+        os.environ,
+        {"GOOGLE_CALENDAR_TOKEN_FILE": "/app/credentials/tokens/calendar/token.json"},
+    ):
+        with patch("os.path.exists", side_effect=mock_exists_side_effect):
+            with patch("app.get_version", return_value="test-version"):
+                response = client.get("/health")
+                assert response.status_code == 200
+                data = json.loads(response.data)
+                assert data["status"] == "healthy"
+                assert data["auth_status"] == "authenticated"
+                assert data["token_location"] == "/app/credentials/tokens/calendar/token.json"
             assert data["version"] == "test-version"
             assert "environment" in data
 
@@ -163,7 +168,7 @@ def test_health_endpoint_token_in_legacy_path(client):
         # Data directory exists
         if path == "data":
             return True
-        # Environment variable token path doesn't exist
+        # Environment variable token path doesn't exist (actual default value)
         if path == "/app/credentials/tokens/calendar/token.json":
             return False
         # Legacy token path exists
@@ -172,14 +177,18 @@ def test_health_endpoint_token_in_legacy_path(client):
         # Enhanced logging may check log directories - allow them to exist
         return True
 
-    with patch("os.path.exists", side_effect=mock_exists_side_effect):
-        with patch("app.get_version", return_value="test-version"):
-            response = client.get("/health")
-            assert response.status_code == 200
-            data = json.loads(response.data)
-            assert data["status"] == "healthy"
-            assert data["auth_status"] == "authenticated"
-            assert data["token_location"] == "/app/data/token.json"
+    with patch.dict(
+        os.environ,
+        {"GOOGLE_CALENDAR_TOKEN_FILE": "/app/credentials/tokens/calendar/token.json"},
+    ):
+        with patch("os.path.exists", side_effect=mock_exists_side_effect):
+            with patch("app.get_version", return_value="test-version"):
+                response = client.get("/health")
+                assert response.status_code == 200
+                data = json.loads(response.data)
+                assert data["status"] == "healthy"
+                assert data["auth_status"] == "authenticated"
+                assert data["token_location"] == "/app/data/token.json"
             assert data["version"] == "test-version"
 
 
@@ -193,7 +202,10 @@ def test_health_endpoint_token_in_working_directory(client):
         if path == "data":
             return True
         # Environment variable and legacy token paths don't exist
-        if path in ["/app/credentials/tokens/calendar/token.json", "/app/data/token.json"]:
+        if path in [
+            "/app/credentials/tokens/calendar/token.json",
+            "/app/data/token.json",
+        ]:
             return False
         # Working directory token path exists
         if path == "/app/token.json":
@@ -201,14 +213,18 @@ def test_health_endpoint_token_in_working_directory(client):
         # Enhanced logging may check log directories - allow them to exist
         return True
 
-    with patch("os.path.exists", side_effect=mock_exists_side_effect):
-        with patch("app.get_version", return_value="test-version"):
-            response = client.get("/health")
-            assert response.status_code == 200
-            data = json.loads(response.data)
-            assert data["status"] == "healthy"
-            assert data["auth_status"] == "authenticated"
-            assert data["token_location"] == "/app/token.json"
+    with patch.dict(
+        os.environ,
+        {"GOOGLE_CALENDAR_TOKEN_FILE": "/app/credentials/tokens/calendar/token.json"},
+    ):
+        with patch("os.path.exists", side_effect=mock_exists_side_effect):
+            with patch("app.get_version", return_value="test-version"):
+                response = client.get("/health")
+                assert response.status_code == 200
+                data = json.loads(response.data)
+                assert data["status"] == "healthy"
+                assert data["auth_status"] == "authenticated"
+                assert data["token_location"] == "/app/token.json"
             assert data["version"] == "test-version"
 
 

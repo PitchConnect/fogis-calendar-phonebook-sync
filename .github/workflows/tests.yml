@@ -67,7 +67,7 @@ jobs:
 
     - name: Run integration tests
       run: |
-        pytest --cov=. --cov-report=xml --cov-report=term-missing -k "integration"
+        pytest -k "integration"
       env:
         PYTHONPATH: ${{ github.workspace }}
 
@@ -126,7 +126,7 @@ jobs:
 
     - name: Run contract tests
       run: |
-        pytest -k "contract" --tb=short
+        pytest -k "contract" --tb=short --no-cov
       env:
         PYTHONPATH: ${{ github.workspace }}
 

@@ -108,7 +108,13 @@ class TestBuildIntegration(unittest.TestCase):
     def test_container_functionality(self):
         """Test that built container functions correctly."""
         # First build the image
-        build_cmd = ["docker", "build", "-t", self.test_image_name, str(self.project_root)]
+        build_cmd = [
+            "docker",
+            "build",
+            "-t",
+            self.test_image_name,
+            str(self.project_root),
+        ]
 
         build_result = subprocess.run(
             build_cmd,
@@ -214,12 +220,15 @@ class TestBuildIntegration(unittest.TestCase):
 
             # Build should succeed even with excluded files present
             self.assertEqual(
-                result.returncode, 0, f"Build with optimized context failed: {result.stderr}"
+                result.returncode,
+                0,
+                f"Build with optimized context failed: {result.stderr}",
             )
 
             # Clean up test image
             subprocess.run(
-                ["docker", "rmi", f"{self.test_image_name}-context-test"], capture_output=True
+                ["docker", "rmi", f"{self.test_image_name}-context-test"],
+                capture_output=True,
             )
 
 
@@ -249,22 +258,42 @@ class TestCacheEffectiveness(unittest.TestCase):
     def test_dependency_layer_caching(self):
         """Test that dependency layers are cached effectively."""
         # First build
-        build_cmd_1 = ["docker", "build", "-t", f"{self.test_image_base}-1", str(self.project_root)]
+        build_cmd_1 = [
+            "docker",
+            "build",
+            "-t",
+            f"{self.test_image_base}-1",
+            str(self.project_root),
+        ]
 
         start_time_1 = time.time()
         result_1 = subprocess.run(
-            build_cmd_1, capture_output=True, text=True, timeout=600, cwd=self.project_root
+            build_cmd_1,
+            capture_output=True,
+            text=True,
+            timeout=600,
+            cwd=self.project_root,
         )
         build_time_1 = time.time() - start_time_1
 
         self.assertEqual(result_1.returncode, 0, "First build should succeed")
 
         # Second build (should use cache)
-        build_cmd_2 = ["docker", "build", "-t", f"{self.test_image_base}-2", str(self.project_root)]
+        build_cmd_2 = [
+            "docker",
+            "build",
+            "-t",
+            f"{self.test_image_base}-2",
+            str(self.project_root),
+        ]
 
         start_time_2 = time.time()
         result_2 = subprocess.run(
-            build_cmd_2, capture_output=True, text=True, timeout=600, cwd=self.project_root
+            build_cmd_2,
+            capture_output=True,
+            text=True,
+            timeout=600,
+            cwd=self.project_root,
         )
         build_time_2 = time.time() - start_time_2
 
@@ -278,7 +307,9 @@ class TestCacheEffectiveness(unittest.TestCase):
 
         # Expect at least 30% improvement from caching
         self.assertGreater(
-            cache_effectiveness, 0.3, "Cache should provide significant performance improvement"
+            cache_effectiveness,
+            0.3,
+            "Cache should provide significant performance improvement",
         )
 
 
@@ -319,7 +350,9 @@ class TestWorkflowValidation(unittest.TestCase):
 
         for feature in performance_features:
             self.assertIn(
-                feature, content, f"Workflow should include performance feature: {feature}"
+                feature,
+                content,
+                f"Workflow should include performance feature: {feature}",
             )
 
 

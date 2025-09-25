@@ -76,8 +76,14 @@ class CalendarSyncServiceFormatter(logging.Formatter):
             (r'secret["\']?\s*[:=]\s*["\']?[^\s"\'`,}]+', "secret: [FILTERED]"),
             (r'key["\']?\s*[:=]\s*["\']?[A-Za-z0-9._-]{20,}', "key: [FILTERED]"),
             # FOGIS credentials
-            (r'FOGIS_USERNAME["\']?\s*[:=]\s*["\']?[^\s"\'`,}]+', "FOGIS_USERNAME: [FILTERED]"),
-            (r'FOGIS_PASSWORD["\']?\s*[:=]\s*["\']?[^\s"\'`,}]+', "FOGIS_PASSWORD: [FILTERED]"),
+            (
+                r'FOGIS_USERNAME["\']?\s*[:=]\s*["\']?[^\s"\'`,}]+',
+                "FOGIS_USERNAME: [FILTERED]",
+            ),
+            (
+                r'FOGIS_PASSWORD["\']?\s*[:=]\s*["\']?[^\s"\'`,}]+',
+                "FOGIS_PASSWORD: [FILTERED]",
+            ),
             # Google API credentials
             (r'"client_id":\s*"[^"]+', '"client_id": "[FILTERED]'),
             (r'"client_secret":\s*"[^"]+', '"client_secret": "[FILTERED]'),
@@ -157,7 +163,9 @@ def configure_logging(
     # File handler with rotation
     if enable_file:
         file_handler = logging.handlers.RotatingFileHandler(
-            os.path.join(log_dir, log_file), maxBytes=10 * 1024 * 1024, backupCount=5  # 10MB
+            os.path.join(log_dir, log_file),
+            maxBytes=10 * 1024 * 1024,
+            backupCount=5,  # 10MB
         )
         file_handler.setFormatter(formatter)
         root_logger.addHandler(file_handler)

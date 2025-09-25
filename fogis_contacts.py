@@ -140,7 +140,10 @@ def authorize_google_people():
                 creds = google.oauth2.credentials.Credentials.from_authorized_user_file(
                     token_path, SCOPES
                 )
-                logging.info("✅ Successfully loaded Google People credentials from %s", token_path)
+                logging.info(
+                    "✅ Successfully loaded Google People credentials from %s",
+                    token_path,
+                )
             except Exception as e:
                 logging.error("❌ Error loading OAuth credentials from %s: %s", token_path, e)
                 logging.info("🔄 Will attempt to use token manager fallback")
@@ -177,7 +180,8 @@ def authorize_google_people():
                         logging.info("✅ Google People API credentials successfully refreshed")
                     except Exception as refresh_e:
                         logging.error(
-                            "❌ Failed to refresh Google People API credentials: %s", refresh_e
+                            "❌ Failed to refresh Google People API credentials: %s",
+                            refresh_e,
                         )
                         creds = None
                 else:
@@ -854,7 +858,11 @@ def find_duplicate_contacts(service, dry_run=True):
                         if fogis_id not in fogis_groups:
                             fogis_groups[fogis_id] = []
                         fogis_groups[fogis_id].append(
-                            {"id": contact_id, "name": contact_name, "fogis_id": fogis_id}
+                            {
+                                "id": contact_id,
+                                "name": contact_name,
+                                "fogis_id": fogis_id,
+                            }
                         )
 
         # Identify duplicate groups

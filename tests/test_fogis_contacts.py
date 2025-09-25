@@ -600,7 +600,8 @@ def test_authorize_google_people_unified_token_path():
     with patch.dict(os.environ, {"TOKEN_PATH": "/custom/token/path.json"}), patch(
         "os.path.exists", return_value=True
     ), patch(
-        "google.oauth2.credentials.Credentials.from_authorized_user_file", return_value=mock_creds
+        "google.oauth2.credentials.Credentials.from_authorized_user_file",
+        return_value=mock_creds,
     ):
 
         result = fogis_contacts.authorize_google_people()
@@ -638,7 +639,8 @@ def test_authorize_google_people_refresh_expired_token():
     with patch.dict(os.environ, {"TOKEN_PATH": "test_token.json"}), patch(
         "os.path.exists", return_value=True
     ), patch(
-        "google.oauth2.credentials.Credentials.from_authorized_user_file", return_value=mock_creds
+        "google.oauth2.credentials.Credentials.from_authorized_user_file",
+        return_value=mock_creds,
     ), patch(
         "builtins.open", mock_open()
     ):

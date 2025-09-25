@@ -1,0 +1,94 @@
+[run]
+# Source code directories to measure coverage for
+source = .
+
+# Files to include in coverage measurement
+include =
+    src/*
+    *.py
+
+# Files and directories to exclude from coverage
+omit =
+    */tests/*
+    */test_*
+    */__pycache__/*
+    */venv/*
+    */env/*
+    */.venv/*
+    */.env/*
+    */build/*
+    */dist/*
+    */migrations/*
+    */node_modules/*
+    setup.py
+    conftest.py
+    */conftest.py
+    # Exclude Redis integration from unit test coverage (has separate test suite)
+    src/redis_integration/*
+    src/redis_integration/*.py
+    */redis_integration/*
+    # Exclude utility scripts and development tools
+    tools/*
+    service/*
+    # Legacy exclusions (files now removed)
+    add_headless_support.py
+    duplicate_contact_analyzer.py
+    fix_docstrings.py
+    simple_manual_auth.py
+
+# Branch coverage (measure both line and branch coverage)
+branch = True
+
+# Parallel processing support
+parallel = True
+
+[report]
+# Minimum coverage percentage required
+fail_under = 30
+
+# Show missing lines in coverage report
+show_missing = True
+
+# Skip covered files in report
+skip_covered = False
+
+# Skip empty files
+skip_empty = True
+
+# Precision for coverage percentage
+precision = 2
+
+# Sort coverage report by coverage percentage
+sort = Cover
+
+# Exclude lines from coverage measurement
+exclude_lines =
+    # Have to re-enable the standard pragma
+    pragma: no cover
+
+    # Don't complain about missing debug-only code:
+    def __repr__
+    if self\.debug
+
+    # Don't complain if tests don't hit defensive assertion code:
+    raise AssertionError
+    raise NotImplementedError
+
+    # Don't complain if non-runnable code isn't run:
+    if 0:
+    if __name__ == .__main__.:
+
+    # Don't complain about abstract methods
+    @(abc\.)?abstractmethod
+
+[html]
+# Directory for HTML coverage reports
+directory = htmlcov
+
+[xml]
+# File for XML coverage reports
+output = coverage.xml
+
+[json]
+# File for JSON coverage reports
+output = coverage.json
