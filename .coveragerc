@@ -25,7 +25,12 @@ omit =
     */conftest.py
     # Exclude Redis integration from unit test coverage (has separate test suite)
     src/redis_integration/*
+    src/redis_integration/*.py
+    */redis_integration/*
     # Exclude utility scripts and development tools
+    tools/*
+    service/*
+    # Legacy exclusions (files now removed)
     add_headless_support.py
     duplicate_contact_analyzer.py
     fix_docstrings.py

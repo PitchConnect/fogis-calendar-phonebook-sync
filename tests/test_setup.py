@@ -10,7 +10,9 @@ from unittest.mock import MagicMock, mock_open, patch
 
 import pytest
 
-import setup
+# Import setup from tools directory
+sys.path.append("tools")
+import setup  # noqa: E402
 
 
 class TestColors:
