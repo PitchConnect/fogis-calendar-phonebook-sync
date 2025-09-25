@@ -44,7 +44,7 @@ parallel = True
 
 [report]
 # Minimum coverage percentage required
-fail_under = 25
+fail_under = 30
 
 # Show missing lines in coverage report
 show_missing = True

@@ -133,13 +133,14 @@ jobs:
     - name: Run integration tests
       if: matrix.test-type == 'integration'
       run: |
-        pytest --cov=. --cov-report=xml -k "integration" -v
+        pytest -k "integration" -v
       env:
         PYTHONPATH: ${{ github.workspace }}
         REDIS_URL: redis://localhost:6379
         REDIS_ENABLED: true
 
     - name: Upload coverage to Codecov
+      if: matrix.test-type == 'unit'
       uses: codecov/codecov-action@v3
       with:
         file: ./coverage.xml
