@@ -144,18 +144,21 @@ class CalendarServiceRedisService:
             return {"enabled": self.enabled, "messages_processed": 0, "errors": 0, "uptime": 0}
 
         try:
-            # RedisSubscriber doesn't have get_statistics, so create mock stats
-            status = self.subscriber.get_status()
+            # Use actual statistics from RedisSubscriber
+            stats = self.subscriber.get_statistics()
             return {
                 "enabled": True,
-                "messages_processed": 0,  # Would need to track this in subscriber
-                "errors": 0,
-                "uptime": 0,
-                "subscription_stats": {
-                    "total_messages_received": 0,  # Would need to track this
-                    "connected": status.get("connected", False),
-                    "subscribed": status.get("subscribed", False),
-                },
+                "messages_processed": stats.get("messages_processed", 0),
+                "errors": stats.get("errors", 0),
+                "uptime": stats.get("uptime", 0),
+                "subscription_stats": stats.get(
+                    "subscription_stats",
+                    {
+                        "total_messages_received": stats.get("messages_received", 0),
+                        "connected": stats.get("connected", False),
+                        "subscribed": stats.get("subscribed", False),
+                    },
+                ),
             }
         except Exception as e:
             logger.error(f"Failed to get Redis statistics: {e}")

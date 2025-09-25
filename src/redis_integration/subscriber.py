@@ -9,6 +9,7 @@ match updates from the match processor service.
 import json
 import logging
 import threading
+import time
 from typing import Callable, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
@@ -34,6 +35,12 @@ class RedisSubscriber:
         self.pubsub = None
         self.subscription_thread = None
         self.running = False
+
+        # Message counting and statistics
+        self.messages_received = 0
+        self.messages_processed = 0
+        self.errors = 0
+        self.start_time = time.time()
 
         if REDIS_AVAILABLE and config.enabled:
             self._connect()
@@ -92,6 +99,8 @@ class RedisSubscriber:
 
     def _handle_message(self, message):
         """Handle incoming Redis message."""
+        self.messages_received += 1  # Count all received messages
+
         try:
             data = json.loads(message["data"])
             message_type = data.get("type")
@@ -101,7 +110,10 @@ class RedisSubscriber:
             else:
                 logger.info(f"📨 Received {message_type} message")
 
+            self.messages_processed += 1  # Count successfully processed messages
+
         except Exception as e:
+            self.errors += 1  # Count errors
             logger.error(f"❌ Error handling message: {e}")
 
     def _handle_match_updates(self, data):
@@ -151,6 +163,24 @@ class RedisSubscriber:
             "connected": self.client is not None,
             "subscribed": self.running,
             "redis_available": REDIS_AVAILABLE,
+        }
+
+    def get_statistics(self) -> Dict:
+        """Get subscriber statistics."""
+        uptime = time.time() - self.start_time
+        return {
+            "messages_processed": self.messages_processed,
+            "messages_received": self.messages_received,
+            "errors": self.errors,
+            "uptime": uptime,
+            "last_message_time": None,  # Could be enhanced to track last message time
+            "subscribed_channels": ["fogis:matches:updates"],  # Default channel
+            "subscription_stats": {
+                "total_messages_received": self.messages_received,
+                "successful_messages": self.messages_processed,
+                "connected": self.client is not None,
+                "subscribed": self.running,
+            },
         }
 
 
