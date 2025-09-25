@@ -126,7 +126,7 @@ jobs:
     - name: Run unit tests
       if: matrix.test-type == 'unit'
       run: |
-        pytest --cov=. --cov-report=xml --cov-report=html -k "not integration" -v
+        pytest --cov=. --cov-report=xml --cov-report=html --cov-report=term-missing --no-cov-on-fail --cov-config=.coveragerc -k "not integration" -v
       env:
         PYTHONPATH: ${{ github.workspace }}
 
