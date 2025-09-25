@@ -72,7 +72,11 @@ class RedisFlaskIntegration:
             except Exception as e:
                 return (
                     jsonify(
-                        {"success": False, "error": str(e), "timestamp": datetime.now().isoformat()}
+                        {
+                            "success": False,
+                            "error": str(e),
+                            "timestamp": datetime.now().isoformat(),
+                        }
                     ),
                     500,
                 )
@@ -82,7 +86,7 @@ class RedisFlaskIntegration:
             """Get Redis subscription statistics."""
             try:
                 stats = {
-                    "subscription_active": self.subscriber.running if self.subscriber else False,
+                    "subscription_active": (self.subscriber.running if self.subscriber else False),
                     "channels": list(get_redis_config().channels.values()),
                     "timestamp": datetime.now().isoformat(),
                 }
@@ -96,7 +100,12 @@ class RedisFlaskIntegration:
             try:
                 if not self.subscriber:
                     return (
-                        jsonify({"success": False, "error": "Redis subscriber not initialized"}),
+                        jsonify(
+                            {
+                                "success": False,
+                                "error": "Redis subscriber not initialized",
+                            }
+                        ),
                         500,
                     )
 
@@ -117,7 +126,12 @@ class RedisFlaskIntegration:
                     )
                 if "matches" not in data:
                     return (
-                        jsonify({"success": False, "error": "Missing 'matches' in request data"}),
+                        jsonify(
+                            {
+                                "success": False,
+                                "error": "Missing 'matches' in request data",
+                            }
+                        ),
                         400,
                     )
 
@@ -135,7 +149,10 @@ class RedisFlaskIntegration:
                 else:
                     return (
                         jsonify(
-                            {"success": False, "error": "No calendar sync callback configured"}
+                            {
+                                "success": False,
+                                "error": "No calendar sync callback configured",
+                            }
                         ),
                         500,
                     )
@@ -168,10 +185,18 @@ class RedisFlaskIntegration:
                             }
                         ), (200 if success else 500)
                     else:
-                        return jsonify({"success": False, "message": "Redis is disabled"}), 400
+                        return (
+                            jsonify({"success": False, "message": "Redis is disabled"}),
+                            400,
+                        )
                 else:
                     return (
-                        jsonify({"success": False, "error": "Redis subscriber not initialized"}),
+                        jsonify(
+                            {
+                                "success": False,
+                                "error": "Redis subscriber not initialized",
+                            }
+                        ),
                         500,
                     )
             except Exception as e:

@@ -310,7 +310,7 @@ def safe_execute(
                 e,
                 {
                     "operation": operation_name,
-                    "function": func.__name__ if hasattr(func, "__name__") else str(func),
+                    "function": (func.__name__ if hasattr(func, "__name__") else str(func)),
                     "safe_execution": True,
                     "default_return": str(default_return),
                 },

@@ -56,7 +56,10 @@ class CalendarServiceRedisService:
     """
 
     def __init__(
-        self, enabled: bool = True, calendar_sync_callback: Callable = None, redis_url: str = None
+        self,
+        enabled: bool = True,
+        calendar_sync_callback: Callable = None,
+        redis_url: str = None,
     ):
         """Initialize calendar service Redis integration."""
         self.enabled = enabled
@@ -120,10 +123,18 @@ class CalendarServiceRedisService:
     def get_redis_status(self) -> Dict:
         """Get Redis service status."""
         if not self.enabled:
-            return {"enabled": False, "status": "disabled", "connection": "not_applicable"}
+            return {
+                "enabled": False,
+                "status": "disabled",
+                "connection": "not_applicable",
+            }
 
         if not self.subscriber:
-            return {"enabled": True, "status": "not_initialized", "connection": "not_connected"}
+            return {
+                "enabled": True,
+                "status": "not_initialized",
+                "connection": "not_connected",
+            }
 
         try:
             subscriber_status = self.subscriber.get_status()
@@ -136,12 +147,22 @@ class CalendarServiceRedisService:
                 "subscription_status": subscriber_status,  # Add expected field
             }
         except Exception as e:
-            return {"enabled": True, "status": "error", "connection": "error", "error": str(e)}
+            return {
+                "enabled": True,
+                "status": "error",
+                "connection": "error",
+                "error": str(e),
+            }
 
     def get_statistics(self) -> Dict:
         """Get Redis service statistics."""
         if not self.enabled or not self.subscriber:
-            return {"enabled": self.enabled, "messages_processed": 0, "errors": 0, "uptime": 0}
+            return {
+                "enabled": self.enabled,
+                "messages_processed": 0,
+                "errors": 0,
+                "uptime": 0,
+            }
 
         try:
             # Use actual statistics from RedisSubscriber
@@ -173,7 +194,11 @@ class CalendarServiceRedisService:
     def test_redis_integration(self) -> Dict:
         """Test Redis integration functionality."""
         if not self.enabled:
-            return {"success": False, "reason": "Redis integration disabled", "tests": []}
+            return {
+                "success": False,
+                "reason": "Redis integration disabled",
+                "tests": [],
+            }
 
         tests = []
         overall_success = True
@@ -190,7 +215,11 @@ class CalendarServiceRedisService:
                 overall_success = False
         except Exception as e:
             tests.append(
-                {"name": "configuration", "success": False, "details": f"Configuration error: {e}"}
+                {
+                    "name": "configuration",
+                    "success": False,
+                    "details": f"Configuration error: {e}",
+                }
             )
             overall_success = False
 
@@ -206,7 +235,11 @@ class CalendarServiceRedisService:
                 overall_success = False
         except Exception as e:
             tests.append(
-                {"name": "subscriber", "success": False, "details": f"Subscriber error: {e}"}
+                {
+                    "name": "subscriber",
+                    "success": False,
+                    "details": f"Subscriber error: {e}",
+                }
             )
             overall_success = False
 
@@ -224,7 +257,11 @@ class CalendarServiceRedisService:
                     overall_success = False
             except Exception as e:
                 tests.append(
-                    {"name": "connection", "success": False, "details": f"Connection error: {e}"}
+                    {
+                        "name": "connection",
+                        "success": False,
+                        "details": f"Connection error: {e}",
+                    }
                 )
                 overall_success = False
 

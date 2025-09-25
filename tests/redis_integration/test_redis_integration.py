@@ -37,7 +37,11 @@ class TestRedisConfig(unittest.TestCase):
 
     @patch.dict(
         os.environ,
-        {"REDIS_URL": "redis://test:6379", "REDIS_ENABLED": "false", "REDIS_TIMEOUT": "10"},
+        {
+            "REDIS_URL": "redis://test:6379",
+            "REDIS_ENABLED": "false",
+            "REDIS_TIMEOUT": "10",
+        },
     )
     def test_config_from_environment(self):
         """Test configuration loading from environment."""
@@ -102,7 +106,10 @@ class TestRedisSubscriber(unittest.TestCase):
         # Test match update message
         test_message = {
             "type": "match_updates",
-            "payload": {"matches": [{"matchid": 123456}], "metadata": {"has_changes": True}},
+            "payload": {
+                "matches": [{"matchid": 123456}],
+                "metadata": {"has_changes": True},
+            },
         }
 
         subscriber._handle_match_updates(test_message)

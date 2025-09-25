@@ -42,7 +42,9 @@ class ConnectionManager:
         try:
             if not self.client and self.config:
                 self.client = redis.from_url(
-                    self.config.url, socket_timeout=self.config.timeout, decode_responses=True
+                    self.config.url,
+                    socket_timeout=self.config.timeout,
+                    decode_responses=True,
                 )
                 self.client.ping()
                 self.connected = True

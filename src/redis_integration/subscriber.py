@@ -49,7 +49,9 @@ class RedisSubscriber:
         """Connect to Redis."""
         try:
             self.client = redis.from_url(
-                self.config.url, socket_timeout=self.config.timeout, decode_responses=True
+                self.config.url,
+                socket_timeout=self.config.timeout,
+                decode_responses=True,
             )
             self.client.ping()
             logger.info(f"✅ Connected to Redis: {self.config.url}")

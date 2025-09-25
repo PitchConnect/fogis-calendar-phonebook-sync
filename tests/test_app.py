@@ -144,7 +144,8 @@ def test_health_endpoint_token_in_environment_path(client):
         return True
 
     with patch.dict(
-        os.environ, {"GOOGLE_CALENDAR_TOKEN_FILE": "/app/credentials/tokens/calendar/token.json"}
+        os.environ,
+        {"GOOGLE_CALENDAR_TOKEN_FILE": "/app/credentials/tokens/calendar/token.json"},
     ):
         with patch("os.path.exists", side_effect=mock_exists_side_effect):
             with patch("app.get_version", return_value="test-version"):
@@ -177,7 +178,8 @@ def test_health_endpoint_token_in_legacy_path(client):
         return True
 
     with patch.dict(
-        os.environ, {"GOOGLE_CALENDAR_TOKEN_FILE": "/app/credentials/tokens/calendar/token.json"}
+        os.environ,
+        {"GOOGLE_CALENDAR_TOKEN_FILE": "/app/credentials/tokens/calendar/token.json"},
     ):
         with patch("os.path.exists", side_effect=mock_exists_side_effect):
             with patch("app.get_version", return_value="test-version"):
@@ -212,7 +214,8 @@ def test_health_endpoint_token_in_working_directory(client):
         return True
 
     with patch.dict(
-        os.environ, {"GOOGLE_CALENDAR_TOKEN_FILE": "/app/credentials/tokens/calendar/token.json"}
+        os.environ,
+        {"GOOGLE_CALENDAR_TOKEN_FILE": "/app/credentials/tokens/calendar/token.json"},
     ):
         with patch("os.path.exists", side_effect=mock_exists_side_effect):
             with patch("app.get_version", return_value="test-version"):
