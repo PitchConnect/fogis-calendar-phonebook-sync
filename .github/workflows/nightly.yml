@@ -129,7 +129,7 @@ jobs:
     - name: Run integration tests
       if: matrix.test-type == 'integration'
       run: |
-        pytest --cov=. --cov-report=xml -k "integration" -v --ignore=tests/integration/test_redis_subscription.py
+        pytest --cov=. --cov-report=xml -k "integration" -v
       env:
         PYTHONPATH: ${{ github.workspace }}
         REDIS_URL: redis://localhost:6379

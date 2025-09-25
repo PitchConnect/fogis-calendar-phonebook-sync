@@ -5,9 +5,16 @@ Provides Redis pub/sub functionality for real-time match updates from the match 
 Production-ready implementation with essential functionality and clean architecture.
 """
 
+from . import connection_manager
+
 # Import Redis integration components
 from .config import RedisConfig, get_redis_config, reload_redis_config
 from .flask_integration import RedisFlaskIntegration, add_redis_to_calendar_app
+from .service_wrapper import (
+    CalendarRedisFlaskIntegration,
+    CalendarServiceRedisService,
+    RedisSubscriptionConfig,
+)
 from .subscriber import RedisSubscriber, create_redis_subscriber
 
 __all__ = [
@@ -21,6 +28,10 @@ __all__ = [
     # Flask Integration
     "RedisFlaskIntegration",
     "add_redis_to_calendar_app",
+    # Test Compatibility Wrappers
+    "CalendarServiceRedisService",
+    "CalendarRedisFlaskIntegration",
+    "RedisSubscriptionConfig",
 ]
 
 __version__ = "1.0.0"

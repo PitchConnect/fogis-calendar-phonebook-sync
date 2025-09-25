@@ -26,6 +26,11 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../src"))
 
 from redis_integration.config import RedisConfig
 from redis_integration.flask_integration import RedisFlaskIntegration
+from redis_integration.service_wrapper import (
+    CalendarRedisFlaskIntegration,
+    CalendarServiceRedisService,
+    RedisSubscriptionConfig,
+)
 from redis_integration.subscriber import RedisSubscriber
 
 # Configure logging for tests
