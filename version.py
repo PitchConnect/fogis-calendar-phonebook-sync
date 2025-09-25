@@ -9,3 +9,5 @@ VERSION = os.environ.get("VERSION", "dev")
 def get_version():
     """Return the current version of the application."""
     return VERSION
+
+# Trigger auto-PR workflow for Redis integration
