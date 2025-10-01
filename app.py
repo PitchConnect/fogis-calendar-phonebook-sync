@@ -116,11 +116,11 @@ def calendar_sync_callback(matches: List[Dict]) -> bool:
         logger.info(f"🗓️ Processing {len(matches)} matches from Redis")
 
         # Import calendar sync logic
-        from fogis_calendar_sync import find_event_by_match_id, generate_calendar_hash, sync_calendar
-
-        # Load config
-        with open("config.json", "r", encoding="utf-8") as f:
-            config = json.load(f)
+        from fogis_calendar_sync import (
+            find_event_by_match_id,
+            generate_calendar_hash,
+            sync_calendar,
+        )
 
         # Process each match
         processed = 0
@@ -369,4 +369,3 @@ if __name__ == "__main__":
     logger.info(f"Log level: {os.environ.get('LOG_LEVEL', 'INFO')}")
 
     app.run(host=host, port=port)
-
