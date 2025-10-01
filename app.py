@@ -1,11 +1,15 @@
+import json
 import logging
 import os
 import subprocess
 import time
+from typing import Dict, List
 
 # Import dotenv for loading environment variables from .env file
 from dotenv import load_dotenv
 from flask import Flask, jsonify, request
+from google.oauth2.credentials import Credentials
+from googleapiclient.discovery import build
 
 # Import enhanced logging and error handling
 from src.core import (
@@ -14,6 +18,9 @@ from src.core import (
     get_logger,
     handle_calendar_errors,
 )
+
+# Import Redis integration
+from src.redis_integration import add_redis_to_calendar_app
 
 # Import version information
 from version import get_version
@@ -35,6 +42,126 @@ app = Flask(__name__)
 
 # Get enhanced logger
 logger = get_logger(__name__, "app")
+
+# Global Google Calendar service (initialized at startup)
+calendar_service = None
+people_service = None
+
+
+def initialize_google_services():
+    """Initialize Google Calendar and People API services at app startup."""
+    global calendar_service, people_service
+
+    try:
+        # Load OAuth token
+        token_path = os.environ.get(
+            "GOOGLE_CALENDAR_TOKEN_FILE", "/app/credentials/tokens/calendar/token.json"
+        )
+
+        if not os.path.exists(token_path):
+            logger.warning(f"OAuth token not found at {token_path}")
+            return False
+
+        # Load credentials
+        with open(token_path, "r") as f:
+            token_data = json.load(f)
+
+        creds = Credentials(
+            token=token_data.get("token"),
+            refresh_token=token_data.get("refresh_token"),
+            token_uri=token_data.get("token_uri"),
+            client_id=token_data.get("client_id"),
+            client_secret=token_data.get("client_secret"),
+            scopes=token_data.get("scopes"),
+        )
+
+        # Build services
+        calendar_service = build("calendar", "v3", credentials=creds)
+        people_service = build("people", "v1", credentials=creds)
+
+        logger.info("✅ Google Calendar and People API services initialized")
+        return True
+
+    except Exception as e:
+        logger.error(f"❌ Failed to initialize Google services: {e}")
+        return False
+
+
+# Initialize services at startup
+initialize_google_services()
+
+
+def calendar_sync_callback(matches: List[Dict]) -> bool:
+    """
+    Process match updates received from Redis.
+
+    This callback is invoked by the Redis subscriber when match updates
+    are received from the match-list-processor service.
+
+    Args:
+        matches: List of match dictionaries from Redis message
+
+    Returns:
+        bool: True if sync successful, False otherwise
+    """
+    try:
+        if not calendar_service:
+            logger.error("❌ Calendar service not initialized")
+            return False
+
+        if not matches:
+            logger.info("📋 No matches to process")
+            return True
+
+        logger.info(f"🗓️ Processing {len(matches)} matches from Redis")
+
+        # Import calendar sync logic
+        from fogis_calendar_sync import (
+            find_event_by_match_id,
+            generate_calendar_hash,
+            sync_calendar,
+        )
+
+        # Process each match
+        processed = 0
+        failed = 0
+
+        for match in matches:
+            try:
+                match_id = str(match["matchid"])
+
+                # Create a minimal args object for sync_calendar
+                class Args:
+                    delete = False
+                    fresh_sync = False
+                    force_calendar = False
+                    force_contacts = False
+                    force_all = False
+
+                args = Args()
+
+                # Sync calendar event
+                success = sync_calendar(match, calendar_service, args)
+
+                if success:
+                    processed += 1
+                    logger.info(f"✅ Match {match_id}: Calendar sync successful")
+                else:
+                    failed += 1
+                    logger.error(f"❌ Match {match_id}: Calendar sync failed")
+
+            except Exception as e:
+                failed += 1
+                logger.error(f"❌ Error processing match {match.get('matchid', 'unknown')}: {e}")
+
+        logger.info(f"📊 Redis sync complete: {processed} processed, {failed} failed")
+
+        # Return True if at least some matches were processed successfully
+        return processed > 0 or (processed == 0 and failed == 0)
+
+    except Exception as e:
+        logger.error(f"❌ Calendar sync callback failed: {e}")
+        return False
 
 
 @app.route("/health", methods=["GET"])
@@ -220,6 +347,16 @@ def sync_fogis():
             jsonify({"status": "error", "message": f"Error during FOGIS sync: {str(e)}"}),
             500,
         )
+
+
+# Initialize Redis integration
+try:
+    logger.info("🔗 Initializing Redis integration...")
+    redis_integration = add_redis_to_calendar_app(app, calendar_sync_callback)
+    logger.info("✅ Redis integration initialized successfully")
+except Exception as e:
+    logger.error(f"❌ Failed to initialize Redis integration: {e}")
+    logger.warning("⚠️ Service will continue without Redis pub/sub functionality")
 
 
 if __name__ == "__main__":
