@@ -127,8 +127,10 @@ def authorize_google_people():
         google.oauth2.credentials.Credentials: Valid credentials or None if authentication fails
     """
     try:
-        # Use configurable token path (same as calendar sync)
-        token_path = os.environ.get("TOKEN_PATH", "token.json")
+        # Use same token path as calendar sync (token has both Calendar and People API scopes)
+        token_path = os.environ.get(
+            "GOOGLE_CALENDAR_TOKEN_FILE", "/app/credentials/tokens/calendar/token.json"
+        )
         logging.info("🔐 Google People API authentication in progress...")
         logging.info(f"📁 Using token path: {token_path}")
 
