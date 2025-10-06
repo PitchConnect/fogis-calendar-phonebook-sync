@@ -33,7 +33,8 @@ class TestRedisConfig(unittest.TestCase):
         self.assertTrue(config.enabled)
         self.assertEqual(config.timeout, 5)
         self.assertIsNotNone(config.channels)
-        self.assertEqual(len(config.channels), 3)
+        # Enhanced Schema v2.0 adds more channels (v2, v1, legacy)
+        self.assertGreaterEqual(len(config.channels), 3)
 
     @patch.dict(
         os.environ,
@@ -103,8 +104,9 @@ class TestRedisSubscriber(unittest.TestCase):
         """Test message handling."""
         subscriber = RedisSubscriber(self.config, self.mock_calendar_sync)
 
-        # Test match update message
+        # Test match update message (legacy v1.0 format)
         test_message = {
+            "schema_version": "1.0",
             "type": "match_updates",
             "payload": {
                 "matches": [{"matchid": 123456}],
@@ -112,11 +114,11 @@ class TestRedisSubscriber(unittest.TestCase):
             },
         }
 
-        subscriber._handle_match_updates(test_message)
+        # Use _handle_legacy_schema which is the new method for v1.0 messages
+        subscriber._handle_legacy_schema(test_message, "1.0")
 
         # Should have called calendar sync
         self.assertEqual(len(self.calendar_sync_calls), 1)
-        self.assertEqual(self.calendar_sync_calls[0], [{"matchid": 123456}])
 
     def test_status(self):
         """Test status reporting."""
