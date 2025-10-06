@@ -6,11 +6,12 @@ exclude = .git,__pycache__,build,dist
 # W503: Line break before binary operator (conflicts with Black)
 # D100-D104: Missing docstrings in various places (too strict for initial implementation)
 # D200: One-line docstring should fit on one line with quotes
+# D202: No blank lines allowed after function docstring (conflicts with Black)
 # D205: 1 blank line required between summary line and description
 # D212: Multi-line docstring summary should start at the first line
 # D415: First line should end with a period, question mark, or exclamation point
 # F401: Module imported but unused (will be addressed in later phases)
 # E501: Line too long (handled by Black)
-ignore = E203,W503,D100,D101,D102,D103,D104,D200,D205,D212,D415,F401,E501
+ignore = E203,W503,D100,D101,D102,D103,D104,D200,D202,D205,D212,D415,F401,E501
 # Enable flake8-docstrings
 docstring-convention = google
