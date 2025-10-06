@@ -3,7 +3,7 @@
 Flask Integration for Redis Calendar Service
 
 Provides Flask endpoints and integration logic for Redis pub/sub
-functionality in the calendar service.
+functionality in the calendar service with Enhanced Schema v2.0 support.
 """
 
 import logging
@@ -13,31 +13,46 @@ from typing import Callable, Dict, List
 from flask import Flask, jsonify, request
 
 from .config import get_redis_config
+from .logo_service import create_logo_service_client
 from .subscriber import create_redis_subscriber
 
 logger = logging.getLogger(__name__)
 
 
 class RedisFlaskIntegration:
-    """Simplified Flask integration for Redis subscription."""
+    """Flask integration for Redis subscription with Enhanced Schema v2.0 support."""
 
     def __init__(self, app: Flask = None, calendar_sync_callback: Callable = None):
         """Initialize Flask integration."""
         self.app = app
         self.calendar_sync_callback = calendar_sync_callback
         self.subscriber = None
+        self.logo_service_client = None
 
         if app:
             self.init_app(app, calendar_sync_callback)
 
     def init_app(self, app: Flask, calendar_sync_callback: Callable = None):
-        """Initialize Flask app with Redis integration."""
+        """Initialize Flask app with Redis integration and Enhanced Schema v2.0 support."""
         self.app = app
         self.calendar_sync_callback = calendar_sync_callback or self.calendar_sync_callback
 
-        # Create Redis subscriber
+        # Get Redis configuration
         config = get_redis_config()
-        self.subscriber = create_redis_subscriber(config, self.calendar_sync_callback)
+
+        # Initialize logo service client if configured
+        if config.logo_service_url:
+            self.logo_service_client = create_logo_service_client(config.logo_service_url)
+            logger.info(f"✅ Logo service client initialized: {config.logo_service_url}")
+        else:
+            logger.info(
+                "ℹ️ Logo service not configured, Enhanced Schema v2.0 logo features disabled"
+            )
+
+        # Create Redis subscriber with logo service support
+        self.subscriber = create_redis_subscriber(
+            config, self.calendar_sync_callback, self.logo_service_client
+        )
 
         # Start subscription if enabled
         if config.enabled:
@@ -49,7 +64,9 @@ class RedisFlaskIntegration:
         # Add to app for reference
         app.redis_integration = self
 
-        logger.info("✅ Redis Flask integration initialized")
+        logger.info(
+            f"✅ Redis Flask integration initialized (Schema v{config.schema_version} preferred)"
+        )
 
     def _register_endpoints(self):
         """Register Redis endpoints."""

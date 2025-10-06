@@ -8,14 +8,14 @@ Configuration management for Redis pub/sub integration.
 import logging
 import os
 from dataclasses import dataclass
-from typing import Dict, Optional
+from typing import Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
 
 @dataclass
 class RedisConfig:
-    """Simplified Redis configuration for calendar service."""
+    """Redis configuration for calendar service with Enhanced Schema v2.0 support."""
 
     # Essential settings only
     url: str = "redis://fogis-redis:6379"
@@ -25,26 +25,51 @@ class RedisConfig:
     # Channel configuration
     channels: Dict[str, str] = None
 
+    # Enhanced Schema v2.0 settings
+    schema_version: str = "2.0"
+    logo_service_url: Optional[str] = None
+    fallback_schemas: List[str] = None
+
     def __post_init__(self):
-        """Initialize default channels."""
+        """Initialize default channels and settings."""
         if self.channels is None:
             self.channels = {
+                # Enhanced Schema v2.0 channels (preferred)
+                "match_updates_v2": "fogis:matches:updates:v2",
+                # Fallback channels for backward compatibility
+                "match_updates_v1": "fogis:matches:updates:v1",
                 "match_updates": "fogis:matches:updates",
+                # Other channels
                 "processor_status": "fogis:processor:status",
                 "system_alerts": "fogis:system:alerts",
             }
+
+        if self.fallback_schemas is None:
+            self.fallback_schemas = ["1.5", "1.0"]
 
     @classmethod
     def from_environment(cls) -> "RedisConfig":
         """Create Redis configuration from environment variables."""
         config = cls()
 
-        # Load essential configuration only
+        # Load essential configuration
         config.url = os.getenv("REDIS_URL", config.url)
         config.enabled = os.getenv("REDIS_ENABLED", "true").lower() == "true"
         config.timeout = int(os.getenv("REDIS_TIMEOUT", str(config.timeout)))
 
-        logger.info(f"Redis config: URL={config.url}, Enabled={config.enabled}")
+        # Load Enhanced Schema v2.0 configuration
+        config.schema_version = os.getenv("REDIS_SCHEMA_VERSION", config.schema_version)
+        config.logo_service_url = os.getenv("LOGO_COMBINER_URL", config.logo_service_url)
+
+        # Load fallback schemas
+        fallback_env = os.getenv("REDIS_FALLBACK_SCHEMAS")
+        if fallback_env:
+            config.fallback_schemas = [s.strip() for s in fallback_env.split(",")]
+
+        logger.info(
+            f"Redis config: URL={config.url}, Enabled={config.enabled}, "
+            f"Schema={config.schema_version}, Logo Service={config.logo_service_url}"
+        )
         return config
 
 

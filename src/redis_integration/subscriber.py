@@ -3,7 +3,7 @@
 Redis Subscriber for Calendar Service
 
 Provides Redis pub/sub subscription functionality for receiving real-time
-match updates from the match processor service.
+match updates from the match processor service with Enhanced Schema v2.0 support.
 """
 
 import json
@@ -12,6 +12,8 @@ import socket
 import threading
 import time
 from typing import Callable, Dict, List, Optional
+
+from .logo_service import LogoServiceClient
 
 logger = logging.getLogger(__name__)
 
@@ -26,12 +28,25 @@ except ImportError:
 
 
 class RedisSubscriber:
-    """Simplified Redis subscriber for calendar service."""
+    """Redis subscriber for calendar service with Enhanced Schema v2.0 support."""
 
-    def __init__(self, config, calendar_sync_callback: Callable[[List[Dict]], bool] = None):
-        """Initialize Redis subscriber."""
+    def __init__(
+        self,
+        config,
+        calendar_sync_callback: Callable[[List[Dict]], bool] = None,
+        logo_service_client: Optional[LogoServiceClient] = None,
+    ):
+        """
+        Initialize Redis subscriber.
+
+        Args:
+            config: Redis configuration
+            calendar_sync_callback: Callback function for calendar sync
+            logo_service_client: Optional logo service client for Enhanced Schema v2.0
+        """
         self.config = config
         self.calendar_sync_callback = calendar_sync_callback
+        self.logo_service_client = logo_service_client
         self.client = None
         self.pubsub = None
         self.subscription_thread = None
@@ -43,6 +58,11 @@ class RedisSubscriber:
         self.errors = 0
         self.reconnect_count = 0
         self.start_time = time.time()
+
+        # Schema version statistics
+        self.schema_v2_messages = 0
+        self.schema_v1_messages = 0
+        self.schema_unknown_messages = 0
 
         if REDIS_AVAILABLE and config.enabled:
             self._connect()
@@ -176,15 +196,30 @@ class RedisSubscriber:
                 retry_delay = min(retry_delay * 2, max_retry_delay)
 
     def _handle_message(self, message):
-        """Handle incoming Redis message."""
+        """Handle incoming Redis message with schema version detection."""
         self.messages_received += 1  # Count all received messages
 
         try:
             data = json.loads(message["data"])
             message_type = data.get("type")
+            schema_version = data.get("schema_version", "1.0")
 
+            # Route based on schema version
             if message_type == "match_updates":
-                self._handle_match_updates(data)
+                if schema_version == "2.0":
+                    self.schema_v2_messages += 1
+                    logger.info("📨 Received Enhanced Schema v2.0 message")
+                    self._handle_enhanced_schema_v2(data)
+                elif schema_version in ["1.5", "1.0"]:
+                    self.schema_v1_messages += 1
+                    logger.info(f"📨 Received Schema v{schema_version} message")
+                    self._handle_legacy_schema(data, schema_version)
+                else:
+                    self.schema_unknown_messages += 1
+                    logger.warning(
+                        f"⚠️ Unknown schema version: {schema_version}, using legacy handler"
+                    )
+                    self._handle_legacy_schema(data, schema_version)
             else:
                 logger.info(f"📨 Received {message_type} message")
 
@@ -194,8 +229,67 @@ class RedisSubscriber:
             self.errors += 1  # Count errors
             logger.error(f"❌ Error handling message: {e}")
 
-    def _handle_match_updates(self, data):
-        """Handle match update messages."""
+    def _handle_enhanced_schema_v2(self, data):
+        """
+        Handle Enhanced Schema v2.0 match update messages.
+
+        Enhanced Schema v2.0 includes:
+        - Complete contact information (mobile, email, address)
+        - Team Organization IDs for logo generation
+        - Detailed change information with priorities
+        - Structured venue data with coordinates
+        """
+        try:
+            payload = data.get("payload", {})
+            matches = payload.get("matches", [])
+            detailed_changes = payload.get("detailed_changes", [])
+            metadata = payload.get("metadata", {})
+
+            if not metadata.get("has_changes", False):
+                logger.info("📋 No changes detected - skipping calendar sync")
+                return
+
+            logger.info(f"🗓️ Processing Enhanced Schema v2.0: {len(matches)} matches")
+
+            # Enrich matches with logo paths if logo service is available
+            if self.logo_service_client:
+                matches = self._enrich_matches_with_logos(matches)
+
+            # Determine sync priority based on change types
+            high_priority = self._has_high_priority_changes(detailed_changes)
+
+            if self.calendar_sync_callback:
+                # Pass enriched matches with schema version indicator
+                enriched_data = {
+                    "matches": matches,
+                    "schema_version": "2.0",
+                    "detailed_changes": detailed_changes,
+                    "high_priority": high_priority,
+                }
+
+                logger.info(
+                    f"🗓️ Triggering {'immediate' if high_priority else 'standard'} "
+                    f"calendar sync for {len(matches)} matches"
+                )
+
+                success = self.calendar_sync_callback(enriched_data)
+
+                if success:
+                    logger.info("✅ Enhanced Schema v2.0 calendar sync completed successfully")
+                else:
+                    logger.error("❌ Enhanced Schema v2.0 calendar sync failed")
+            else:
+                logger.warning("⚠️ No calendar sync callback configured")
+
+        except Exception as e:
+            logger.error(f"❌ Error processing Enhanced Schema v2.0 match updates: {e}")
+
+    def _handle_legacy_schema(self, data, schema_version: str):
+        """
+        Handle legacy schema (v1.0, v1.5) match update messages.
+
+        Maintains backward compatibility with existing message formats.
+        """
         try:
             payload = data.get("payload", {})
             matches = payload.get("matches", [])
@@ -206,8 +300,24 @@ class RedisSubscriber:
                 return
 
             if self.calendar_sync_callback:
-                logger.info(f"🗓️ Triggering calendar sync for {len(matches)} matches")
-                success = self.calendar_sync_callback(matches)
+                logger.info(
+                    f"🗓️ Triggering calendar sync for {len(matches)} matches (v{schema_version})"
+                )
+
+                # For backward compatibility, pass matches directly or wrapped
+                # Check if callback expects enriched data or simple list
+                try:
+                    # Try enriched format first
+                    enriched_data = {
+                        "matches": matches,
+                        "schema_version": schema_version,
+                        "detailed_changes": [],
+                        "high_priority": False,
+                    }
+                    success = self.calendar_sync_callback(enriched_data)
+                except TypeError:
+                    # Fallback to simple list format for old callbacks
+                    success = self.calendar_sync_callback(matches)
 
                 if success:
                     logger.info("✅ Calendar sync completed successfully")
@@ -217,7 +327,83 @@ class RedisSubscriber:
                 logger.warning("⚠️ No calendar sync callback configured")
 
         except Exception as e:
-            logger.error(f"❌ Error processing match updates: {e}")
+            logger.error(f"❌ Error processing legacy schema match updates: {e}")
+
+    def _enrich_matches_with_logos(self, matches: List[Dict]) -> List[Dict]:
+        """
+        Enrich matches with combined team logos.
+
+        Args:
+            matches: List of match dictionaries
+
+        Returns:
+            Enriched matches with logo_path field
+        """
+        enriched_matches = []
+
+        for match in matches:
+            enriched_match = match.copy()
+
+            try:
+                # Extract Organization IDs from Enhanced Schema v2.0 structure
+                teams = match.get("teams", {})
+                home_team = teams.get("home", {})
+                away_team = teams.get("away", {})
+
+                home_org_id = home_team.get("organization_id") or home_team.get("logo_id")
+                away_org_id = away_team.get("organization_id") or away_team.get("logo_id")
+
+                if home_org_id and away_org_id:
+                    logo_path = self.logo_service_client.generate_combined_logo(
+                        home_org_id, away_org_id
+                    )
+
+                    if logo_path:
+                        enriched_match["logo_path"] = logo_path
+                        logger.debug(f"✅ Logo generated for match {match.get('match_id')}")
+                    else:
+                        logger.debug(f"⚠️ Logo generation failed for match {match.get('match_id')}")
+                else:
+                    logger.debug(
+                        f"⚠️ Missing Organization IDs for match {match.get('match_id')}: "
+                        f"home={home_org_id}, away={away_org_id}"
+                    )
+
+            except Exception as e:
+                logger.warning(f"⚠️ Error enriching match with logo: {e}")
+
+            enriched_matches.append(enriched_match)
+
+        return enriched_matches
+
+    def _has_high_priority_changes(self, detailed_changes: List[Dict]) -> bool:
+        """
+        Determine if changes include high-priority items.
+
+        High-priority changes include:
+        - Time changes
+        - Date changes
+        - Venue changes
+        - Referee changes
+
+        Args:
+            detailed_changes: List of detailed change dictionaries
+
+        Returns:
+            True if high-priority changes exist
+        """
+        if not detailed_changes:
+            return False
+
+        high_priority_categories = ["time_change", "date_change", "venue_change", "referee_change"]
+
+        for change in detailed_changes:
+            if change.get("priority") == "high":
+                return True
+            if change.get("category") in high_priority_categories:
+                return True
+
+        return False
 
     def stop_subscription(self):
         """Stop Redis subscription."""
@@ -244,7 +430,7 @@ class RedisSubscriber:
         }
 
     def get_statistics(self) -> Dict:
-        """Get subscriber statistics."""
+        """Get subscriber statistics including schema version breakdown."""
         uptime = time.time() - self.start_time
         return {
             "messages_processed": self.messages_processed,
@@ -253,16 +439,40 @@ class RedisSubscriber:
             "reconnect_count": self.reconnect_count,
             "uptime": uptime,
             "last_message_time": None,  # Could be enhanced to track last message time
-            "subscribed_channels": ["fogis:matches:updates"],  # Default channel
+            "subscribed_channels": list(self.config.channels.values()),
             "subscription_stats": {
                 "total_messages_received": self.messages_received,
                 "successful_messages": self.messages_processed,
                 "connected": self.client is not None,
                 "subscribed": self.running,
             },
+            "schema_version_stats": {
+                "v2_messages": self.schema_v2_messages,
+                "v1_messages": self.schema_v1_messages,
+                "unknown_messages": self.schema_unknown_messages,
+                "preferred_schema": self.config.schema_version,
+            },
+            "logo_service": {
+                "enabled": self.logo_service_client is not None,
+                "cache_size": (
+                    self.logo_service_client.get_cache_size() if self.logo_service_client else 0
+                ),
+            },
         }
 
 
-def create_redis_subscriber(config, calendar_sync_callback=None) -> RedisSubscriber:
-    """Create Redis subscriber instance."""
-    return RedisSubscriber(config, calendar_sync_callback)
+def create_redis_subscriber(
+    config, calendar_sync_callback=None, logo_service_client=None
+) -> RedisSubscriber:
+    """
+    Create Redis subscriber instance with Enhanced Schema v2.0 support.
+
+    Args:
+        config: Redis configuration
+        calendar_sync_callback: Callback function for calendar sync
+        logo_service_client: Optional logo service client for Enhanced Schema v2.0
+
+    Returns:
+        RedisSubscriber instance
+    """
+    return RedisSubscriber(config, calendar_sync_callback, logo_service_client)
