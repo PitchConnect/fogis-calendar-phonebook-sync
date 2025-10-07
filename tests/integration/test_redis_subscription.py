@@ -347,7 +347,24 @@ class TestEndToEndWorkflow(unittest.TestCase):
 
         # Check that calendar sync was called
         self.assertEqual(len(self.calendar_sync_calls), 1)
-        self.assertEqual(len(self.calendar_sync_calls[0]), 2)
+
+        # Verify enriched data format (Enhanced Schema v2.0)
+        enriched_data = self.calendar_sync_calls[0]
+        self.assertIsInstance(enriched_data, dict)
+        self.assertIn("matches", enriched_data)
+        self.assertIn("schema_version", enriched_data)
+        self.assertIn("detailed_changes", enriched_data)
+        self.assertIn("high_priority", enriched_data)
+
+        # Verify the matches content
+        self.assertEqual(len(enriched_data["matches"]), 2)
+        self.assertEqual(enriched_data["matches"][0]["matchid"], 123456)
+        self.assertEqual(enriched_data["matches"][1]["matchid"], 789012)
+
+        # Verify schema metadata
+        self.assertEqual(enriched_data["schema_version"], "1.0")
+        self.assertFalse(enriched_data["high_priority"])
+        self.assertEqual(enriched_data["detailed_changes"], [])
 
         # Check statistics
         stats = service.get_subscription_statistics()
