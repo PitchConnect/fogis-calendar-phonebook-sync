@@ -3,7 +3,7 @@
 Redis Subscriber for Calendar Service
 
 Provides Redis pub/sub subscription functionality for receiving real-time
-match updates from the match processor service with Enhanced Schema v2.0 support.
+match updates from the match processor service.
 """
 
 import json
@@ -11,8 +11,6 @@ import logging
 import threading
 import time
 from typing import Callable, Dict, List, Optional
-
-from .logo_service import LogoServiceClient
 
 logger = logging.getLogger(__name__)
 
@@ -27,13 +25,12 @@ except ImportError:
 
 
 class RedisSubscriber:
-    """Redis subscriber for calendar service with Enhanced Schema v2.0 support."""
+    """Simplified Redis subscriber for calendar service."""
 
     def __init__(
         self,
         config,
         calendar_sync_callback: Callable[[List[Dict]], bool] = None,
-        logo_service_client: Optional[LogoServiceClient] = None,
     ):
         """
         Initialize Redis subscriber.
@@ -41,11 +38,9 @@ class RedisSubscriber:
         Args:
             config: Redis configuration
             calendar_sync_callback: Callback function for calendar sync
-            logo_service_client: Optional logo service client for Enhanced Schema v2.0
         """
         self.config = config
         self.calendar_sync_callback = calendar_sync_callback
-        self.logo_service_client = logo_service_client
         self.client = None
         self.pubsub = None
         self.subscription_thread = None
@@ -159,7 +154,6 @@ class RedisSubscriber:
 
         Enhanced Schema v2.0 includes:
         - Complete contact information (mobile, email, address)
-        - Team Organization IDs for logo generation
         - Detailed change information with priorities
         - Structured venue data with coordinates
         """
@@ -174,10 +168,6 @@ class RedisSubscriber:
                 return
 
             logger.info(f"🗓️ Processing Enhanced Schema v2.0: {len(matches)} matches")
-
-            # Enrich matches with logo paths if logo service is available
-            if self.logo_service_client:
-                matches = self._enrich_matches_with_logos(matches)
 
             # Determine sync priority based on change types
             high_priority = self._has_high_priority_changes(detailed_changes)
@@ -252,53 +242,6 @@ class RedisSubscriber:
 
         except Exception as e:
             logger.error(f"❌ Error processing legacy schema match updates: {e}")
-
-    def _enrich_matches_with_logos(self, matches: List[Dict]) -> List[Dict]:
-        """
-        Enrich matches with combined team logos.
-
-        Args:
-            matches: List of match dictionaries
-
-        Returns:
-            Enriched matches with logo_path field
-        """
-        enriched_matches = []
-
-        for match in matches:
-            enriched_match = match.copy()
-
-            try:
-                # Extract Organization IDs from Enhanced Schema v2.0 structure
-                teams = match.get("teams", {})
-                home_team = teams.get("home", {})
-                away_team = teams.get("away", {})
-
-                home_org_id = home_team.get("organization_id") or home_team.get("logo_id")
-                away_org_id = away_team.get("organization_id") or away_team.get("logo_id")
-
-                if home_org_id and away_org_id:
-                    logo_path = self.logo_service_client.generate_combined_logo(
-                        home_org_id, away_org_id
-                    )
-
-                    if logo_path:
-                        enriched_match["logo_path"] = logo_path
-                        logger.debug(f"✅ Logo generated for match {match.get('match_id')}")
-                    else:
-                        logger.debug(f"⚠️ Logo generation failed for match {match.get('match_id')}")
-                else:
-                    logger.debug(
-                        f"⚠️ Missing Organization IDs for match {match.get('match_id')}: "
-                        f"home={home_org_id}, away={away_org_id}"
-                    )
-
-            except Exception as e:
-                logger.warning(f"⚠️ Error enriching match with logo: {e}")
-
-            enriched_matches.append(enriched_match)
-
-        return enriched_matches
 
     def _has_high_priority_changes(self, detailed_changes: List[Dict]) -> bool:
         """
@@ -375,27 +318,18 @@ class RedisSubscriber:
                 "unknown_messages": self.schema_unknown_messages,
                 "preferred_schema": self.config.schema_version,
             },
-            "logo_service": {
-                "enabled": self.logo_service_client is not None,
-                "cache_size": (
-                    self.logo_service_client.get_cache_size() if self.logo_service_client else 0
-                ),
-            },
         }
 
 
-def create_redis_subscriber(
-    config, calendar_sync_callback=None, logo_service_client=None
-) -> RedisSubscriber:
+def create_redis_subscriber(config, calendar_sync_callback=None) -> RedisSubscriber:
     """
-    Create Redis subscriber instance with Enhanced Schema v2.0 support.
+    Create Redis subscriber instance.
 
     Args:
         config: Redis configuration
         calendar_sync_callback: Callback function for calendar sync
-        logo_service_client: Optional logo service client for Enhanced Schema v2.0
 
     Returns:
         RedisSubscriber instance
     """
-    return RedisSubscriber(config, calendar_sync_callback, logo_service_client)
+    return RedisSubscriber(config, calendar_sync_callback)
