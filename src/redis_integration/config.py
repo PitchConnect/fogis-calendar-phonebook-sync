@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class RedisConfig:
-    """Redis configuration for calendar service with Enhanced Schema v2.0 support."""
+    """Simplified Redis configuration for calendar service."""
 
     # Essential settings only
     url: str = "redis://fogis-redis:6379"
@@ -25,9 +25,8 @@ class RedisConfig:
     # Channel configuration
     channels: Dict[str, str] = None
 
-    # Enhanced Schema v2.0 settings
+    # Schema version settings
     schema_version: str = "2.0"
-    logo_service_url: Optional[str] = None
     fallback_schemas: List[str] = None
 
     def __post_init__(self):
@@ -57,9 +56,8 @@ class RedisConfig:
         config.enabled = os.getenv("REDIS_ENABLED", "true").lower() == "true"
         config.timeout = int(os.getenv("REDIS_TIMEOUT", str(config.timeout)))
 
-        # Load Enhanced Schema v2.0 configuration
+        # Load schema version configuration
         config.schema_version = os.getenv("REDIS_SCHEMA_VERSION", config.schema_version)
-        config.logo_service_url = os.getenv("LOGO_COMBINER_URL", config.logo_service_url)
 
         # Load fallback schemas
         fallback_env = os.getenv("REDIS_FALLBACK_SCHEMAS")
@@ -68,7 +66,7 @@ class RedisConfig:
 
         logger.info(
             f"Redis config: URL={config.url}, Enabled={config.enabled}, "
-            f"Schema={config.schema_version}, Logo Service={config.logo_service_url}"
+            f"Schema={config.schema_version}"
         )
         return config
 
