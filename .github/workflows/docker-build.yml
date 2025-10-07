@@ -22,7 +22,7 @@ jobs:
       uses: docker/setup-buildx-action@v3
 
     - name: Login to GitHub Container Registry
-      if: github.event_name != 'pull_request'
+      if: github.event_name \!= 'pull_request'
       uses: docker/login-action@v3
       with:
         registry: ghcr.io
@@ -32,14 +32,14 @@ jobs:
     - name: Determine build platforms
       id: platforms
       run: |
-        # Only build ARM64 for tagged releases to optimize build time
-        # Main branch and PR builds use AMD64 only for faster CI/CD
-        if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+        # Build multi-platform for main branch and tagged releases
+        # PR builds use AMD64 only for faster CI/CD
+        if [[ "${{ github.ref }}" == refs/tags/* ]] || [[ "${{ github.ref }}" == refs/heads/main ]]; then
           echo "platforms=linux/amd64,linux/arm64" >> $GITHUB_OUTPUT
-          echo "Building multi-platform for tagged release"
+          echo "Building multi-platform (AMD64 + ARM64)"
         else
           echo "platforms=linux/amd64" >> $GITHUB_OUTPUT
-          echo "Building AMD64 only for faster CI/CD (main/PR/develop)"
+          echo "Building AMD64 only for faster CI/CD (PR/develop)"
         fi
 
     - name: Cache Docker layers
@@ -68,7 +68,7 @@ jobs:
       uses: docker/build-push-action@v5
       with:
         context: .
-        push: ${{ github.event_name != 'pull_request' }}
+        push: ${{ github.event_name \!= 'pull_request' }}
         platforms: ${{ steps.platforms.outputs.platforms }}
         tags: ${{ steps.meta.outputs.tags }}
         labels: ${{ steps.meta.outputs.labels }}
