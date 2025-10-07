@@ -33,7 +33,7 @@ class TestRedisConfig(unittest.TestCase):
         self.assertTrue(config.enabled)
         self.assertEqual(config.timeout, 5)
         self.assertIsNotNone(config.channels)
-        # Enhanced Schema v2.0 adds more channels (v2, v1, legacy)
+        # Multiple schema version channels (v2, v1, legacy)
         self.assertGreaterEqual(len(config.channels), 3)
 
     @patch.dict(
