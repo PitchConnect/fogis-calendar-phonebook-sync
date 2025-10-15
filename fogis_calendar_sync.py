@@ -61,6 +61,22 @@ try:
         config_dict = json.load(file)  # Load config data into a dictionary ONCE
 
     logger.info("Successfully loaded configuration from config.json.")
+
+    # Environment variable override for USE_LOCAL_MATCH_DATA
+    # This allows deployment configuration to override the config.json setting
+    # without modifying the container image
+    env_use_local = os.environ.get("USE_LOCAL_MATCH_DATA")
+    if env_use_local is not None:
+        # Convert string to boolean (handle "true"/"false" case-insensitively)
+        use_local_match_data = env_use_local.lower() in ("true", "1", "yes")
+        config_dict["USE_LOCAL_MATCH_DATA"] = use_local_match_data
+        logger.info(
+            f"USE_LOCAL_MATCH_DATA overridden by environment variable: {use_local_match_data}"
+        )
+    else:
+        logger.info(
+            f"USE_LOCAL_MATCH_DATA from config.json: {config_dict.get('USE_LOCAL_MATCH_DATA', False)}"
+        )
 except FileNotFoundError:
     logger.error("Configuration file not found: config.json. Exiting.")
     sys.exit(1)
