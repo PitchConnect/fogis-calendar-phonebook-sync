@@ -844,7 +844,7 @@ class TestCalendarSyncCallbackEnhancedSchema:
         finally:
             app.calendar_service = original_service
 
-    @patch("app.sync_calendar")
+    @patch("fogis_calendar_sync.sync_calendar")
     def test_callback_v2_with_actual_sync_call(self, mock_sync):
         """Test callback actually calls sync_calendar with correct arguments."""
         import app
@@ -872,7 +872,7 @@ class TestCalendarSyncCallbackEnhancedSchema:
         finally:
             app.calendar_service = original_service
 
-    @patch("app.sync_calendar")
+    @patch("fogis_calendar_sync.sync_calendar")
     def test_callback_v1_with_actual_sync_call(self, mock_sync):
         """Test callback with v1.0 format calls sync_calendar correctly."""
         import app
@@ -891,7 +891,7 @@ class TestCalendarSyncCallbackEnhancedSchema:
         finally:
             app.calendar_service = original_service
 
-    @patch("app.sync_calendar")
+    @patch("fogis_calendar_sync.sync_calendar")
     def test_callback_logs_processing_summary(self, mock_sync):
         """Test callback logs correct processing summary."""
         import app
@@ -920,7 +920,7 @@ class TestCalendarSyncCallbackEnhancedSchema:
         finally:
             app.calendar_service = original_service
 
-    @patch("app.sync_calendar")
+    @patch("fogis_calendar_sync.sync_calendar")
     def test_callback_handles_match_without_matchid_gracefully(self, mock_sync):
         """Test callback handles matches without matchid field gracefully."""
         import app
