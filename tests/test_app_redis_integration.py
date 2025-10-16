@@ -504,3 +504,309 @@ class TestCalendarSyncCallbackAdditional:
             assert result is True
         finally:
             app.calendar_service = original_service
+
+
+class TestCalendarSyncCallbackEnhancedSchema:
+    """Tests for calendar_sync_callback with Enhanced Schema v2.0 format."""
+
+    @patch("fogis_calendar_sync.sync_calendar")
+    def test_callback_with_enhanced_schema_v2_dict(self, mock_sync):
+        """Test callback with Enhanced Schema v2.0 format (dict)."""
+        import app
+
+        mock_sync.return_value = True
+        data = {
+            "matches": [
+                {"matchid": 123, "lag1namn": "Team A", "lag2namn": "Team B"},
+                {"matchid": 456, "lag1namn": "Team C", "lag2namn": "Team D"},
+            ],
+            "schema_version": "2.0",
+            "detailed_changes": [{"type": "new_match", "matchid": 123}],
+            "high_priority": True,
+        }
+
+        original_service = app.calendar_service
+        app.calendar_service = MagicMock()
+
+        try:
+            result = app.calendar_sync_callback(data)
+
+            assert result is True
+            assert mock_sync.call_count == 2
+        finally:
+            app.calendar_service = original_service
+
+    @patch("fogis_calendar_sync.sync_calendar")
+    def test_callback_with_legacy_schema_v1_list(self, mock_sync):
+        """Test callback with Legacy Schema v1.0 format (list)."""
+        import app
+
+        mock_sync.return_value = True
+        data = [
+            {"matchid": 123, "lag1namn": "Team A", "lag2namn": "Team B"},
+            {"matchid": 456, "lag1namn": "Team C", "lag2namn": "Team D"},
+        ]
+
+        original_service = app.calendar_service
+        app.calendar_service = MagicMock()
+
+        try:
+            result = app.calendar_sync_callback(data)
+
+            assert result is True
+            assert mock_sync.call_count == 2
+        finally:
+            app.calendar_service = original_service
+
+    def test_callback_with_invalid_data_type(self):
+        """Test callback with invalid data type (string)."""
+        import app
+
+        original_service = app.calendar_service
+        app.calendar_service = MagicMock()
+
+        try:
+            result = app.calendar_sync_callback("invalid string")
+
+            assert result is False
+        finally:
+            app.calendar_service = original_service
+
+    def test_callback_with_invalid_data_type_number(self):
+        """Test callback with invalid data type (number)."""
+        import app
+
+        original_service = app.calendar_service
+        app.calendar_service = MagicMock()
+
+        try:
+            result = app.calendar_sync_callback(12345)
+
+            assert result is False
+        finally:
+            app.calendar_service = original_service
+
+    @patch("fogis_calendar_sync.sync_calendar")
+    def test_callback_with_empty_matches_in_dict(self, mock_sync):
+        """Test callback with Enhanced Schema v2.0 but empty matches list."""
+        import app
+
+        data = {
+            "matches": [],
+            "schema_version": "2.0",
+            "detailed_changes": [],
+            "high_priority": False,
+        }
+
+        original_service = app.calendar_service
+        app.calendar_service = MagicMock()
+
+        try:
+            result = app.calendar_sync_callback(data)
+
+            assert result is True
+            mock_sync.assert_not_called()
+        finally:
+            app.calendar_service = original_service
+
+    @patch("fogis_calendar_sync.sync_calendar")
+    def test_callback_with_missing_matches_key(self, mock_sync):
+        """Test callback with dict but missing 'matches' key."""
+        import app
+
+        data = {
+            "schema_version": "2.0",
+            "detailed_changes": [],
+            "high_priority": False,
+        }
+
+        original_service = app.calendar_service
+        app.calendar_service = MagicMock()
+
+        try:
+            result = app.calendar_sync_callback(data)
+
+            # Should return True because no matches means no failures
+            assert result is True
+            mock_sync.assert_not_called()
+        finally:
+            app.calendar_service = original_service
+
+    @patch("fogis_calendar_sync.sync_calendar")
+    def test_callback_with_partial_metadata(self, mock_sync):
+        """Test callback with Enhanced Schema v2.0 but partial metadata."""
+        import app
+
+        mock_sync.return_value = True
+        data = {
+            "matches": [{"matchid": 123, "lag1namn": "Team A", "lag2namn": "Team B"}],
+            "schema_version": "2.0",
+            # Missing detailed_changes and high_priority
+        }
+
+        original_service = app.calendar_service
+        app.calendar_service = MagicMock()
+
+        try:
+            result = app.calendar_sync_callback(data)
+
+            assert result is True
+            mock_sync.assert_called_once()
+        finally:
+            app.calendar_service = original_service
+
+    @patch("fogis_calendar_sync.sync_calendar")
+    def test_callback_v2_with_high_priority(self, mock_sync):
+        """Test callback logs high priority correctly for v2.0."""
+        import app
+
+        mock_sync.return_value = True
+        data = {
+            "matches": [{"matchid": 123, "lag1namn": "Team A", "lag2namn": "Team B"}],
+            "schema_version": "2.0",
+            "detailed_changes": [
+                {"type": "time_change", "matchid": 123},
+                {"type": "venue_change", "matchid": 123},
+            ],
+            "high_priority": True,
+        }
+
+        original_service = app.calendar_service
+        app.calendar_service = MagicMock()
+
+        try:
+            result = app.calendar_sync_callback(data)
+
+            assert result is True
+            mock_sync.assert_called_once()
+        finally:
+            app.calendar_service = original_service
+
+    @patch("fogis_calendar_sync.sync_calendar")
+    def test_callback_v2_with_normal_priority(self, mock_sync):
+        """Test callback logs normal priority correctly for v2.0."""
+        import app
+
+        mock_sync.return_value = True
+        data = {
+            "matches": [{"matchid": 123, "lag1namn": "Team A", "lag2namn": "Team B"}],
+            "schema_version": "2.0",
+            "detailed_changes": [{"type": "new_match", "matchid": 123}],
+            "high_priority": False,
+        }
+
+        original_service = app.calendar_service
+        app.calendar_service = MagicMock()
+
+        try:
+            result = app.calendar_sync_callback(data)
+
+            assert result is True
+            mock_sync.assert_called_once()
+        finally:
+            app.calendar_service = original_service
+
+    @patch("fogis_calendar_sync.sync_calendar")
+    def test_callback_v2_partial_success(self, mock_sync):
+        """Test callback with v2.0 format and partial success."""
+        import app
+
+        mock_sync.side_effect = [True, False, True]
+        data = {
+            "matches": [
+                {"matchid": 1, "lag1namn": "Team A", "lag2namn": "Team B"},
+                {"matchid": 2, "lag1namn": "Team C", "lag2namn": "Team D"},
+                {"matchid": 3, "lag1namn": "Team E", "lag2namn": "Team F"},
+            ],
+            "schema_version": "2.0",
+            "detailed_changes": [],
+            "high_priority": False,
+        }
+
+        original_service = app.calendar_service
+        app.calendar_service = MagicMock()
+
+        try:
+            result = app.calendar_sync_callback(data)
+
+            # Should return True because 2 out of 3 succeeded
+            assert result is True
+            assert mock_sync.call_count == 3
+        finally:
+            app.calendar_service = original_service
+
+    @patch("fogis_calendar_sync.sync_calendar")
+    def test_callback_v2_all_failures(self, mock_sync):
+        """Test callback with v2.0 format when all matches fail."""
+        import app
+
+        mock_sync.return_value = False
+        data = {
+            "matches": [
+                {"matchid": 1, "lag1namn": "Team A", "lag2namn": "Team B"},
+                {"matchid": 2, "lag1namn": "Team C", "lag2namn": "Team D"},
+            ],
+            "schema_version": "2.0",
+            "detailed_changes": [],
+            "high_priority": False,
+        }
+
+        original_service = app.calendar_service
+        app.calendar_service = MagicMock()
+
+        try:
+            result = app.calendar_sync_callback(data)
+
+            assert result is False
+            assert mock_sync.call_count == 2
+        finally:
+            app.calendar_service = original_service
+
+    @patch("fogis_calendar_sync.sync_calendar")
+    def test_callback_v2_with_exceptions(self, mock_sync):
+        """Test callback with v2.0 format when exceptions occur."""
+        import app
+
+        mock_sync.side_effect = Exception("Sync error")
+        data = {
+            "matches": [{"matchid": 123, "lag1namn": "Team A", "lag2namn": "Team B"}],
+            "schema_version": "2.0",
+            "detailed_changes": [],
+            "high_priority": False,
+        }
+
+        original_service = app.calendar_service
+        app.calendar_service = MagicMock()
+
+        try:
+            result = app.calendar_sync_callback(data)
+
+            assert result is False
+            mock_sync.assert_called_once()
+        finally:
+            app.calendar_service = original_service
+
+    @patch("fogis_calendar_sync.sync_calendar")
+    def test_callback_v2_unknown_schema_version(self, mock_sync):
+        """Test callback with unknown schema version in dict format."""
+        import app
+
+        mock_sync.return_value = True
+        data = {
+            "matches": [{"matchid": 123, "lag1namn": "Team A", "lag2namn": "Team B"}],
+            "schema_version": "3.0",  # Unknown version
+            "detailed_changes": [],
+            "high_priority": False,
+        }
+
+        original_service = app.calendar_service
+        app.calendar_service = MagicMock()
+
+        try:
+            result = app.calendar_sync_callback(data)
+
+            # Should still process successfully
+            assert result is True
+            mock_sync.assert_called_once()
+        finally:
+            app.calendar_service = original_service
