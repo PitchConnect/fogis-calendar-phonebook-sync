@@ -8,6 +8,7 @@ match updates from the match processor service.
 
 import json
 import logging
+import socket
 import threading
 import time
 from typing import Callable, Dict, List, Optional
@@ -50,6 +51,7 @@ class RedisSubscriber:
         self.messages_received = 0
         self.messages_processed = 0
         self.errors = 0
+        self.reconnect_count = 0
         self.start_time = time.time()
 
         # Schema version statistics
@@ -61,11 +63,33 @@ class RedisSubscriber:
             self._connect()
 
     def _connect(self) -> bool:
-        """Connect to Redis."""
+        """Connect to Redis with proper pub/sub configuration."""
         try:
+            # Build socket keepalive options (platform-specific)
+            keepalive_options = {}
+            try:
+                # Linux/Unix constants
+                if hasattr(socket, "TCP_KEEPIDLE"):
+                    keepalive_options[socket.TCP_KEEPIDLE] = 60
+                if hasattr(socket, "TCP_KEEPINTVL"):
+                    keepalive_options[socket.TCP_KEEPINTVL] = 10
+                if hasattr(socket, "TCP_KEEPCNT"):
+                    keepalive_options[socket.TCP_KEEPCNT] = 6
+            except AttributeError:
+                # Platform doesn't support these options
+                pass
+
             self.client = redis.from_url(
                 self.config.url,
-                socket_timeout=self.config.timeout,
+                # ✅ FIX: No timeout for read operations (allows indefinite blocking)
+                socket_timeout=None,
+                # ✅ Timeout only for connection establishment
+                socket_connect_timeout=5,
+                # ✅ Enable TCP keepalive for connection health monitoring
+                socket_keepalive=True,
+                socket_keepalive_options=keepalive_options if keepalive_options else None,
+                # ✅ Application-level health checks (redis-py 4.2+)
+                health_check_interval=30,  # Ping every 30 seconds
                 decode_responses=True,
             )
             self.client.ping()
@@ -73,6 +97,36 @@ class RedisSubscriber:
             return True
         except Exception as e:
             logger.warning(f"⚠️ Redis connection failed: {e}")
+            return False
+
+    def _reconnect(self) -> bool:
+        """Reconnect to Redis and resubscribe to channels."""
+        try:
+            # Close old connections
+            if self.pubsub:
+                try:
+                    self.pubsub.close()
+                except Exception:
+                    pass
+            if self.client:
+                try:
+                    self.client.close()
+                except Exception:
+                    pass
+
+            # Create new connection
+            if not self._connect():
+                return False
+
+            # Recreate pubsub and resubscribe
+            self.pubsub = self.client.pubsub(ignore_subscribe_messages=True)
+            for channel in self.config.channels.values():
+                self.pubsub.subscribe(channel)
+                logger.info(f"📡 Resubscribed to channel: {channel}")
+
+            return True
+        except Exception as e:
+            logger.error(f"❌ Reconnection failed: {e}")
             return False
 
     def start_subscription(self) -> bool:
@@ -102,17 +156,39 @@ class RedisSubscriber:
             return False
 
     def _listen_for_messages(self):
-        """Listen for Redis messages."""
-        try:
-            for message in self.pubsub.listen():
+        """Listen for Redis messages with auto-recovery."""
+        retry_delay = 1
+        max_retry_delay = 60
+
+        while self.running:
+            try:
+                logger.info("🔄 Starting message listener...")
+
+                # ✅ This blocks indefinitely (no timeout)
+                for message in self.pubsub.listen():
+                    if not self.running:
+                        break
+                    if message["type"] == "message":
+                        self._handle_message(message)
+                        retry_delay = 1  # Reset on success
+
                 if not self.running:
                     break
 
-                if message["type"] == "message":
-                    self._handle_message(message)
+            except redis.ConnectionError as e:
+                # ✅ Only genuine connection failures reach here
+                self.reconnect_count += 1
+                logger.error(f"❌ Connection lost: {e}")
+                logger.info(f"🔄 Reconnecting in {retry_delay}s...")
+                time.sleep(retry_delay)
+                retry_delay = min(retry_delay * 2, max_retry_delay)
+                self._reconnect()
 
-        except Exception as e:
-            logger.error(f"❌ Error in message listener: {e}")
+            except Exception as e:
+                self.errors += 1
+                logger.error(f"❌ Unexpected error: {e}", exc_info=True)
+                time.sleep(retry_delay)
+                retry_delay = min(retry_delay * 2, max_retry_delay)
 
     def _handle_message(self, message):
         """Handle incoming Redis message with schema version detection."""
@@ -303,6 +379,7 @@ class RedisSubscriber:
             "messages_processed": self.messages_processed,
             "messages_received": self.messages_received,
             "errors": self.errors,
+            "reconnect_count": self.reconnect_count,
             "uptime": uptime,
             "last_message_time": None,  # Could be enhanced to track last message time
             "subscribed_channels": list(self.config.channels.values()),
