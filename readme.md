@@ -9,46 +9,63 @@
 
 [![Repository Link](https://img.shields.io/badge/GitHub-Repo-blue?logo=github)](https://github.com/PitchConnect/fogis-calendar-phonebook-sync)
 
-This Python script synchronizes match data from the FOGIS API with your Google Calendar and manages referee contacts in Google Contacts. It helps you keep your calendar updated with your referee assignments and maintain an organized contact list of referees.
+This service synchronizes FOGIS match data with Google Calendar and manages referee contacts in Google Contacts. It operates as a **Redis pub/sub consumer**, receiving pre-processed match data from the `match-list-processor` service and syncing it to your Google Calendar and Contacts.
+
+## Architecture
+
+This service is part of a microservices architecture:
+
+- **match-list-processor**: Fetches match data from FOGIS API and publishes to Redis
+- **fogis-calendar-phonebook-sync** (this service): Subscribes to Redis, syncs data to Google Calendar/Contacts
+- **Redis**: Message broker for event-driven communication
+
+This service does NOT fetch data from FOGIS directly - it only receives data via Redis pub/sub.
 
 ## Features
 
-* Calendar Synchronization:
-    * Automatically creates, updates, and deletes Google Calendar events based on your FOGIS match schedule.
-    * Detects changes in match details (time, venue, referees, etc.) and updates existing calendar events accordingly.
-    * Includes detailed event descriptions with match number, competition name, referee information, team contact details, and a link to the official match facts page.
-    * Prevents duplicate events and efficiently updates only when necessary.
-    * Supports deleting orphaned calendar events (events no longer in your FOGIS schedule).
-    * Option to delete all existing calendar events before syncing for a clean refresh.
+* **Redis Pub/Sub Integration**:
+    * Subscribes to Redis channels for real-time match data updates
+    * Receives pre-processed match data from the `match-list-processor` service
+    * Event-driven architecture for efficient, decoupled processing
+    * Automatic reconnection and error handling
 
-* Referee Contact Management:
-    * Automatically adds referees from your FOGIS match assignments to your Google Contacts.
-    * Organizes referees into a "Referees" contact group.
-    * Creates new contacts for referees not already in your Google Contacts.
-    * Updates existing referee contacts with the latest information from FOGIS (phone number, address, etc.).
-    * Uses Fogis ID (DomarNr) and phone number to efficiently find and update existing contacts, minimizing duplicates.
-    * Implements robust error handling and retry mechanisms for reliable contact management, even with Google API rate limits.
+* **Calendar Synchronization**:
+    * Automatically creates, updates, and deletes Google Calendar events based on match data received via Redis
+    * Detects changes in match details (time, venue, referees, etc.) and updates existing calendar events accordingly
+    * Includes detailed event descriptions with match number, competition name, referee information, team contact details, and a link to the official match facts page
+    * Prevents duplicate events and efficiently updates only when necessary
+    * Supports deleting orphaned calendar events (events no longer in your match schedule)
 
-* Headless Authentication:
-    * Run the application on servers without a browser or GUI.
-    * Receive authentication links via email, Discord, or Slack.
-    * Lightweight authentication server handles OAuth callbacks.
-    * Proactive token refresh to minimize authentication requests.
+* **Referee Contact Management**:
+    * Automatically adds referees from match assignments to your Google Contacts
+    * Organizes referees into a "Referees" contact group
+    * Creates new contacts for referees not already in your Google Contacts
+    * Updates existing referee contacts with the latest information (phone number, address, etc.)
+    * Uses Fogis ID (DomarNr) and phone number to efficiently find and update existing contacts, minimizing duplicates
+    * Implements robust error handling and retry mechanisms for reliable contact management, even with Google API rate limits
 
-* Logging: Comprehensive logging to track script execution, identify issues, and debug problems.
+* **Headless Authentication**:
+    * Run the application on servers without a browser or GUI
+    * Receive authentication links via email, Discord, or Slack
+    * Lightweight authentication server handles OAuth callbacks
+    * Proactive token refresh to minimize authentication requests
+
+* **Comprehensive Logging**: Track service execution, identify issues, and debug problems with detailed structured logging
 
 ## Prerequisites
 
-Before running this script, you need to have the following:
+Before running this service, you need to have the following:
 
-* Python 3.6 or higher: Make sure Python is installed on your system.
-* Google Account: You need a Google account to access Google Calendar and Google Contacts.
-* FOGIS Account: You need a FOGIS account with access to your match schedule.
-* Google Cloud Project: You need to create a Google Cloud project and enable the following APIs:
+* **Python 3.9 or higher**: Make sure Python is installed on your system
+* **Google Account**: You need a Google account to access Google Calendar and Google Contacts
+* **Google Cloud Project**: You need to create a Google Cloud project and enable the following APIs:
     * Google Calendar API
     * Google People API
-* Google API Credentials: You will need to download credentials for your Google Cloud project.
-* FOGIS Credentials: You need your FOGIS username and password.
+* **Google API Credentials**: You will need to download OAuth 2.0 credentials for your Google Cloud project
+* **Redis Server**: A running Redis instance for pub/sub messaging (can be local or remote)
+* **match-list-processor Service**: The companion service that fetches FOGIS data and publishes to Redis
+
+**Note**: This service does NOT require FOGIS credentials. Match data is received via Redis from the `match-list-processor` service.
 
 
 ## Installation

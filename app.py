@@ -1,7 +1,6 @@
 import json
 import logging
 import os
-import subprocess
 import time
 from typing import Dict, List, Union
 
@@ -309,75 +308,6 @@ def health_check():
         duration = time.time() - start_time
         logger.error(f"❌ Health check FAILED ({duration:.3f}s): {str(e)}")
         return jsonify({"status": "error", "message": str(e)}), 500
-
-
-@app.route("/sync", methods=["POST"])
-@handle_calendar_errors("fogis_sync", "sync")
-def sync_fogis():
-    """Endpoint to trigger FOGIS calendar and contacts sync."""
-    logger.info("FOGIS sync request received")
-    try:
-        # Get optional parameters from request
-        data = request.get_json(silent=True) or {}
-        delete_events = data.get("delete", False)
-
-        # Build command
-        cmd = ["python", "fogis_calendar_sync.py"]
-        if delete_events:
-            cmd.append("--delete")
-
-        # Set environment variables for FOGIS credentials if provided
-        env = os.environ.copy()
-        if "username" in data and "password" in data:
-            env["FOGIS_USERNAME"] = data["username"]
-            env["FOGIS_PASSWORD"] = data["password"]
-
-        # Run the sync script as a subprocess
-        logger.info(f"Starting FOGIS sync process with command: {' '.join(cmd)}")
-        process = subprocess.run(cmd, env=env, capture_output=True, text=True, check=False)
-
-        # Check if the process was successful
-        if process.returncode == 0:
-            # Check for errors in stderr even with success return code
-            if process.stderr and ("ERROR" in process.stderr or "FAILED" in process.stderr.upper()):
-                logger.warning(f"FOGIS sync completed with warnings/errors: {process.stderr}")
-                return jsonify(
-                    {
-                        "status": "warning",
-                        "message": "FOGIS sync completed with warnings",
-                        "output": process.stdout,
-                        "warnings": process.stderr,
-                    }
-                )
-            else:
-                logger.info("FOGIS sync completed successfully")
-                return jsonify(
-                    {
-                        "status": "success",
-                        "message": "FOGIS sync completed successfully",
-                        "output": process.stdout,
-                    }
-                )
-
-        logger.error(f"FOGIS sync failed with error: {process.stderr}")
-        return (
-            jsonify(
-                {
-                    "status": "error",
-                    "message": "FOGIS sync failed",
-                    "error": process.stderr,
-                    "output": process.stdout,
-                }
-            ),
-            500,
-        )
-
-    except Exception as e:
-        logger.exception("Error during FOGIS sync")
-        return (
-            jsonify({"status": "error", "message": f"Error during FOGIS sync: {str(e)}"}),
-            500,
-        )
 
 
 # Initialize Redis integration

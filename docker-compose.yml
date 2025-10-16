@@ -20,8 +20,6 @@ services:
     volumes:
       - ./token.json:/app/token.json
       - ./data:/app/data
-      # Add volume to share the fogis_api_client_python module
-      - ../fogis_api_client_python:/app/fogis_api_client_python
     # Add health check
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5003/health"]
