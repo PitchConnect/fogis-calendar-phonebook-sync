@@ -50,3 +50,18 @@ repos:
             "-xvs",
             "-k", "not integration and not slow",
         ]
+    -   id: pytest-coverage
+        name: pytest-coverage
+        entry: pytest
+        language: system
+        pass_filenames: false
+        always_run: true
+        args: [
+            "--cov=.",
+            "--cov-report=term-missing:skip-covered",
+            "--cov-fail-under=80",
+            "-k", "not integration and not slow",
+            "--tb=no",
+            "-q",
+        ]
+        verbose: true
