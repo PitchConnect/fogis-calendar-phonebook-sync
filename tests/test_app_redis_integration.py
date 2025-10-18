@@ -9,8 +9,8 @@ import pytest
 class TestInitializeGoogleServices:
     """Tests for initialize_google_services function."""
 
-    @patch("googleapiclient.discovery.build")
-    @patch("google.oauth2.credentials.Credentials")
+    @patch("app.build")
+    @patch("app.Credentials")
     @patch("builtins.open", new_callable=mock_open)
     @patch("app.os.path.exists")
     @patch("app.os.environ.get")
@@ -32,6 +32,13 @@ class TestInitializeGoogleServices:
         }
         mock_file.return_value.read.return_value = json.dumps(token_data)
 
+        # Configure mock to return a mock credentials object when called
+        mock_creds_instance = MagicMock()
+        mock_credentials.return_value = mock_creds_instance
+
+        # Configure mock build to return mock service objects
+        mock_build.return_value = MagicMock()
+
         # Mock json.load to return token_data
         with patch("json.load", return_value=token_data):
             from app import initialize_google_services
@@ -39,7 +46,14 @@ class TestInitializeGoogleServices:
             result = initialize_google_services()
 
             assert result is True
-            mock_credentials.assert_called_once()
+            mock_credentials.assert_called_once_with(
+                token="test_token",
+                refresh_token="test_refresh",
+                token_uri="https://oauth2.googleapis.com/token",
+                client_id="test_client_id",
+                client_secret="test_secret",
+                scopes=["https://www.googleapis.com/auth/calendar"],
+            )
             assert mock_build.call_count == 2  # calendar and people services
 
     @patch("app.os.path.exists")

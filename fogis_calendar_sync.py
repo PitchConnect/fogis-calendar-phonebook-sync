@@ -203,14 +203,19 @@ def generate_match_hash(match):
 
 
 def generate_calendar_hash(match):
-    """Generates a hash for calendar-specific match data (excluding referee information)."""
+    """Generates a hash for calendar-specific match data (including referee information).
+
+    This hash is used to detect changes in match data that should trigger calendar updates.
+    Including referee data ensures that referee changes are properly detected and synced.
+    """
     data = {
         "lag1namn": match["lag1namn"],
         "lag2namn": match["lag2namn"],
         "anlaggningnamn": match["anlaggningnamn"],
         "tid": match["tid"],
         "tavlingnamn": match["tavlingnamn"],
-        "kontaktpersoner": match.get("kontaktpersoner", []),  # Handle missing key
+        "kontaktpersoner": match.get("kontaktpersoner", []),
+        "domaruppdraglista": match.get("domaruppdraglista", []),  # Include referee data
     }
 
     data_string = json.dumps(data, sort_keys=True).encode("utf-8")

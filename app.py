@@ -157,7 +157,8 @@ def calendar_sync_callback(data: Union[List[Dict], Dict]) -> bool:
 
         for match in matches:
             try:
-                match_id = str(match["matchid"])
+                # Use .get() for graceful handling of missing matchid
+                match_id = str(match.get("matchid", "unknown"))
 
                 # Create a minimal args object for sync_calendar
                 class Args:
