@@ -1,9 +1,8 @@
 import json
 import logging
 import os
-import subprocess
 import time
-from typing import Dict, List
+from typing import Dict, List, Union
 
 # Import dotenv for loading environment variables from .env file
 from dotenv import load_dotenv
@@ -91,15 +90,19 @@ def initialize_google_services():
 initialize_google_services()
 
 
-def calendar_sync_callback(matches: List[Dict]) -> bool:
+def calendar_sync_callback(data: Union[List[Dict], Dict]) -> bool:
     """
     Process match updates received from Redis.
 
     This callback is invoked by the Redis subscriber when match updates
     are received from the match-list-processor service.
 
+    Supports both formats:
+    - Enhanced Schema v2.0 (dict): {"matches": [...], "schema_version": "...", ...}
+    - Legacy Schema v1.0 (list): [match1, match2, ...]
+
     Args:
-        matches: List of match dictionaries from Redis message
+        data: Either a dict (v2.0) or list (v1.0) containing match data
 
     Returns:
         bool: True if sync successful, False otherwise
@@ -109,11 +112,37 @@ def calendar_sync_callback(matches: List[Dict]) -> bool:
             logger.error("❌ Calendar service not initialized")
             return False
 
+        # Handle both enriched dict and simple list formats
+        if isinstance(data, dict):
+            # Enhanced Schema v2.0 format
+            matches = data.get("matches", [])
+            schema_version = data.get("schema_version", "unknown")
+            detailed_changes = data.get("detailed_changes", [])
+            high_priority = data.get("high_priority", False)
+
+            logger.info(
+                f"🗓️ Processing {len(matches)} matches from Redis "
+                f"(Schema v{schema_version}, {len(detailed_changes)} changes, "
+                f"priority: {'HIGH' if high_priority else 'normal'})"
+            )
+        elif isinstance(data, list):
+            # Legacy Schema v1.0 format (simple list)
+            matches = data
+            schema_version = "1.0"
+            detailed_changes = []
+            high_priority = False
+
+            logger.info(
+                f"🗓️ Processing {len(matches)} matches from Redis "
+                f"(Legacy Schema v{schema_version})"
+            )
+        else:
+            logger.error(f"❌ Unexpected data type: {type(data)}")
+            return False
+
         if not matches:
             logger.info("📋 No matches to process")
             return True
-
-        logger.info(f"🗓️ Processing {len(matches)} matches from Redis")
 
         # Import calendar sync logic
         from fogis_calendar_sync import (
@@ -152,7 +181,8 @@ def calendar_sync_callback(matches: List[Dict]) -> bool:
 
             except Exception as e:
                 failed += 1
-                logger.error(f"❌ Error processing match {match.get('matchid', 'unknown')}: {e}")
+                match_id = match.get("matchid", "unknown") if isinstance(match, dict) else "unknown"
+                logger.error(f"❌ Error processing match {match_id}: {e}", exc_info=True)
 
         logger.info(f"📊 Redis sync complete: {processed} processed, {failed} failed")
 
@@ -160,7 +190,7 @@ def calendar_sync_callback(matches: List[Dict]) -> bool:
         return processed > 0 or (processed == 0 and failed == 0)
 
     except Exception as e:
-        logger.error(f"❌ Calendar sync callback failed: {e}")
+        logger.error(f"❌ Calendar sync callback failed: {e}", exc_info=True)
         return False
 
 
@@ -278,75 +308,6 @@ def health_check():
         duration = time.time() - start_time
         logger.error(f"❌ Health check FAILED ({duration:.3f}s): {str(e)}")
         return jsonify({"status": "error", "message": str(e)}), 500
-
-
-@app.route("/sync", methods=["POST"])
-@handle_calendar_errors("fogis_sync", "sync")
-def sync_fogis():
-    """Endpoint to trigger FOGIS calendar and contacts sync."""
-    logger.info("FOGIS sync request received")
-    try:
-        # Get optional parameters from request
-        data = request.get_json(silent=True) or {}
-        delete_events = data.get("delete", False)
-
-        # Build command
-        cmd = ["python", "fogis_calendar_sync.py"]
-        if delete_events:
-            cmd.append("--delete")
-
-        # Set environment variables for FOGIS credentials if provided
-        env = os.environ.copy()
-        if "username" in data and "password" in data:
-            env["FOGIS_USERNAME"] = data["username"]
-            env["FOGIS_PASSWORD"] = data["password"]
-
-        # Run the sync script as a subprocess
-        logger.info(f"Starting FOGIS sync process with command: {' '.join(cmd)}")
-        process = subprocess.run(cmd, env=env, capture_output=True, text=True, check=False)
-
-        # Check if the process was successful
-        if process.returncode == 0:
-            # Check for errors in stderr even with success return code
-            if process.stderr and ("ERROR" in process.stderr or "FAILED" in process.stderr.upper()):
-                logger.warning(f"FOGIS sync completed with warnings/errors: {process.stderr}")
-                return jsonify(
-                    {
-                        "status": "warning",
-                        "message": "FOGIS sync completed with warnings",
-                        "output": process.stdout,
-                        "warnings": process.stderr,
-                    }
-                )
-            else:
-                logger.info("FOGIS sync completed successfully")
-                return jsonify(
-                    {
-                        "status": "success",
-                        "message": "FOGIS sync completed successfully",
-                        "output": process.stdout,
-                    }
-                )
-
-        logger.error(f"FOGIS sync failed with error: {process.stderr}")
-        return (
-            jsonify(
-                {
-                    "status": "error",
-                    "message": "FOGIS sync failed",
-                    "error": process.stderr,
-                    "output": process.stdout,
-                }
-            ),
-            500,
-        )
-
-    except Exception as e:
-        logger.exception("Error during FOGIS sync")
-        return (
-            jsonify({"status": "error", "message": f"Error during FOGIS sync: {str(e)}"}),
-            500,
-        )
 
 
 # Initialize Redis integration
