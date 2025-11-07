@@ -150,10 +150,10 @@ def test_generate_calendar_hash():
     assert isinstance(calendar_hash1, str)
     assert len(calendar_hash1) == 64  # SHA-256 hash is 64 characters long
 
-    # Modify referee data - calendar hash should NOT change
+    # Modify referee data - calendar hash SHOULD change (referee data is now included)
     match["domaruppdraglista"][0]["personnamn"] = "Jane Doe"
     calendar_hash2 = fogis_calendar_sync.generate_calendar_hash(match)
-    assert calendar_hash1 == calendar_hash2  # Calendar hash unchanged
+    assert calendar_hash1 != calendar_hash2  # Calendar hash changed due to referee modification
 
     # Modify calendar data - calendar hash should change
     match["lag1namn"] = "New Home Team"
