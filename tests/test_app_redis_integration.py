@@ -9,8 +9,8 @@ import pytest
 class TestInitializeGoogleServices:
     """Tests for initialize_google_services function."""
 
-    @patch("googleapiclient.discovery.build")
-    @patch("google.oauth2.credentials.Credentials")
+    @patch("app.build")  # Patch where it's used in app.py
+    @patch("app.Credentials")  # Patch where it's used, not where it's defined
     @patch("builtins.open", new_callable=mock_open)
     @patch("app.os.path.exists")
     @patch("app.os.environ.get")
@@ -31,6 +31,13 @@ class TestInitializeGoogleServices:
             "scopes": ["https://www.googleapis.com/auth/calendar"],
         }
         mock_file.return_value.read.return_value = json.dumps(token_data)
+
+        # Configure Credentials mock to return a mock instance
+        mock_creds_instance = MagicMock()
+        mock_credentials.return_value = mock_creds_instance
+
+        # Configure build mock to return mock service instances
+        mock_build.return_value = MagicMock()
 
         # Mock json.load to return token_data
         with patch("json.load", return_value=token_data):
@@ -925,11 +932,12 @@ class TestCalendarSyncCallbackEnhancedSchema:
         """Test callback handles matches without matchid field gracefully."""
         import app
 
-        # First match will raise KeyError when accessing matchid
-        mock_sync.side_effect = [KeyError("matchid"), True]
+        # First match has no matchid, so sync_calendar won't be called for it
+        # Second match has matchid, so sync_calendar will be called and return True
+        mock_sync.return_value = True
         data = {
             "matches": [
-                {"lag1namn": "Team A"},  # No matchid
+                {"lag1namn": "Team A"},  # No matchid - will fail before calling sync_calendar
                 {"matchid": 2, "lag1namn": "Team B", "lag2namn": "Team C"},
             ],
             "schema_version": "2.0",
@@ -943,9 +951,10 @@ class TestCalendarSyncCallbackEnhancedSchema:
         try:
             result = app.calendar_sync_callback(data)
 
-            # Should return True because one succeeded
+            # Should return True because one succeeded (second match)
             assert result is True
-            assert mock_sync.call_count == 2
+            # sync_calendar should only be called once (for the second match with matchid)
+            assert mock_sync.call_count == 1
         finally:
             app.calendar_service = original_service
 
