@@ -99,12 +99,8 @@ jobs:
 
     strategy:
       matrix:
-        python-version: ["3.9", "3.10", "3.11"]  # Test multiple Python versions
+        python-version: ["3.11", "3.12", "3.13"]  # Test multiple Python versions (dropped 3.9 - EOL Oct 2025)
         test-type: [unit, integration]
-        # Temporarily exclude Python 3.9 integration tests due to compatibility issue
-        exclude:
-          - python-version: "3.9"
-            test-type: integration
 
     steps:
     - uses: actions/checkout@v4
@@ -158,10 +154,10 @@ jobs:
       with:
         ref: ${{ needs.check-commits.outputs.target_branch }}
 
-    - name: Set up Python 3.9
+    - name: Set up Python 3.11
       uses: actions/setup-python@v5
       with:
-        python-version: 3.9
+        python-version: 3.11
         cache: 'pip'
 
     - name: Install dependencies
@@ -205,10 +201,10 @@ jobs:
       with:
         ref: ${{ needs.check-commits.outputs.target_branch }}
 
-    - name: Set up Python 3.9
+    - name: Set up Python 3.11
       uses: actions/setup-python@v5
       with:
-        python-version: 3.9
+        python-version: 3.11
 
     - name: Install dependencies
       run: |

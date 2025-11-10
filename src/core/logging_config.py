@@ -10,7 +10,7 @@ import logging
 import logging.handlers
 import os
 import re
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any, Dict, Optional
 
 
@@ -20,7 +20,7 @@ class CalendarSyncServiceFormatter(logging.Formatter):
     def format(self, record: logging.LogRecord) -> str:
         """Format log record with enhanced structure and context."""
         # Create structured log format
-        timestamp = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.%f")
+        timestamp = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%S.%f")
         service = "fogis-calendar-phonebook-sync"
 
         # Extract component from logger name or record
